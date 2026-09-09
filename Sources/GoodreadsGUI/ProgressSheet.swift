@@ -9,7 +9,7 @@ struct ProgressSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var mode: Mode = .percent
-    @State private var percent: Double = 50
+    @State private var percent: Double
     @State private var page: String = ""
     @State private var note: String = ""
 
@@ -17,6 +17,12 @@ struct ProgressSheet: View {
         case percent = "Percent"
         case page = "Page"
         var id: String { rawValue }
+    }
+
+    init(entry: ShelfEntry, commit: @escaping (Int?, Int?, String) -> Void) {
+        self.entry = entry
+        self.commit = commit
+        _percent = State(initialValue: Double(entry.progress ?? 50))
     }
 
     var body: some View {
