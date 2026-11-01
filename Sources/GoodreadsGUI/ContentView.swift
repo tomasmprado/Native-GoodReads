@@ -108,17 +108,8 @@ struct ContentView: View {
 
             Section("Shelves") {
                 ForEach(model.shelves) { shelf in
-                    HStack {
-                        Label(shelf.title, systemImage: shelf.symbol)
-                        Spacer()
-                        if let count = shelf.count {
-                            Text("\(count)")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .tag(LibraryModel.Pane.shelf(shelf.name))
+                    ShelfSidebarRow(model: model, shelf: shelf)
+                        .tag(LibraryModel.Pane.shelf(shelf.name))
                 }
             }
         }
@@ -146,6 +137,38 @@ struct ContentView: View {
             }
             .padding(.bottom, 8)
         }
+    }
+}
+
+/// A shelf in the sidebar — also a drop target for books dragged out of
+/// the shelf on screen.
+private struct ShelfSidebarRow: View {
+    @ObservedObject var model: LibraryModel
+    let shelf: Shelf
+    @State private var isTargeted = false
+
+    var body: some View {
+        HStack {
+            Label(shelf.title, systemImage: shelf.symbol)
+            Spacer()
+            if let count = shelf.count {
+                Text("\(count)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .contentShape(Rectangle())
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.accentColor.opacity(isTargeted ? 0.25 : 0))
+        )
+        .dropDestination(for: String.self) { payloads, _ in
+            model.drop(payloads, on: shelf)
+        } isTargeted: { targeted in
+            isTargeted = targeted && model.currentShelf?.name != shelf.name
+        }
+        .accessibilityHint(Text("Drop books here to move them to this shelf"))
     }
 }
 
@@ -1026,6 +1049,10 @@ private struct ShelfPane: View {
                     ) {
                         rowActions(entry)
                     }
+                    .draggable(LibraryModel.dragPrefix + entry.id) {
+                        Label(entry.title, systemImage: "book.closed")
+                            .padding(6)
+                    }
                 }
                 .listStyle(.inset)
             }
@@ -1129,6 +1156,12 @@ private struct ShelfPane: View {
 
         Button("View Details…") { model.showBookDetail(entry.asBook) }
         Button("Open on Goodreads") { model.openOnGoodreads(bookID: entry.bookID) }
+        if let url = LibraryModel.goodreadsURL(bookID: entry.bookID) {
+            ShareLink(item: url, subject: Text(entry.title),
+                      message: Text("\(entry.title) — \(entry.author)")) {
+                Label("Share…", systemImage: "square.and.arrow.up")
+            }
+        }
         Button("Remove from Shelf", role: .destructive) {
             Task { await model.remove(entry) }
         }

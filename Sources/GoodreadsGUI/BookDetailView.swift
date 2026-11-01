@@ -28,6 +28,15 @@ struct BookDetailView: View {
                 Text("Book Details")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
+                if let goodreadsID, let url = LibraryModel.goodreadsURL(bookID: goodreadsID) {
+                    ShareLink(item: url,
+                              subject: Text(book.title),
+                              message: Text("\(book.title) — \(book.author)")) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .glassButton()
+                    .help("Share this book")
+                }
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.defaultAction)
                     .glassButton()

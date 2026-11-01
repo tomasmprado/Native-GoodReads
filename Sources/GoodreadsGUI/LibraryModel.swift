@@ -1104,8 +1104,33 @@ final class LibraryModel: ObservableObject {
     }
 
     func openOnGoodreads(bookID: String) {
-        guard let url = URL(string: "https://www.goodreads.com/book/show/\(bookID)") else { return }
+        guard let url = Self.goodreadsURL(bookID: bookID) else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    nonisolated static func goodreadsURL(bookID: String) -> URL? {
+        URL(string: "https://www.goodreads.com/book/show/\(bookID)")
+    }
+
+    // MARK: - Drag and drop
+
+    /// What a shelf row carries when dragged: its entry id, tagged so text
+    /// dragged in from elsewhere isn't mistaken for a book.
+    nonisolated static let dragPrefix = "goodreads-entry:"
+
+    /// Books dropped on a sidebar shelf. Only rows of the shelf on screen can
+    /// be dragged, so they're looked up there.
+    func drop(_ payloads: [String], on shelf: Shelf) -> Bool {
+        let ids = payloads.compactMap { payload -> String? in
+            guard payload.hasPrefix(Self.dragPrefix) else { return nil }
+            return String(payload.dropFirst(Self.dragPrefix.count))
+        }
+        let entries = ids.compactMap { id in shelfEntries.first { $0.id == id } }
+        guard !entries.isEmpty, currentShelf?.name != shelf.name else { return false }
+        Task {
+            for entry in entries { await move(entry, to: shelf) }
+        }
+        return true
     }
 }
 
