@@ -10,7 +10,9 @@ jobs:
     # GitHub's macos runners ship full Xcode, not just the Command Line
     # Tools — unlike a from-source build on a machine with only CLT (see
     # README's Build section), `swift build`/`swift test` just work here.
-    runs-on: macos-14
+    # macos-26 has Xcode 26 and its SDK, so the Liquid Glass code (behind
+    # `#if compiler(>=6.2)` in Glass.swift) is compiled here, not skipped.
+    runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v4

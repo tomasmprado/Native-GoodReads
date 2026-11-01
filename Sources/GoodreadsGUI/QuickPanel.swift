@@ -33,7 +33,7 @@ final class QuickPanel: NSPanel {
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        if #available(macOS 26, *) {
+        if hasLiquidGlass {
             // Let the SwiftUI glass be the panel's whole surface.
             isOpaque = false
             backgroundColor = .clear
@@ -140,7 +140,7 @@ struct QuickSearchView: View {
             }
         }
         .frame(width: 560, height: 420)
-        .quickPanelSurface()
+        .glassPanel()
         .onExitCommand { onEscape() }
         .onAppear {
             focused = true
@@ -266,16 +266,5 @@ private struct QuickRow: View {
         RoundedRectangle(cornerRadius: 3)
             .fill(Color.secondary.opacity(0.15))
             .overlay(Image(systemName: "book.closed").font(.system(size: 11)).foregroundStyle(.tertiary))
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func quickPanelSurface() -> some View {
-        if #available(macOS 26, *) {
-            glassEffect(.regular, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        } else {
-            background(.regularMaterial)
-        }
     }
 }

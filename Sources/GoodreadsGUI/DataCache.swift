@@ -114,18 +114,22 @@ actor DataCache {
 /// scroll and pane switch.
 @MainActor
 final class ImageMemoryCache {
-    static let shared = ImageMemoryCache()
+    nonisolated static let shared = ImageMemoryCache()
 
-    private let images: NSCache<NSURL, NSImage> = {
+    // NSCache is thread-safe, so lookups don't need the main actor — a view's
+    // init (which reads it) isn't main-actor-isolated on older toolchains.
+    nonisolated(unsafe) private let images: NSCache<NSURL, NSImage> = {
         let cache = NSCache<NSURL, NSImage>()
         cache.countLimit = 600
         return cache
     }()
     private var inFlight: [URL: Task<NSImage?, Never>] = [:]
 
-    func cached(_ url: URL) -> NSImage? { images.object(forKey: url as NSURL) }
+    nonisolated private init() { }
 
-    func removeAll() { images.removeAllObjects() }
+    nonisolated func cached(_ url: URL) -> NSImage? { images.object(forKey: url as NSURL) }
+
+    nonisolated func removeAll() { images.removeAllObjects() }
 
     func load(_ url: URL) async -> NSImage? {
         if let image = cached(url) { return image }
