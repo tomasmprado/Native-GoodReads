@@ -63,13 +63,29 @@ struct TasteComparison: Equatable {
 
         init(_ entries: [ShelfEntry]) {
             byID = Dictionary(entries.map { ($0.bookID, $0) }, uniquingKeysWith: { first, _ in first })
-            byTitle = Dictionary(grouping: entries) { Suggestions.normalizedTitle($0.title) }
+            byTitle = Dictionary(grouping: entries) { Self.titleKey($0.title) }
         }
 
         func match(_ entry: ShelfEntry) -> ShelfEntry? {
             if let hit = byID[entry.bookID] { return hit }
-            return byTitle[Suggestions.normalizedTitle(entry.title)]?
-                .first { Suggestions.looksLikeSameAuthor($0.author, entry.author) }
+            return byTitle[Self.titleKey(entry.title)]?
+                .first { Self.authorKey($0.author) == Self.authorKey(entry.author) }
+        }
+
+        /// Without the "(Series, #1)" Goodreads appends to some editions.
+        static func titleKey(_ title: String) -> String {
+            let bare = title.replacingOccurrences(of: #"\s*\([^()]*#[^()]*\)\s*$"#, with: "",
+                                                  options: .regularExpression)
+            return Suggestions.normalizedTitle(bare)
+        }
+
+        /// "Frank Herbert" and "Herbert, Frank" alike.
+        static func authorKey(_ author: String) -> String {
+            author.lowercased()
+                .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                .filter { !$0.isEmpty }
+                .sorted()
+                .joined(separator: " ")
         }
     }
 }
