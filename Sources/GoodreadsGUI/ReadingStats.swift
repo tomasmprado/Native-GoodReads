@@ -98,11 +98,11 @@ struct StatsPane: View {
                     VStack(alignment: .leading, spacing: 16) {
                         goalCard(stats)
                         HStack(alignment: .top, spacing: 16) {
-                            numberCard("Books read", "\(stats.totalRead)", symbol: "books.vertical")
-                            numberCard("Average rating",
+                            numberCard(String(localized: "Books read"), "\(stats.totalRead)", symbol: "books.vertical")
+                            numberCard(String(localized: "Average rating"),
                                        stats.averageRating.map { String(format: "%.1f ★", $0) } ?? "—",
                                        symbol: "star")
-                            numberCard("Currently reading", "\(model.currentlyReading.count)",
+                            numberCard(String(localized: "Currently reading"), "\(model.currentlyReading.count)",
                                        symbol: "book")
                         }
                         .glassGroup(spacing: 16)
@@ -120,7 +120,7 @@ struct StatsPane: View {
                     Image(systemName: model.isLoadingStats ? "hourglass" : "chart.bar")
                         .font(.system(size: 40))
                         .foregroundStyle(.tertiary)
-                    Text(model.isLoadingStats ? "Counting your books…" : "Mark a book read and your stats show up here.")
+                    Text(model.isLoadingStats ? String(localized: "Counting your books…") : String(localized: "Mark a book read and your stats show up here."))
                         .foregroundStyle(.secondary)
                     Spacer()
                 }
@@ -168,8 +168,8 @@ struct StatsPane: View {
             }
             ProgressView(value: Double(min(stats.readThisYear, goal)), total: Double(goal))
             Text(ahead >= 0
-                 ? (stats.readThisYear >= goal ? "Goal reached 🎉" : "\(ahead) ahead of schedule")
-                 : "\(-ahead) behind schedule")
+                 ? (stats.readThisYear >= goal ? String(localized: "Goal reached 🎉") : String(localized: "\(ahead) ahead of schedule"))
+                 : String(localized: "\(-ahead) behind schedule"))
                 .font(.system(size: 11))
                 .foregroundStyle(ahead >= 0 ? Color.green : Color.orange)
 

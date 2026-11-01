@@ -42,7 +42,7 @@ enum GoodreadsAuthorPage {
         }
 
         return Detail(
-            name: result.name ?? "Author",
+            name: result.name ?? String(localized: "Author"),
             photoURL: result.photo.flatMap(URL.init(string:)),
             born: result.born,
             website: result.website.flatMap(URL.init(string:)),

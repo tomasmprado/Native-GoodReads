@@ -111,7 +111,7 @@ enum GoodreadsFriends {
         }
 
         return Profile(
-            name: result.name ?? "Goodreads member",
+            name: result.name ?? String(localized: "Goodreads member"),
             avatarURL: result.avatar.flatMap(URL.init(string:)),
             stats: result.stats,
             activity: decodeActivity(activityRaw)

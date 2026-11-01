@@ -317,7 +317,7 @@ enum ShelfService {
               let result = try? JSONDecoder().decode(ScriptResult.self, from: data) else {
             throw AppError("The page didn't respond as expected.")
         }
-        if !result.ok { throw AppError(result.error ?? "Request failed.") }
+        if !result.ok { throw AppError(verbatim: result.error ?? String(localized: "Request failed.")) }
     }
 
     /// React book pages don't carry a csrf-token meta tag, so an unsigned POST

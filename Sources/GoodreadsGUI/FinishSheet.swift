@@ -87,11 +87,11 @@ struct StarPicker: View {
     /// Goodreads' own wording for each rating.
     static func phrase(_ rating: Int) -> String {
         switch rating {
-        case 1:  return "did not like it"
-        case 2:  return "it was ok"
-        case 3:  return "liked it"
-        case 4:  return "really liked it"
-        case 5:  return "it was amazing"
+        case 1:  return String(localized: "did not like it")
+        case 2:  return String(localized: "it was ok")
+        case 3:  return String(localized: "liked it")
+        case 4:  return String(localized: "really liked it")
+        case 5:  return String(localized: "it was amazing")
         default: return ""
         }
     }

@@ -8,13 +8,13 @@ enum BookLanguage: String, CaseIterable, Identifiable, Codable {
 
     var label: String {
         switch self {
-        case .any:        return "Any language"
-        case .english:    return "English"
-        case .portuguese: return "Portuguese"
-        case .spanish:    return "Spanish"
-        case .french:     return "French"
-        case .german:     return "German"
-        case .italian:    return "Italian"
+        case .any:        return String(localized: "Any language")
+        case .english:    return String(localized: "English")
+        case .portuguese: return String(localized: "Portuguese")
+        case .spanish:    return String(localized: "Spanish")
+        case .french:     return String(localized: "French")
+        case .german:     return String(localized: "German")
+        case .italian:    return String(localized: "Italian")
         }
     }
 
@@ -140,7 +140,7 @@ struct PreferencesView: View {
             } header: {
                 Text("Suggestions")
             } footer: {
-                Text("Filters suggested books by edition language. The app's own interface stays in English.")
+                Text("Filters suggested books by edition language.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -159,9 +159,7 @@ struct PreferencesView: View {
             } header: {
                 Text("Google Books")
             } footer: {
-                Text("Search and suggestions use Google Books, whose free shared tier is "
-                    + "usually out of quota. Get a free key at console.cloud.google.com — "
-                    + "enable the “Books API”, then Credentials → Create Credentials → API key.")
+                Text("Search and suggestions use Google Books, whose free shared tier is usually out of quota. Get a free key at console.cloud.google.com — enable the “Books API”, then Credentials → Create Credentials → API key.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -187,7 +185,7 @@ struct PreferencesView: View {
                     Text(cacheBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…")
                         .foregroundStyle(.secondary)
                 }
-                Button(isClearing ? "Clearing…" : "Clear Cache") {
+                Button(isClearing ? String(localized: "Clearing…") : String(localized: "Clear Cache")) {
                     isClearing = true
                     Task {
                         await DataCache.clearEverything()
@@ -199,8 +197,7 @@ struct PreferencesView: View {
             } header: {
                 Text("Cache")
             } footer: {
-                Text("Shelves, book pages, friends and covers are saved so the app opens instantly. "
-                    + "Clearing it is safe: everything is fetched again the next time you open it.")
+                Text("Shelves, book pages, friends and covers are saved so the app opens instantly. Clearing it is safe: everything is fetched again the next time you open it.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }

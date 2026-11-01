@@ -117,7 +117,7 @@ enum GoodreadsBookPage {
     private static func review(from entry: [String: Any], in apollo: [String: Any]) -> Review? {
         guard let id = entry["id"] as? String else { return nil }
 
-        var name = "A reader"
+        var name = String(localized: "A reader")
         var avatar: URL?
         if let creatorRef = (entry["creator"] as? [String: Any])?["__ref"] as? String,
            let user = apollo[creatorRef] as? [String: Any] {

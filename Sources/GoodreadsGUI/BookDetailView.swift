@@ -209,7 +209,7 @@ struct BookDetailView: View {
             goodreadsID = id
             await loadReviews(bookID: id)
         } catch {
-            resolveError = "Couldn't find this book on Goodreads."
+            resolveError = String(localized: "Couldn't find this book on Goodreads.")
         }
     }
 
@@ -228,7 +228,7 @@ struct BookDetailView: View {
                 reviewsError = nil
             }
         } catch {
-            reviewsError = "Couldn't load reviews: \(error.localizedDescription)"
+            reviewsError = String(localized: "Couldn't load reviews: \(error.localizedDescription)")
         }
     }
 

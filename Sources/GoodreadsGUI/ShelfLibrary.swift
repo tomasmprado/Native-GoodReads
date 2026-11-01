@@ -62,7 +62,7 @@ enum ShelfLibrary {
 
         let firstEnvelope = try decodeEnvelope(firstRaw)
         guard firstEnvelope.ok, var rows = firstEnvelope.rows else {
-            throw AppError(firstEnvelope.error ?? "The shelf page couldn't be read.")
+            throw AppError(verbatim: firstEnvelope.error ?? String(localized: "The shelf page couldn't be read."))
         }
         // Zero rows is either a genuinely empty shelf or a page whose markup
         // no longer matches what this app scrapes for it — the second one
@@ -92,7 +92,7 @@ enum ShelfLibrary {
                         )
                         let envelope = try decodeEnvelope(raw)
                         guard envelope.ok, let pageRows = envelope.rows else {
-                            throw AppError(envelope.error ?? "Page \(page) of the shelf couldn't be read.")
+                            throw AppError(verbatim: envelope.error ?? String(localized: "Page \(page) of the shelf couldn't be read."))
                         }
                         return pageRows
                     }
@@ -150,7 +150,7 @@ enum ShelfLibrary {
 
         let envelope = try JSONDecoder().decode(ShelfListEnvelope.self, from: data)
         guard envelope.ok, let found = envelope.rows else {
-            throw AppError(envelope.error ?? "The shelf list couldn't be read.")
+            throw AppError(verbatim: envelope.error ?? String(localized: "The shelf list couldn't be read."))
         }
 
         // Drop pseudo-shelves, then collapse to-read/want-to-read duplicates,

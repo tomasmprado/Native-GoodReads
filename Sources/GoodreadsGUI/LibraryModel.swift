@@ -228,7 +228,7 @@ final class LibraryModel: ObservableObject {
             results = found
             isSearching = false
             if found.isEmpty {
-                status = Status(text: "No books matched “\(term)”.", isError: false)
+                status = Status(text: String(localized: "No books matched “\(term)”."), isError: false)
             }
         } catch {
             guard !Task.isCancelled, !isCancellation(error) else { return }
@@ -251,7 +251,7 @@ final class LibraryModel: ObservableObject {
 
     func signInSheetClosed() async {
         loggedIn = await WebSession.shared.refreshSignInState()
-        status = Status(text: loggedIn ? "Signed in." : "Still signed out.", isError: !loggedIn)
+        status = Status(text: loggedIn ? String(localized: "Signed in.") : String(localized: "Still signed out."), isError: !loggedIn)
         if loggedIn {
             await refreshShelfList()
             if currentShelf != nil { await loadShelf(force: true) }
@@ -341,7 +341,7 @@ final class LibraryModel: ObservableObject {
         } catch {
             // Silently keeping the three built-ins here is what made custom
             // shelves look like they'd vanished.
-            status = Status(text: "Couldn’t read your shelf list: \(error.localizedDescription)",
+            status = Status(text: String(localized: "Couldn’t read your shelf list: \(error.localizedDescription)"),
                             isError: true)
         }
     }
@@ -404,7 +404,7 @@ final class LibraryModel: ObservableObject {
         if !suggestions.isEmpty && !force && !stale && !savedStale { return }
 
         isBuildingSuggestions = true
-        suggestionNote = "Looking at what you finished recently…"
+        suggestionNote = String(localized: "Looking at what you finished recently…")
         defer { isBuildingSuggestions = false }
 
         var readEntries = cachedRead?.entries ?? []
@@ -415,7 +415,7 @@ final class LibraryModel: ObservableObject {
                 ShelfCache.write(readEntries, for: .read)
                 setCount(readEntries.count, for: .read)
             } catch {
-                suggestionNote = "Couldn’t read your Read shelf: \(error.localizedDescription)"
+                suggestionNote = String(localized: "Couldn’t read your Read shelf: \(error.localizedDescription)")
                 return
             }
         }
@@ -438,7 +438,7 @@ final class LibraryModel: ObservableObject {
         let prefs = Preferences.shared
 
         do {
-            suggestionNote = "Finding books…"
+            suggestionNote = String(localized: "Finding books…")
             let result = try await Suggestions.build(
                 from: readEntries,
                 excludingTitles: shelvedTitles,
@@ -453,11 +453,11 @@ final class LibraryModel: ObservableObject {
                                          "suggestions", "home")
 
             if result.basis.isEmpty {
-                suggestionNote = "Nothing finished in the last \(prefs.suggestionWindowDays) days — mark a book read and this fills in."
+                suggestionNote = String(localized: "Nothing finished in the last \(prefs.suggestionWindowDays) days — mark a book read and this fills in.")
             } else if result.items.isEmpty {
                 suggestionNote = prefs.bookLanguage == .any
-                    ? "No new books found from those authors."
-                    : "Nothing found in \(prefs.bookLanguage.label.lowercased()). Try widening the language in Settings."
+                    ? String(localized: "No new books found from those authors.")
+                    : String(localized: "Nothing found in \(prefs.bookLanguage.label.lowercased()). Try widening the language in Settings.")
             } else {
                 suggestionNote = nil
             }
@@ -538,7 +538,7 @@ final class LibraryModel: ObservableObject {
            Date().timeIntervalSince(fetched) < DataCache.TTL.friends { return }
 
         isLoadingFriends = true
-        if friends.isEmpty { friendsNote = "Looking at your Goodreads friends…" }
+        if friends.isEmpty { friendsNote = String(localized: "Looking at your Goodreads friends…") }
 
         // Last session's list shows instantly; the page load runs behind it.
         do {
@@ -566,7 +566,7 @@ final class LibraryModel: ObservableObject {
         friendsFetched = Date()
 
         friendsNote = (friends.isEmpty && friendActivity.isEmpty)
-            ? "Nothing found — Goodreads may have changed this page's layout."
+            ? String(localized: "Nothing found — Goodreads may have changed this page's layout.")
             : nil
     }
 
@@ -691,14 +691,14 @@ final class LibraryModel: ObservableObject {
     private func performLoad(of shelf: Shelf) async {
         if let cached = ShelfCache.read(shelf) {
             shelfEntries = cached.entries
-            cacheNote = "cached \(ShelfCache.age(cached.fetched))"
+            cacheNote = String(localized: "cached \(ShelfCache.age(cached.fetched))")
         } else {
             shelfEntries = []
             cacheNote = nil
         }
 
         isLoadingShelf = true
-        loadProgress = shelfEntries.isEmpty ? "Loading…" : nil
+        loadProgress = shelfEntries.isEmpty ? String(localized: "Loading…") : nil
         defer {
             isLoadingShelf = false
             loadProgress = nil
@@ -707,7 +707,7 @@ final class LibraryModel: ObservableObject {
         do {
             var fetched = try await ShelfLibrary.load(shelf) { [weak self] count, pages in
                 guard let self else { return }
-                self.loadProgress = pages > 1 ? "\(count) of ~\(pages * ShelfLibrary.perPage) so far…" : nil
+                self.loadProgress = pages > 1 ? String(localized: "\(count) of ~\(pages * ShelfLibrary.perPage) so far…") : nil
             }
             if shelf.name == "currently-reading" { await backfillProgress(into: &fetched) }
 
@@ -715,12 +715,12 @@ final class LibraryModel: ObservableObject {
             guard !Task.isCancelled, currentShelf?.name == shelf.name else { return }
 
             shelfEntries = fetched
-            cacheNote = "updated just now"
+            cacheNote = String(localized: "updated just now")
             ShelfCache.write(fetched, for: shelf)
             setCount(fetched.count, for: shelf)
 
             if fetched.isEmpty {
-                status = Status(text: "Nothing on \(shelf.label) yet.", isError: false)
+                status = Status(text: String(localized: "Nothing on \(shelf.title) yet."), isError: false)
             }
         } catch is CancellationError {
             // Superseded by another shelf — say nothing.
@@ -766,7 +766,7 @@ final class LibraryModel: ObservableObject {
     /// `ShelfService.WriteVerification`. Silent on `.confirmed`, since that's
     /// the ordinary case and doesn't need calling out.
     private func caveat(_ verification: ShelfService.WriteVerification) -> String {
-        verification == .unknown ? " (couldn't confirm — check the shelf)" : ""
+        verification == .unknown ? String(localized: " (couldn't confirm — check the shelf)") : ""
     }
 
     /// Every write action funnels its failure through here so a session that
@@ -782,10 +782,10 @@ final class LibraryModel: ObservableObject {
         let message = error.localizedDescription
         if !WebSession.shared.isSignedIn || message.localizedCaseInsensitiveContains("signed out") {
             loggedIn = false
-            status = Status(text: "\(prefix): you're signed out. Sign in and try again.", isError: true)
+            status = Status(text: String(localized: "\(prefix): you're signed out. Sign in and try again."), isError: true)
             activeSheet = .signIn
         } else {
-            status = Status(text: "\(prefix): \(message)", isError: true)
+            status = Status(text: String(localized: "\(prefix): \(message)"), isError: true)
         }
     }
 
@@ -801,13 +801,13 @@ final class LibraryModel: ObservableObject {
             shelfEntries.removeAll { $0.id == entry.id }
             ShelfCache.write(shelfEntries, for: shelf)
             setCount(shelfEntries.count, for: shelf)
-            status = Status(text: "Removed “\(entry.title)” from \(shelf.label).\(caveat(verification))", isError: false)
+            status = Status(text: String(localized: "Removed “\(entry.title)” from \(shelf.title).\(caveat(verification))"), isError: false)
 
-            offerUndo("Undo remove of “\(entry.title)”") { [weak self] in
+            offerUndo(String(localized: "Undo remove of “\(entry.title)”")) { [weak self] in
                 await self?.restoreRemoved(entry, to: shelf)
             }
         } catch {
-            reportWriteFailure("Couldn’t remove “\(entry.title)”", error: error)
+            reportWriteFailure(String(localized: "Couldn’t remove “\(entry.title)”"), error: error)
         }
     }
 
@@ -824,9 +824,9 @@ final class LibraryModel: ObservableObject {
                 ShelfCache.write(shelfEntries, for: shelf)
                 setCount(shelfEntries.count, for: shelf)
             }
-            status = Status(text: "Restored “\(entry.title)” to \(shelf.label).", isError: false)
+            status = Status(text: String(localized: "Restored “\(entry.title)” to \(shelf.title)."), isError: false)
         } catch {
-            reportWriteFailure("Couldn’t undo", error: error)
+            reportWriteFailure(String(localized: "Couldn’t undo"), error: error)
         }
     }
 
@@ -845,7 +845,7 @@ final class LibraryModel: ObservableObject {
             }
             status = Status(text: successText, isError: false)
         } catch {
-            reportWriteFailure("Couldn’t undo", error: error)
+            reportWriteFailure(String(localized: "Couldn’t undo"), error: error)
         }
     }
 
@@ -869,21 +869,21 @@ final class LibraryModel: ObservableObject {
                 setCount(shelfEntries.count, for: current)
                 movedAwayFrom = current
             }
-            let verb = shelf.isExclusive ? "→" : "also on"
-            status = Status(text: "“\(entry.title)” \(verb) \(shelf.label)\(caveat(verification))", isError: false)
+            let verb = shelf.isExclusive ? "→" : String(localized: "also on")
+            status = Status(text: String(localized: "“\(entry.title)” \(verb) \(shelf.title)\(caveat(verification))"), isError: false)
 
             if let movedAwayFrom {
-                offerUndo("Undo move of “\(entry.title)”") { [weak self] in
+                offerUndo(String(localized: "Undo move of “\(entry.title)”")) { [weak self] in
                     await self?.move(entry, to: movedAwayFrom)
                 }
             } else if !shelf.isExclusive {
-                offerUndo("Undo") { [weak self] in
+                offerUndo(String(localized: "Undo")) { [weak self] in
                     await self?.removeFromShelf(entry, shelf: shelf,
-                                                successText: "Removed “\(entry.title)” from \(shelf.label).")
+                                                successText: String(localized: "Removed “\(entry.title)” from \(shelf.title)."))
                 }
             }
         } catch {
-            reportWriteFailure("Couldn’t move “\(entry.title)”", error: error)
+            reportWriteFailure(String(localized: "Couldn’t move “\(entry.title)”"), error: error)
         }
     }
 
@@ -907,10 +907,10 @@ final class LibraryModel: ObservableObject {
                 currentlyReading[index].progress = resolvedPercent
                 ShelfCache.write(currentlyReading, for: .currentlyReading)
             }
-            let amount = resolvedPercent.map { "\($0)%" } ?? page.map { "page \($0)" } ?? "progress"
-            status = Status(text: "Updated “\(entry.title)” to \(amount).", isError: false)
+            let amount = resolvedPercent.map { "\($0)%" } ?? page.map { String(localized: "page \($0)") } ?? String(localized: "progress")
+            status = Status(text: String(localized: "Updated “\(entry.title)” to \(amount)."), isError: false)
         } catch {
-            status = Status(text: "Couldn’t update progress: \(error.localizedDescription)",
+            status = Status(text: String(localized: "Couldn’t update progress: \(error.localizedDescription)"),
                             isError: true)
         }
     }
@@ -931,10 +931,10 @@ final class LibraryModel: ObservableObject {
                 setCount(shelfEntries.count, for: current)
             }
 
-            let stars = rating.map { " at \($0)★" } ?? ""
-            status = Status(text: "Marked “\(title)” read\(stars).", isError: false)
+            let stars = rating.map { String(localized: " at \($0)★") } ?? ""
+            status = Status(text: String(localized: "Marked “\(title)” read\(stars)."), isError: false)
         } catch {
-            status = Status(text: "Couldn’t finish “\(title)”: \(error.localizedDescription)",
+            status = Status(text: String(localized: "Couldn’t finish “\(title)”: \(error.localizedDescription)"),
                             isError: true)
         }
     }
@@ -951,9 +951,9 @@ final class LibraryModel: ObservableObject {
                 shelfEntries[index].rating = stars
             }
             if let shelf = currentShelf { ShelfCache.write(shelfEntries, for: shelf) }
-            status = Status(text: "Rated “\(entry.title)” \(stars)★.", isError: false)
+            status = Status(text: String(localized: "Rated “\(entry.title)” \(stars)★."), isError: false)
         } catch {
-            status = Status(text: "Couldn’t rate “\(entry.title)”: \(error.localizedDescription)",
+            status = Status(text: String(localized: "Couldn’t rate “\(entry.title)”: \(error.localizedDescription)"),
                             isError: true)
         }
     }
@@ -972,13 +972,13 @@ final class LibraryModel: ObservableObject {
             let verification = try await ShelfService.add(bookID: bookID, to: shelf)
             loggedIn = true
             bumpCountIfNew(bookID: bookID, shelf: shelf)
-            status = Status(text: "“\(book.title)” → \(shelf.label)\(caveat(verification))", isError: false)
+            status = Status(text: String(localized: "“\(book.title)” → \(shelf.title)\(caveat(verification))"), isError: false)
         } catch {
             if !WebSession.shared.isSignedIn {
-                status = Status(text: "Sign in first — click Log In below.", isError: true)
+                status = Status(text: String(localized: "Sign in first — click Log In below."), isError: true)
                 activeSheet = .signIn
             } else {
-                reportWriteFailure("Couldn’t shelve “\(book.title)”", error: error)
+                reportWriteFailure(String(localized: "Couldn’t shelve “\(book.title)”"), error: error)
             }
         }
     }
@@ -994,10 +994,10 @@ final class LibraryModel: ObservableObject {
             let bookID = try await GoodreadsLookup.bookID(for: book)
             try await ShelfService.finish(bookID: bookID, rating: rating, dateRead: dateRead, note: note)
             bumpCountIfNew(bookID: bookID, shelf: .read)
-            let stars = rating.map { " at \($0)★" } ?? ""
-            status = Status(text: "Marked “\(book.title)” read\(stars).", isError: false)
+            let stars = rating.map { String(localized: " at \($0)★") } ?? ""
+            status = Status(text: String(localized: "Marked “\(book.title)” read\(stars)."), isError: false)
         } catch {
-            status = Status(text: "Couldn’t finish “\(book.title)”: \(error.localizedDescription)",
+            status = Status(text: String(localized: "Couldn’t finish “\(book.title)”: \(error.localizedDescription)"),
                             isError: true)
         }
     }
@@ -1007,7 +1007,7 @@ final class LibraryModel: ObservableObject {
             let bookID = try await GoodreadsLookup.bookID(for: book)
             openOnGoodreads(bookID: bookID)
         } catch {
-            status = Status(text: "Couldn’t find “\(book.title)” on Goodreads.", isError: true)
+            status = Status(text: String(localized: "Couldn’t find “\(book.title)” on Goodreads."), isError: true)
         }
     }
 
@@ -1015,13 +1015,13 @@ final class LibraryModel: ObservableObject {
 
     func exportCurrentShelf() {
         guard let shelf = currentShelf, !shelfEntries.isEmpty else {
-            status = Status(text: "Nothing to export.", isError: true)
+            status = Status(text: String(localized: "Nothing to export."), isError: true)
             return
         }
 
         let text = CSVExport.csv(for: shelfEntries, shelf: shelf)
         report(CSVExport.save(text, suggestedName: "goodreads-\(shelf.name).csv"),
-              successText: { "Exported \(self.shelfEntries.count) books to \($0)." })
+              successText: { String(localized: "Exported \(self.shelfEntries.count) books to \($0).") })
     }
 
     /// Fetches every shelf and writes one combined file. This is the backup.
@@ -1037,16 +1037,16 @@ final class LibraryModel: ObservableObject {
         // its fetch failed is worse than one the export just tells you about.
         var failedShelves: [String] = []
         for shelf in shelves {
-            exportProgress = "Reading \(shelf.label)…"
+            exportProgress = String(localized: "Reading \(shelf.title)…")
             do {
                 let entries = try await ShelfLibrary.load(shelf)
                 ShelfCache.write(entries, for: shelf)
                 rows.append((shelf, entries))
             } catch {
-                failedShelves.append(shelf.label)
+                failedShelves.append(shelf.title)
             }
         }
-        exportProgress = "Writing file…"
+        exportProgress = String(localized: "Writing file…")
 
         // Each shelf contributes data rows only — reusing `CSVExport.csv`
         // (header + rows) per shelf and stripping their headers by splitting
@@ -1062,8 +1062,8 @@ final class LibraryModel: ObservableObject {
 
         report(CSVExport.save(text, suggestedName: "goodreads-library.csv"), successText: { name in
             failedShelves.isEmpty
-                ? "Exported \(total) books to \(name)."
-                : "Exported \(total) books to \(name). Couldn’t read: \(failedShelves.joined(separator: ", "))."
+                ? String(localized: "Exported \(total) books to \(name).")
+                : String(localized: "Exported \(total) books to \(name). Couldn’t read: \(failedShelves.joined(separator: ", ")).")
         }, hadPartialFailure: !failedShelves.isEmpty)
     }
 
@@ -1075,7 +1075,7 @@ final class LibraryModel: ObservableObject {
         case .cancelled:
             break
         case .failed(let message):
-            status = Status(text: "Couldn’t save the export: \(message)", isError: true)
+            status = Status(text: String(localized: "Couldn’t save the export: \(message)"), isError: true)
         }
     }
 
