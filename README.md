@@ -103,7 +103,8 @@ website can't do.
 
 There's also a menu bar item with the same thing, plus a way back to the main
 window. Its menu also lists what you're currently reading, with a progress bar
-for each; choosing a book opens its progress update.
+and an estimated finish date for each; choosing a book opens its progress
+update.
 
 The hotkey uses Carbon's `RegisterEventHotKey`, which is ancient but is the only
 route that doesn't demand Accessibility permission. If another app already owns
@@ -118,7 +119,15 @@ too — the point is not needing it.
 
 A "Read Next" card — one pick from what you've been reading most, minus
 anything already on a shelf — plus a horizontal carousel of whatever's on
-Currently Reading, with a shortcut to update progress on each.
+Currently Reading, with a shortcut to update progress on each and, once
+there's a little history, when you'll finish at your pace so far. The app
+remembers each progress update (Goodreads only shows the latest), which is
+what that estimate comes from. If you've put Want to Read in your own order,
+**Up next** shows the first book.
+
+The **Suggestions** pane also has **New from Your Authors**: books out in the
+last year, or due in the next, by anyone with two or more books on your Read
+shelf (from Google Books, checked once a day).
 
 The full list behind that one pick lives in its own **Suggestions** pane in
 the sidebar. No Goodreads recommendation API worth using exists, so both work
@@ -140,6 +149,10 @@ app, under Applications there). Translations live in
 **Friends** — optionally, a notification when a friend starts or finishes a
 book. Checked whenever the friend list refreshes and every hour while the app
 is open; the first check only records what's there, so turning it on is quiet.
+
+**Notifications** also cover new books from authors you read, and a daily
+**Reading Reminder** at a time you pick: it names your current book and its
+progress, and takes a new percentage typed right into the notification.
 
 **Spotlight** — on by default: the books on your shelves show up when you
 search from ⌘Space, and choosing one opens its details here. Each shelf is
@@ -166,13 +179,21 @@ and is generally worth adding.
 The sidebar lists every shelf you have, custom ones included, with counts.
 
 **Search** — type, results appear as you pause, Return searches immediately.
+Books already on any of your shelves come first, under **On Your Shelves**,
+with the shelves they're on.
 
 **Shelves** — click one to load it. Cached copies appear instantly while the
 refresh runs behind them, and refresh again on their own after six hours even
 if you never touch them. The filter field in the toolbar narrows what's on
 screen without touching the network; the sort menu next to it reorders by
 title, author, rating, date read or date added, or leaves Goodreads' own shelf
-order alone.
+order alone. On Want to Read there's also **My Order**: drag books into the
+order you want to read them.
+
+The toolbar switches between the list and a **Covers** grid, and **Filter**
+narrows a shelf by your rating, the year you read it, or genre (genres come
+from book pages, so they appear for books you've opened or after Stats →
+*Fill In*).
 
 **Stats** — this year's reading goal (set it right there; it shows whether
 you're ahead or behind schedule, with a per-month chart), books read, average
@@ -181,6 +202,10 @@ worked out from the Read shelf. Goodreads' shelf pages carry no page counts
 or genres, so **Pages and Genres** (pages per year, top genres) uses each
 book's own page: whatever you've opened in the app is already known, and
 *Fill In* fetches the rest, a few at a time.
+
+**Your Year in Books** (the gift button) sums up any year — books, pages,
+average rating, top genre and author, busiest month, longest book and your
+favourites — as a card you can save as an image.
 
 When the Mac is offline the status bar says so: what's on screen is the saved
 copy, and the pane refreshes on its own once the connection is back.
@@ -212,7 +237,10 @@ handful of Goodreads' own community reviews — scraped from the book page's
 embedded JSON, not the CLI-era HTML. You can post your own rating and review
 right there; like every other rating action in the app, it moves the book to
 Read. Tapping the author's name opens their Goodreads author page (bio,
-stats, their other books) in its own sheet.
+stats, their other books) in its own sheet. A book in a series shows the
+series and its position, and the next volume with a one-click Want to Read.
+**My Notes** keeps your own notes and quotes for the book — on this Mac only,
+kept through Clear Cache, and included in CSV exports.
 
 ### Friends
 
@@ -225,6 +253,11 @@ From a friend's profile, **Collections** lets you browse their own shelves —
 Want to Read, Currently Reading, Read — the same way you'd browse your own,
 ratings included. It's the same `/review/list` page Goodreads serves for your
 own shelves, just keyed to their id instead.
+
+**Compare Tastes** puts their Read shelf next to yours: how many books you've
+both read, how often your stars agree, where they disagree most, and the
+books they rated highly that aren't on any of your shelves. Different editions
+of the same book are matched by title and author.
 
 Goodreads' home-feed activity table has drifted out from under the selectors
 this scrapes for it, so the activity list can come back empty even when your
@@ -391,6 +424,14 @@ Sources/GoodreadsGUI/
   FriendNotifier.swift    notifications for friends' reading
   SpotlightIndex.swift    puts shelved books into Spotlight
   Connectivity.swift      online/offline status
+  GoodreadsSeries.swift   a series' volumes, and which comes next
+  ReadingPace.swift       progress history and finish estimates
+  ReadingReminder.swift   the daily reading notification
+  ShelfFilters.swift      shelf filters, your Want to Read order, search across shelves
+  BookNotes.swift         your notes and quotes per book
+  TasteComparison.swift   comparing your Read shelf with a friend's
+  NewReleases.swift       new books by authors you read
+  YearInReview.swift      the Year in Books card
   Glass.swift             Liquid Glass helpers, with fallbacks
   Resources/              translations (Localizable.strings, plurals in .stringsdict)
 Tests/GoodreadsGUITests/  unit tests for the pure logic above (`swift test`)
