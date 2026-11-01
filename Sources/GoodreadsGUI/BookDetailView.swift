@@ -61,7 +61,7 @@ struct BookDetailView: View {
         HStack(alignment: .top, spacing: 14) {
             Group {
                 if let url = book.coverURL {
-                    AsyncImage(url: url) { phase in
+                    CachedAsyncImage(url: url) { phase in
                         if case .success(let image) = phase {
                             image.resizable().aspectRatio(contentMode: .fit)
                         } else {
@@ -219,11 +219,15 @@ struct BookDetailView: View {
         defer { isLoadingReviews = false }
 
         do {
-            let detail = try await GoodreadsBookPage.fetch(bookID: bookID)
-            reviews = detail.reviews
-            pageLanguage = detail.language
-            authorURL = detail.authorURL
-            reviewsError = nil
+            // A book seen before opens with its reviews already there.
+            try await DataCache.load("book-page", bookID, ttl: DataCache.TTL.bookPage) {
+                try await GoodreadsBookPage.fetch(bookID: bookID)
+            } show: { detail, _ in
+                reviews = detail.reviews
+                pageLanguage = detail.language
+                authorURL = detail.authorURL
+                reviewsError = nil
+            }
         } catch {
             reviewsError = "Couldn't load reviews: \(error.localizedDescription)"
         }
@@ -239,7 +243,7 @@ private struct ReviewRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            AsyncImage(url: review.reviewerAvatarURL) { phase in
+            CachedAsyncImage(url: review.reviewerAvatarURL) { phase in
                 if case .success(let image) = phase {
                     image.resizable().aspectRatio(contentMode: .fill)
                 } else {

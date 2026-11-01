@@ -12,7 +12,7 @@ import Foundation
 /// `id` is the update's own id with `_2` appended.
 enum GoodreadsFriends {
 
-    struct Friend: Identifiable, Hashable {
+    struct Friend: Identifiable, Hashable, Codable {
         let id: String
         let name: String
         let avatarURL: URL?
@@ -30,7 +30,7 @@ enum GoodreadsFriends {
         var hasStatus: Bool { statusLabel != nil || statusBookTitle != nil }
     }
 
-    struct Activity: Identifiable, Hashable {
+    struct Activity: Identifiable, Hashable, Codable {
         let id: String
         let friendName: String
         let friendProfileURL: URL?
@@ -42,7 +42,7 @@ enum GoodreadsFriends {
         let comment: String?
     }
 
-    struct Profile {
+    struct Profile: Codable {
         let name: String
         let avatarURL: URL?
         let stats: String?          // e.g. "90 ratings · 4.08 avg · 4 reviews", already-joined text
@@ -58,7 +58,11 @@ enum GoodreadsFriends {
         // Reads the live document — load and evaluate share one lock.
         let raw = try await session.exclusive { () -> String in
             try await session.load(URL(string: "https://www.goodreads.com/friend")!, timeout: 20)
-            return try await session.evaluate(friendsScript, label: "friends list")
+            return try await session.evaluate(
+                friendsScript,
+                arguments: ["extraFriendCard": SelectorOverrides.current.friendCard],
+                label: "friends list"
+            )
         }
         guard let data = raw.data(using: .utf8),
               let result = try? JSONDecoder().decode(FriendsResult.self, from: data),
@@ -74,7 +78,11 @@ enum GoodreadsFriends {
 
         let raw = try await session.exclusive { () -> String in
             try await session.load(URL(string: "https://www.goodreads.com/")!, timeout: 20)
-            return try await session.evaluate(activityTableScript, label: "friend activity")
+            return try await session.evaluate(
+                activityTableScript,
+                arguments: ["extraActivityRow": SelectorOverrides.current.activityRow],
+                label: "friend activity"
+            )
         }
         return decodeActivity(raw)
     }
@@ -89,7 +97,11 @@ enum GoodreadsFriends {
         let (raw, activityRaw) = try await session.exclusive { () -> (String, String) in
             try await session.load(url, timeout: 20)
             let profileRaw = try await session.evaluate(profileScript, label: "friend profile")
-            let activity = try await session.evaluate(activityTableScript, label: "friend profile activity")
+            let activity = try await session.evaluate(
+                activityTableScript,
+                arguments: ["extraActivityRow": SelectorOverrides.current.activityRow],
+                label: "friend profile activity"
+            )
             return (profileRaw, activity)
         }
         guard let data = raw.data(using: .utf8),
@@ -211,8 +223,9 @@ enum GoodreadsFriends {
     try {
         const seen = new Set();
         const friends = [];
+        const cardSelectors = ['.friendInfo', ...extraFriendCard];
 
-        for (const info of document.querySelectorAll('.friendInfo')) {
+        for (const info of document.querySelectorAll(cardSelectors.join(', '))) {
             const link = info.querySelector('a.userLink[href*="/user/show/"]');
             if (!link) continue;
 
@@ -272,7 +285,8 @@ enum GoodreadsFriends {
     /// own profile page (their "Recent Updates" box uses the same table).
     private static let activityTableScript = """
     try {
-        const rows = [...document.querySelectorAll('table.newsfeedUpdates tr.update[data-timestamp]')];
+        const rowSelectors = ['table.newsfeedUpdates tr.update[data-timestamp]', ...extraActivityRow];
+        const rows = [...document.querySelectorAll(rowSelectors.join(', '))];
         const activity = [];
 
         for (const row of rows) {

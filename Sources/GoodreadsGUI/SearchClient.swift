@@ -40,7 +40,12 @@ enum SearchClient {
                 title: title,
                 author: raw.author?.name ?? "Unknown author",
                 coverURL: raw.imageUrl.flatMap(URL.init(string:)),
-                rating: raw.avgRating?.string
+                rating: raw.avgRating?.string,
+                // This *is* a Goodreads book id already — setting it here
+                // means shelving a search result found this way doesn't
+                // have to run a second lookup (`GoodreadsLookup.bookID(for:)`
+                // checks this first) to rediscover what this call already knew.
+                goodreadsID: id
             )
         }
     }

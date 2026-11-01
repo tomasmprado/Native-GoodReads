@@ -5,7 +5,7 @@ import UniformTypeIdentifiers
 /// A local copy of your library is cheap insurance.
 enum CSVExport {
 
-    static let header = "Book Id,Title,Author,My Rating,Date Read,Shelf"
+    static let header = "Book Id,Title,Author,ISBN,ISBN13,My Rating,Date Read,Date Added,Shelf"
 
     static func csv(for entries: [ShelfEntry], shelf: Shelf) -> String {
         ([header] + dataLines(for: entries, shelf: shelf)).joined(separator: "\n") + "\n"
@@ -20,12 +20,23 @@ enum CSVExport {
                 entry.bookID,
                 entry.title,
                 entry.author,
+                isbnField(entry.isbn),
+                isbnField(entry.isbn13),
                 entry.rating.map(String.init) ?? "",
                 entry.dateRead ?? "",
+                entry.dateAdded ?? "",
                 shelf.name
             ]
             return fields.map(escape).joined(separator: ",")
         }
+    }
+
+    /// Goodreads' own export wraps ISBNs as `="0439023483"` so a spreadsheet
+    /// treats the cell as text — otherwise Excel drops a leading zero or
+    /// renders a 13-digit ISBN in scientific notation.
+    private static func isbnField(_ isbn: String?) -> String {
+        guard let isbn, !isbn.isEmpty else { return "" }
+        return "=\"\(isbn)\""
     }
 
     /// RFC 4180: wrap in quotes, and double any quote inside.

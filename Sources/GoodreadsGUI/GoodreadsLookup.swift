@@ -45,7 +45,9 @@ enum GoodreadsLookup {
         return found.id
     }
 
-    private static func bookID(fromURL urlString: String) -> String? {
+    // Internal rather than private so tests can exercise the redirect
+    // parsing directly, without a real network round trip to `byISBN`.
+    static func bookID(fromURL urlString: String) -> String? {
         guard let range = urlString.range(of: #"/book/show/(\d+)"#, options: .regularExpression) else {
             return nil
         }

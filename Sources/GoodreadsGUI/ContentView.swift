@@ -28,61 +28,56 @@ struct ContentView: View {
                 await model.loadCurrentlyReading()
             }
         }
+        .task { await model.checkForUpdate() }
         .onChange(of: model.selection) { _ in Task { await model.paneChanged() } }
-        .sheet(isPresented: Binding(
-            get: { model.webSheet == .signIn },
-            set: { if !$0 { model.webSheet = nil } }
-        ), onDismiss: {
-            Task { await model.signInSheetClosed() }
-        }) {
-            SignInSheet()
-        }
-        .sheet(isPresented: Binding(
-            get: { model.webSheet == .browser },
-            set: { if !$0 { model.webSheet = nil } }
-        )) {
-            BrowserSheet(isPresented: Binding(
-                get: { model.webSheet == .browser },
-                set: { if !$0 { model.webSheet = nil } }
-            ))
-        }
-        .sheet(isPresented: $model.showDiagnostics) {
-            DiagnosticsSheet(isPresented: $model.showDiagnostics)
-        }
-        .sheet(item: $model.progressTarget) { entry in
-            ProgressSheet(entry: entry) { percent, page, note in
-                Task { await model.updateProgress(entry, percent: percent, page: page, note: note) }
-            }
-        }
-        .sheet(item: $model.finishTarget) { entry in
-            FinishSheet(title: entry.title, author: entry.author) { rating, date, note in
-                Task {
-                    await model.finish(bookID: entry.bookID, title: entry.title,
-                                       rating: rating, dateRead: date, note: note)
+        // One item drives every sheet in the app — a book's detail sheet
+        // opening an author page, or an author page opening another book's
+        // detail, just replaces `activeSheet`'s value, and SwiftUI dismisses
+        // the old presentation and brings up the new one on its own. The
+        // previous design used eight sibling `.sheet` modifiers (SwiftUI
+        // won't stack a second sheet on a view already presenting one from
+        // the same modifier chain) and papered over that with a "dismiss,
+        // sleep 350ms, then present" hand-off; a single `.sheet(item:)`
+        // doesn't need it.
+        .sheet(item: $model.activeSheet) { sheet in
+            switch sheet {
+            case .signIn:
+                SignInSheet()
+                    .onDisappear { Task { await model.signInSheetClosed() } }
+            case .browser:
+                BrowserSheet(isPresented: Binding(
+                    get: { model.activeSheet == .browser },
+                    set: { if !$0 { model.activeSheet = nil } }
+                ))
+            case .diagnostics:
+                DiagnosticsSheet(isPresented: Binding(
+                    get: { model.activeSheet == .diagnostics },
+                    set: { if !$0 { model.activeSheet = nil } }
+                ))
+            case .progress(let entry):
+                ProgressSheet(entry: entry) { percent, page, note in
+                    Task { await model.updateProgress(entry, percent: percent, page: page, note: note) }
                 }
-            }
-        }
-        .sheet(item: $model.finishBook) { book in
-            FinishSheet(title: book.title, author: book.author) { rating, date, note in
-                Task {
-                    await model.finishBook(book, rating: rating, dateRead: date, note: note)
+            case .finish(let entry):
+                FinishSheet(title: entry.title, author: entry.author) { rating, date, note in
+                    Task {
+                        await model.finish(bookID: entry.bookID, title: entry.title,
+                                           rating: rating, dateRead: date, note: note)
+                    }
                 }
+            case .finishBook(let book):
+                FinishSheet(title: book.title, author: book.author) { rating, date, note in
+                    Task {
+                        await model.finishBook(book, rating: rating, dateRead: date, note: note)
+                    }
+                }
+            case .detail(let book):
+                BookDetailView(book: book)
+            case .friendProfile:
+                FriendProfileSheet(model: model)
+            case .authorPage:
+                AuthorPageSheet(model: model)
             }
-        }
-        .sheet(item: $model.detailBook) { book in
-            BookDetailView(book: book)
-        }
-        .sheet(isPresented: Binding(
-            get: { model.friendProfileURL != nil },
-            set: { if !$0 { model.friendProfileURL = nil } }
-        )) {
-            FriendProfileSheet(model: model)
-        }
-        .sheet(isPresented: Binding(
-            get: { model.authorPageURL != nil },
-            set: { if !$0 { model.authorPageURL = nil } }
-        )) {
-            AuthorPageSheet(model: model)
         }
     }
 
@@ -134,7 +129,7 @@ struct ContentView: View {
                             .font(.system(size: 11))
                     }
                 }
-                .buttonStyle(.borderless)
+                .glassButton()
                 .disabled(model.isExporting)
                 .help("Fetch every shelf and save one CSV")
             }
@@ -248,13 +243,12 @@ private struct ReadNextCard: View {
                     }
                     .font(.system(size: 11))
                     .controlSize(.small)
-                    .buttonStyle(.borderedProminent)
+                    .glassProminentButton()
                 }
             }
-            .padding(12)
-            .frame(width: 220)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
-            .shadow(radius: 4)
+            .padding(14)
+            .frame(width: 230)
+            .glassCard(cornerRadius: 18)
             .padding(16)
         }
     }
@@ -263,7 +257,7 @@ private struct ReadNextCard: View {
     private func coverImage(_ url: URL?) -> some View {
         Group {
             if let url {
-                AsyncImage(url: url) { phase in
+                CachedAsyncImage(url: url) { phase in
                     if case .success(let image) = phase {
                         image.resizable().aspectRatio(contentMode: .fill)
                     } else {
@@ -293,7 +287,7 @@ private struct SuggestionsPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            GlassHeader {
                 Text("Suggestions")
                     .font(.system(size: 13, weight: .semibold))
 
@@ -310,7 +304,7 @@ private struct SuggestionsPane: View {
                         .font(.system(size: 10))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.secondary.opacity(0.12), in: Capsule())
+                        .glassCapsule()
                 }
 
                 if model.isBuildingSuggestions {
@@ -319,14 +313,11 @@ private struct SuggestionsPane: View {
                     Button { Task { await model.buildSuggestions(force: true) } } label: {
                         Image(systemName: "arrow.clockwise")
                     }
-                    .buttonStyle(.plain)
+                    .glassIconButton()
                     .help("Rebuild suggestions")
+                    .accessibilityLabel("Rebuild suggestions")
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-
-            Divider()
 
             if model.suggestions.isEmpty {
                 EmptyPane(symbol: model.isBuildingSuggestions ? "hourglass" : "sparkles",
@@ -408,7 +399,7 @@ private struct FriendsPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
+            GlassHeader {
                 Text("Friends")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
@@ -418,14 +409,11 @@ private struct FriendsPane: View {
                     Button { Task { await model.loadFriends(force: true) } } label: {
                         Image(systemName: "arrow.clockwise")
                     }
-                    .buttonStyle(.plain)
+                    .glassIconButton()
                     .help("Refresh")
+                    .accessibilityLabel("Refresh friends")
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-
-            Divider()
 
             let groups = groups
             if !groups.isEmpty {
@@ -468,7 +456,7 @@ private struct FriendStatusRow: View {
             Task { await model.openFriendProfile(url) }
         } label: {
             HStack(spacing: 10) {
-                AsyncImage(url: friend.avatarURL) { phase in
+                CachedAsyncImage(url: friend.avatarURL) { phase in
                     if case .success(let image) = phase {
                         image.resizable().aspectRatio(contentMode: .fill)
                     } else {
@@ -503,7 +491,7 @@ private struct FriendStatusRow: View {
                 Spacer(minLength: 8)
 
                 if let cover = friend.statusCoverURL {
-                    AsyncImage(url: cover) { phase in
+                    CachedAsyncImage(url: cover) { phase in
                         if case .success(let image) = phase {
                             image.resizable().aspectRatio(contentMode: .fill)
                         } else {
@@ -538,7 +526,7 @@ private struct FriendSection: View {
                 Task { await model.openFriendProfile(url) }
             } label: {
                 HStack(spacing: 8) {
-                    AsyncImage(url: group.avatarURL) { phase in
+                    CachedAsyncImage(url: group.avatarURL) { phase in
                         if case .success(let image) = phase {
                             image.resizable().aspectRatio(contentMode: .fill)
                         } else {
@@ -578,7 +566,7 @@ private struct FriendActivityRow: View {
         HStack(alignment: .top, spacing: 10) {
             Group {
                 if let cover = item.coverURL {
-                    AsyncImage(url: cover) { phase in
+                    CachedAsyncImage(url: cover) { phase in
                         if case .success(let image) = phase {
                             image.resizable().aspectRatio(contentMode: .fill)
                         } else {
@@ -635,6 +623,7 @@ private struct FriendProfileSheet: View {
                 Spacer()
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.defaultAction)
+                    .glassButton()
             }
             .padding(10)
 
@@ -648,7 +637,7 @@ private struct FriendProfileSheet: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack(spacing: 12) {
-                            AsyncImage(url: profile.avatarURL) { phase in
+                            CachedAsyncImage(url: profile.avatarURL) { phase in
                                 if case .success(let image) = phase {
                                     image.resizable().aspectRatio(contentMode: .fill)
                                 } else {
@@ -792,6 +781,7 @@ private struct AuthorPageSheet: View {
                 Spacer()
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.defaultAction)
+                    .glassButton()
             }
             .padding(10)
 
@@ -805,7 +795,7 @@ private struct AuthorPageSheet: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack(alignment: .top, spacing: 14) {
-                            AsyncImage(url: author.photoURL) { phase in
+                            CachedAsyncImage(url: author.photoURL) { phase in
                                 if case .success(let image) = phase {
                                     image.resizable().aspectRatio(contentMode: .fill)
                                 } else {
@@ -863,7 +853,7 @@ private struct AuthorPageSheet: View {
                                     HStack(spacing: 10) {
                                         Group {
                                             if let cover = book.coverURL {
-                                                AsyncImage(url: cover) { phase in
+                                                CachedAsyncImage(url: cover) { phase in
                                                     if case .success(let image) = phase {
                                                         image.resizable().aspectRatio(contentMode: .fill)
                                                     } else {
@@ -934,10 +924,10 @@ private struct SearchFilterRow: View {
                     .font(.system(size: 12))
                     .onChange(of: model.searchSubject) { _ in model.filtersChanged() }
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .frame(width: 130)
-            .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 5))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .frame(width: 140)
+            .glassCapsule(interactive: true)
 
             Spacer()
         }
@@ -969,14 +959,17 @@ private struct SearchPane: View {
                         Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
                 }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
+            .glassCapsule(interactive: true)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
 
             SearchFilterRow(model: model)
-
-            Divider()
+                .glassGroup()
 
             if model.results.isEmpty {
                 EmptyPane(symbol: "books.vertical",
@@ -1000,7 +993,7 @@ private struct SearchPane: View {
                         }
                         Divider()
                         Button {
-                            model.finishBook = book
+                            model.activeSheet = .finishBook(book)
                         } label: {
                             Label("Mark Read & Rate…", systemImage: "star")
                         }
@@ -1023,8 +1016,6 @@ private struct ShelfPane: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-
-            Divider()
 
             if model.visibleEntries.isEmpty {
                 EmptyPane(
@@ -1050,7 +1041,7 @@ private struct ShelfPane: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        GlassHeader {
             Text(model.currentShelf?.label ?? "")
                 .font(.system(size: 13, weight: .semibold))
 
@@ -1068,6 +1059,21 @@ private struct ShelfPane: View {
 
             Spacer()
 
+            Menu {
+                Picker("Sort", selection: $model.sortOrder) {
+                    ForEach(ShelfSortOrder.allCases) { order in
+                        Text(order.rawValue).tag(order)
+                    }
+                }
+            } label: {
+                Image(systemName: "arrow.up.arrow.down")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Sort: \(model.sortOrder.rawValue)")
+            .accessibilityLabel("Sort shelf")
+
             HStack(spacing: 5) {
                 Image(systemName: "line.3.horizontal.decrease")
                     .font(.system(size: 10))
@@ -1077,15 +1083,16 @@ private struct ShelfPane: View {
                     .font(.system(size: 12))
                     .frame(width: 130)
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 5))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .glassCapsule(interactive: true)
 
             Button { model.exportCurrentShelf() } label: {
                 Image(systemName: "square.and.arrow.down")
             }
-            .buttonStyle(.plain)
+            .glassIconButton()
             .help("Export this shelf as CSV")
+            .accessibilityLabel("Export shelf as CSV")
 
             if model.isLoadingShelf {
                 ProgressView().controlSize(.small)
@@ -1093,12 +1100,11 @@ private struct ShelfPane: View {
                 Button { Task { await model.loadShelf(force: true) } } label: {
                     Image(systemName: "arrow.clockwise")
                 }
-                .buttonStyle(.plain)
+                .glassIconButton()
                 .help("Reload this shelf")
+                .accessibilityLabel("Reload shelf")
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
     }
 
     private var emptyText: String {
@@ -1118,14 +1124,14 @@ private struct ShelfPane: View {
     private func rowActions(_ entry: ShelfEntry) -> some View {
         if model.currentShelf?.name == "currently-reading" {
             Button {
-                model.progressTarget = entry
+                model.activeSheet = .progress(entry)
             } label: {
                 Label("Update Progress…", systemImage: "chart.bar")
             }
         }
 
         Button {
-            model.finishTarget = entry
+            model.activeSheet = .finish(entry)
         } label: {
             Label("Mark Read & Rate…", systemImage: "star")
         }
@@ -1187,14 +1193,15 @@ private struct CurrentlyReadingCarousel: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(model.currentlyReading) { entry in
                         CurrentlyReadingCard(entry: entry, isBusy: model.busyBookID == entry.bookID) {
-                            model.progressTarget = entry
+                            model.activeSheet = .progress(entry)
                         } onOpenDetail: {
                             model.showBookDetail(entry.asBook)
                         }
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 4)
+                .padding(.vertical, 6)
+                .glassGroup(spacing: 12)
             }
         }
         .padding(.vertical, 10)
@@ -1212,7 +1219,7 @@ private struct CurrentlyReadingCard: View {
             Button(action: onOpenDetail) {
                 Group {
                     if let cover = entry.coverURL {
-                        AsyncImage(url: cover) { phase in
+                        CachedAsyncImage(url: cover) { phase in
                             if case .success(let image) = phase {
                                 image.resizable().aspectRatio(contentMode: .fill)
                             } else {
@@ -1254,6 +1261,8 @@ private struct CurrentlyReadingCard: View {
             }
         }
         .frame(width: 96)
+        .padding(10)
+        .glassCard(cornerRadius: 14)
     }
 
     private var coverPlaceholder: some View {
@@ -1327,6 +1336,7 @@ private struct BookRow<Actions: View>: View {
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
                     .fixedSize()
+                    .accessibilityLabel("More actions for \(title)")
             }
         }
         .padding(.vertical, 4)
@@ -1336,7 +1346,7 @@ private struct BookRow<Actions: View>: View {
     @ViewBuilder
     private var coverImage: some View {
         if let cover {
-            AsyncImage(url: cover) { phase in
+            CachedAsyncImage(url: cover) { phase in
                 if case .success(let image) = phase {
                     image.resizable().aspectRatio(contentMode: .fit)
                 } else {
@@ -1385,14 +1395,30 @@ private struct StatusBar: View {
 
             Spacer()
 
+            if let pending = model.pendingUndo {
+                Button("Undo") { Task { await model.performPendingUndo() } }
+                    .controlSize(.small)
+                    .glassButton()
+                    .help(pending.label)
+            }
+
+            if let update = model.updateAvailable {
+                Button("Update to \(update.version)…") { NSWorkspace.shared.open(update.url) }
+                    .controlSize(.small)
+                    .glassButton()
+                    .help("A newer build is on GitHub Releases.")
+            }
+
             if session.isBusy { ProgressView().controlSize(.small) }
 
-            Button("Log") { model.showDiagnostics = true }
+            Button("Log") { model.activeSheet = .diagnostics }
                 .controlSize(.small)
+                .glassButton()
                 .help("Every request this app has made — copyable when something breaks.")
 
             Button("Browser") { model.startBrowser() }
                 .controlSize(.small)
+                .glassButton()
                 .help("Watch what the app is doing in the page — for troubleshooting.")
 
             Button(model.loggedIn ? "Sign Out" : "Log In") {
@@ -1403,6 +1429,7 @@ private struct StatusBar: View {
                 }
             }
             .controlSize(.small)
+            .glassProminentButton()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

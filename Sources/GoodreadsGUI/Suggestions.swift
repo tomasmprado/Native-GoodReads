@@ -1,6 +1,6 @@
 import Foundation
 
-struct Suggestion: Identifiable, Hashable {
+struct Suggestion: Identifiable, Hashable, Codable {
     let book: Book
     let reason: String
     var language: String?
@@ -88,7 +88,12 @@ enum Suggestions {
     /// "john" alone. The surname (the last token in "First Last" order, which
     /// is what both Goodreads' flipped author field and Google Books use) is
     /// the discriminating part, so require that specifically.
-    private static func looksLikeSameAuthor(_ a: String, _ b: String) -> Bool {
+    ///
+    /// Internal rather than private so tests can hit it directly — this is
+    /// exactly the kind of string-matching heuristic that's cheap to get
+    /// subtly wrong (the CHANGELOG already has one bug here) and cheap to
+    /// pin down with a test.
+    static func looksLikeSameAuthor(_ a: String, _ b: String) -> Bool {
         let tokens: (String) -> [String] = { name in
             name.lowercased()
                 .components(separatedBy: CharacterSet.alphanumerics.inverted)

@@ -6,7 +6,7 @@ import Foundation
 /// shared `WKWebView`, the same as `GoodreadsFriends`.
 enum GoodreadsAuthorPage {
 
-    struct Detail {
+    struct Detail: Codable {
         let name: String
         let photoURL: URL?
         let born: String?
@@ -18,7 +18,7 @@ enum GoodreadsAuthorPage {
         let books: [Book]
     }
 
-    struct Book: Identifiable, Hashable {
+    struct Book: Identifiable, Hashable, Codable {
         let id: String              // Goodreads book id
         let title: String
         let coverURL: URL?

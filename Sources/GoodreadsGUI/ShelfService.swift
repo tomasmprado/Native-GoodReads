@@ -9,7 +9,16 @@ enum ShelfService {
 
     // MARK: - Shelving
 
-    static func add(bookID: String, to shelf: Shelf) async throws {
+    /// What verification found after a write already reported success.
+    /// `.confirmed` means the shelf read-back actually saw the change;
+    /// `.unknown` means that read-back itself didn't come back clean — still
+    /// treated as a success (verification fails safe, see `shelfPresence`),
+    /// but worth telling the caller so it can say so rather than claim a
+    /// certainty it doesn't have.
+    enum WriteVerification { case confirmed, unknown }
+
+    @discardableResult
+    static func add(bookID: String, to shelf: Shelf) async throws -> WriteVerification {
         let session = WebSession.shared
         try await session.ensureResident()
 
@@ -23,8 +32,15 @@ enum ShelfService {
 
         if let result = decode(endpointRaw), result.ok {
             // HTTP 200 doesn't mean it happened. Check.
-            if try await isOnShelf(bookID: bookID, shelf: shelf) { return }
-            await Diagnostics.shared.log("verify add", "endpoint claimed success but book isn't on \(shelf.name)", ok: false)
+            switch try await shelfPresence(bookID: bookID, shelf: shelf) {
+            case .present:
+                return .confirmed
+            case .unknown:
+                await Diagnostics.shared.log("verify add", "endpoint claimed success but verification was inconclusive on \(shelf.name)", ok: false)
+                return .unknown
+            case .absent:
+                await Diagnostics.shared.log("verify add", "endpoint claimed success but book isn't on \(shelf.name)", ok: false)
+            }
         }
         let endpointError = decode(endpointRaw)?.error ?? "endpoint reported success but nothing changed"
 
@@ -41,13 +57,25 @@ enum ShelfService {
             try await session.load(url)
             return try await session.evaluate(
                 addDOMScript,
-                arguments: ["shelf": shelf.name, "bookId": bookID, "label": shelf.label],
+                arguments: [
+                    "shelf": shelf.name, "bookId": bookID, "label": shelf.label,
+                    "extraOpener": SelectorOverrides.current.shelfOpener,
+                    "extraDropdown": SelectorOverrides.current.shelfDropdown
+                ],
                 label: "add via page \(bookID)"
             )
         }
 
         if let result = decode(domRaw), result.ok {
-            if try await isOnShelf(bookID: bookID, shelf: shelf) { return }
+            switch try await shelfPresence(bookID: bookID, shelf: shelf) {
+            case .present:
+                return .confirmed
+            case .unknown:
+                await Diagnostics.shared.log("verify add", "page automation claimed success but verification was inconclusive on \(shelf.name)", ok: false)
+                return .unknown
+            case .absent:
+                break   // falls through to the combined error below
+            }
         }
         let domError = decode(domRaw)?.error ?? "page automation didn't take effect"
 
@@ -76,18 +104,6 @@ enum ShelfService {
         return (result.present == true) ? .present : .absent
     }
 
-    /// Cheap enough to run after every write, and it's the difference between
-    /// a silent no-op and an error you can act on.
-    static func isOnShelf(bookID: String, shelf: Shelf) async throws -> Bool {
-        switch try await shelfPresence(bookID: bookID, shelf: shelf) {
-        case .present, .unknown:
-            // If the check itself is inconclusive, don't claim the write failed.
-            return true
-        case .absent:
-            return false
-        }
-    }
-
     private struct VerifyResult: Decodable {
         let ok: Bool
         let present: Bool?
@@ -103,7 +119,8 @@ enum ShelfService {
     /// same way an add is — but only a *confirmed* "still there" counts as a
     /// failure; an inconclusive check shouldn't turn a successful remove into
     /// a reported error.
-    static func remove(bookID: String, from shelf: Shelf) async throws {
+    @discardableResult
+    static func remove(bookID: String, from shelf: Shelf) async throws -> WriteVerification {
         let session = WebSession.shared
 
         let raw = try await session.exclusive { () -> String in
@@ -115,7 +132,13 @@ enum ShelfService {
         }
         try check(raw)
 
-        if try await shelfPresence(bookID: bookID, shelf: shelf) == .present {
+        switch try await shelfPresence(bookID: bookID, shelf: shelf) {
+        case .absent:
+            return .confirmed
+        case .unknown:
+            await Diagnostics.shared.log("verify remove", "endpoint claimed success but verification was inconclusive on \(shelf.name)", ok: false)
+            return .unknown
+        case .present:
             await Diagnostics.shared.log("verify remove", "endpoint claimed success but book is still on \(shelf.name)", ok: false)
             throw AppError("Goodreads accepted the request but the book is still on \(shelf.label).")
         }
@@ -388,9 +411,15 @@ enum ShelfService {
         'button, a, [role="menuitem"], [role="option"], li, div[tabindex]'
     )].find(el => visible(el) && el.textContent.trim().toLowerCase() === text.toLowerCase());
 
-    const opener = document.querySelector(
-        '[data-testid="wantToReadButton"], .WantToReadButton, button.wtrToRead, .wtrToRead'
-    ) || byText('Want to Read') || byText('Currently Reading') || byText('Read');
+    // Built-in guesses first, then anything a user dropped into
+    // selectors.json (see SelectorOverrides.swift) — tried in the same
+    // order, so a working override doesn't depend on ousting the defaults.
+    const openerSelectors = [
+        '[data-testid="wantToReadButton"]', '.WantToReadButton', 'button.wtrToRead', '.wtrToRead',
+        ...extraOpener
+    ];
+    const opener = document.querySelector(openerSelectors.join(', '))
+        || byText('Want to Read') || byText('Currently Reading') || byText('Read');
 
     if (!opener) {
         // Report what IS on the page — makes the next fix a one-liner.
@@ -409,9 +438,11 @@ enum ShelfService {
         return JSON.stringify({ ok: true, via: 'click' });
     }
 
-    const caret = document.querySelector(
-        '[data-testid="shelfDropdownButton"], .WantToReadButton__dropdown, button[aria-haspopup="true"]'
-    );
+    const dropdownSelectors = [
+        '[data-testid="shelfDropdownButton"]', '.WantToReadButton__dropdown', 'button[aria-haspopup="true"]',
+        ...extraDropdown
+    ];
+    const caret = document.querySelector(dropdownSelectors.join(', '));
     (caret || opener).click();
     await sleep(1000);
 

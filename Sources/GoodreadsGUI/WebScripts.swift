@@ -9,9 +9,23 @@ import Foundation
 enum WebScripts {
 
     static let dom = """
-    async function getDoc(url) {
+    const sleepMs = (ms) => new Promise(r => setTimeout(r, ms));
+
+    // Goodreads occasionally answers a burst of requests (four shelf pages
+    // at once, or a full-library export) with 429/503 instead of throttling
+    // the connection itself. Two retries with backoff turns a transient rate
+    // limit into a slower page load instead of a page that silently comes
+    // back empty.
+    async function getDoc(url, attempt) {
+        attempt = attempt || 0;
         const response = await fetch(url, { credentials: 'same-origin' });
+
+        if ((response.status === 429 || response.status === 503) && attempt < 2) {
+            await sleepMs(600 * Math.pow(2, attempt));
+            return getDoc(url, attempt + 1);
+        }
         if (!response.ok) throw new Error('HTTP ' + response.status + ' for ' + url);
+
         // response.url reflects where the fetch actually landed, after any
         // redirect — reliable on any page type, unlike sniffing the HTML for
         // a "/user/sign_in" link, which book pages carry even while signed in.
@@ -92,7 +106,13 @@ enum WebScripts {
                 cover: cover,
                 rating: ratingOf(row),
                 dateRead: dateOrEmpty(cellText(row, 'date_read')),
-                dateAdded: dateOrEmpty(cellText(row, 'date_added'))
+                dateAdded: dateOrEmpty(cellText(row, 'date_added')),
+                // Best-effort — `view=table` includes these columns whether
+                // or not the account has them turned on for display, but if
+                // that ever isn't true `cellText` just comes back empty, the
+                // same graceful miss every other field here already has.
+                isbn: cellText(row, 'isbn'),
+                isbn13: cellText(row, 'isbn13')
             });
         }
 
@@ -106,6 +126,17 @@ enum WebScripts {
             if (!isNaN(n) && n > max) max = n;
         }
         return max;
+    }
+
+    // Distinguishes a legitimately empty shelf from a page whose markup this
+    // app no longer recognises — both come back as "zero rows" from
+    // `parseRows` otherwise, and the latter is a much more misleading thing
+    // to report as "nothing on this shelf yet". Deliberately generic (no
+    // Goodreads-specific class names) so this check doesn't go stale the
+    // same way the row selectors above can.
+    function pageLooksBroken(doc) {
+        const bodyText = (doc.body && doc.body.textContent || '').trim();
+        return !doc.querySelector('table') || bodyText.length < 200;
     }
 
     // `userId` browses someone else's shelf instead of the signed-in user's
