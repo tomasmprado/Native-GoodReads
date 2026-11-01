@@ -84,6 +84,12 @@ struct BookDetailView: View {
             await BookNotes.save(note, for: noteKey)
             savedNote = note
         }
+        .onDisappear {
+            // Closing within the pause above would otherwise drop the last edit.
+            guard noteLoaded, let noteKey, note != savedNote else { return }
+            let pending = note
+            Task { await BookNotes.save(pending, for: noteKey) }
+        }
     }
 
     // MARK: - Header
