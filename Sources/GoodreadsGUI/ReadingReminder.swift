@@ -11,49 +11,73 @@ enum ReadingReminder {
 
     nonisolated static let category = "reading-reminder"
     nonisolated static let updateAction = "update-progress"
-    private static let requestID = "reading-reminder"
+    nonisolated private static let requestID = "reading-reminder"
 
     /// Registers the notification's "Update…" text field. Once per launch.
+    ///
+    /// Every call into the notification center here runs off the main
+    /// thread: some of them wait synchronously for the system's
+    /// notification service, and on a fresh install that wait was long
+    /// enough to leave the app's window blank at launch.
     static func registerCategory() {
-        let update = UNTextInputNotificationAction(
-            identifier: updateAction,
-            title: String(localized: "Update…"),
-            options: [],
-            textInputButtonTitle: String(localized: "Save"),
-            textInputPlaceholder: String(localized: "Percent, e.g. 60")
-        )
-        let category = UNNotificationCategory(identifier: category, actions: [update],
-                                              intentIdentifiers: [], options: [])
-        UNUserNotificationCenter.current().setNotificationCategories([category])
+        let title = String(localized: "Update…")
+        let button = String(localized: "Save")
+        let placeholder = String(localized: "Percent, e.g. 60")
+        Task.detached(priority: .utility) {
+            let update = UNTextInputNotificationAction(identifier: updateAction, title: title, options: [],
+                                                       textInputButtonTitle: button,
+                                                       textInputPlaceholder: placeholder)
+            let category = UNNotificationCategory(identifier: category, actions: [update],
+                                                  intentIdentifiers: [], options: [])
+            UNUserNotificationCenter.current().setNotificationCategories([category])
+        }
     }
 
-    static func reschedule() {
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [requestID])
+    private static let scheduledKey = "readingReminderScheduled"
 
+    static func reschedule() {
         let prefs = Preferences.shared
         let model = LibraryModel.shared
         let reading = model.currentlyReading.isEmpty
             ? (ShelfCache.read(.currentlyReading)?.entries ?? [])
             : model.currentlyReading
-        guard prefs.readingReminder, let book = reading.first else { return }
+        let book = prefs.readingReminder ? reading.first : nil
 
-        let content = UNMutableNotificationContent()
-        content.title = String(localized: "Time to read?")
-        content.body = book.progress.map { String(localized: "You're \($0)% into \(book.title). Update your progress?") }
-            ?? String(localized: "How far are you into \(book.title)?")
-        content.sound = .default
-        content.categoryIdentifier = category
-        content.userInfo = ["entryID": book.id]
+        // Nothing scheduled and nothing to schedule: leave the center alone.
+        let defaults = UserDefaults.standard
+        guard book != nil || defaults.bool(forKey: scheduledKey) else { return }
+        defaults.set(book != nil, forKey: scheduledKey)
 
-        var when = DateComponents()
-        when.hour = prefs.reminderMinutes / 60
-        when.minute = prefs.reminderMinutes % 60
-        let request = UNNotificationRequest(
-            identifier: requestID, content: content,
-            trigger: UNCalendarNotificationTrigger(dateMatching: when, repeats: true)
-        )
-        center.add(request) { _ in }
+        let title = String(localized: "Time to read?")
+        let body = book.map { book in
+            book.progress.map { String(localized: "You're \($0)% into \(book.title). Update your progress?") }
+                ?? String(localized: "How far are you into \(book.title)?")
+        }
+        let entryID = book?.id
+        let hour = prefs.reminderMinutes / 60
+        let minute = prefs.reminderMinutes % 60
+
+        Task.detached(priority: .utility) {
+            let center = UNUserNotificationCenter.current()
+            center.removePendingNotificationRequests(withIdentifiers: [requestID])
+            guard let body, let entryID else { return }
+
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.sound = .default
+            content.categoryIdentifier = category
+            content.userInfo = ["entryID": entryID]
+
+            var when = DateComponents()
+            when.hour = hour
+            when.minute = minute
+            let request = UNNotificationRequest(
+                identifier: requestID, content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: when, repeats: true)
+            )
+            try? await center.add(request)
+        }
     }
 
     /// The reminder was answered: a typed percentage is posted straight
