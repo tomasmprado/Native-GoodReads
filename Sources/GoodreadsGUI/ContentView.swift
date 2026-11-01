@@ -14,6 +14,7 @@ struct ContentView: View {
                 case .search:      SearchPane(model: model)
                 case .suggestions: SuggestionsPane(model: model)
                 case .friends:     FriendsPane(model: model)
+                case .stats:       StatsPane(model: model)
                 case .shelf:       ShelfPane(model: model)
                 }
                 Divider()
@@ -30,6 +31,7 @@ struct ContentView: View {
             await model.warmUp()
         }
         .task { await model.checkForUpdate() }
+        .task { FriendNotifier.startPolling(model) }
         .onChange(of: model.selection) { _ in Task { await model.paneChanged() } }
         // One item drives every sheet in the app — a book's detail sheet
         // opening an author page, or an author page opening another book's
@@ -95,6 +97,9 @@ struct ContentView: View {
 
             Label("Friends", systemImage: "person.2")
                 .tag(LibraryModel.Pane.friends)
+
+            Label("Stats", systemImage: "chart.bar")
+                .tag(LibraryModel.Pane.stats)
 
             Section("Shelves") {
                 ForEach(model.shelves) { shelf in

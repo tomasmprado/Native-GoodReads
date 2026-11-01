@@ -76,6 +76,16 @@ final class Preferences: ObservableObject {
         didSet { Keychain.write(googleBooksAPIKey, for: Keys.apiKey) }
     }
 
+    /// Books you want to read this year, for the Stats goal.
+    @Published var yearlyGoal: Int {
+        didSet { defaults.set(yearlyGoal, forKey: Keys.goal) }
+    }
+
+    /// Post a notification when a friend starts or finishes a book.
+    @Published var notifyFriendActivity: Bool {
+        didSet { defaults.set(notifyFriendActivity, forKey: Keys.notify) }
+    }
+
     private let defaults = UserDefaults.standard
 
     private enum Keys {
@@ -83,6 +93,8 @@ final class Preferences: ObservableObject {
         static let window   = "suggestionWindowDays"
         static let unknown  = "includeUnknownLanguage"
         static let apiKey   = "googleBooksAPIKey"
+        static let goal     = "yearlyGoal"
+        static let notify   = "notifyFriendActivity"
     }
 
     private init() {
@@ -93,6 +105,10 @@ final class Preferences: ObservableObject {
         suggestionWindowDays = days > 0 ? days : 90
 
         includeUnknownLanguage = defaults.object(forKey: Keys.unknown) as? Bool ?? true
+
+        let goal = defaults.integer(forKey: Keys.goal)
+        yearlyGoal = goal > 0 ? goal : 24
+        notifyFriendActivity = defaults.bool(forKey: Keys.notify)
 
         // One-time migration: earlier builds kept the key in UserDefaults.
         if let legacy = defaults.string(forKey: Keys.apiKey), !legacy.isEmpty,
@@ -151,6 +167,22 @@ struct PreferencesView: View {
             }
 
             Section {
+                Toggle("Notify me when friends start or finish a book", isOn: Binding(
+                    get: { prefs.notifyFriendActivity },
+                    set: { wanted in
+                        guard wanted else { prefs.notifyFriendActivity = false; return }
+                        Task { prefs.notifyFriendActivity = await FriendNotifier.requestPermission() }
+                    }
+                ))
+            } header: {
+                Text("Friends")
+            } footer: {
+                Text("Checked every hour while the app is open (it keeps running in the menu bar).")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 LabeledContent("Saved data") {
                     Text(cacheBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…")
                         .foregroundStyle(.secondary)
@@ -174,7 +206,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 440, height: 520)
+        .frame(width: 460, height: 600)
         .task { cacheBytes = DataCache.diskUsage() }
     }
 }

@@ -94,6 +94,10 @@ final class LibraryModel: ObservableObject {
     @Published var searchSortNewest = false
     @Published var searchSubject = ""
 
+    // Stats
+    @Published var readingStats: ReadingStats?
+    @Published var isLoadingStats = false
+
     // Friends
     @Published var friends: [GoodreadsFriends.Friend] = []
     @Published var friendActivity: [GoodreadsFriends.Activity] = []
@@ -126,6 +130,7 @@ final class LibraryModel: ObservableObject {
         case search
         case suggestions
         case friends
+        case stats
         case shelf(String)      // shelf slug
     }
 
@@ -363,6 +368,8 @@ final class LibraryModel: ObservableObject {
             await buildSuggestions()
         case .friends:
             await loadFriends()
+        case .stats:
+            await loadStats()
         case .search:
             break
         }
@@ -492,6 +499,27 @@ final class LibraryModel: ObservableObject {
         }
     }
 
+    // MARK: - Stats
+
+    /// Worked out from the Read shelf — the cached copy if it's fresh,
+    /// otherwise a reload (which also refreshes that cache for everyone else).
+    func loadStats(force: Bool = false) async {
+        guard !isLoadingStats else { return }
+        let cached = ShelfCache.read(.read)
+        if let cached { readingStats = ReadingStats.compute(from: cached.entries) }
+        let stale = cached.map { ShelfCache.isStale($0.fetched) } ?? true
+        guard force || stale else { return }
+
+        isLoadingStats = true
+        defer { isLoadingStats = false }
+        if let entries = try? await ShelfLibrary.load(.read) {
+            ShelfCache.write(entries, for: .read)
+            setCount(entries.count, for: .read)
+            readingStats = ReadingStats.compute(from: entries)
+        }
+        if currentlyReading.isEmpty { await loadCurrentlyReading() }
+    }
+
     // MARK: - Friends
 
     /// Activity and the friend list each cost a full page load, and the
@@ -517,9 +545,10 @@ final class LibraryModel: ObservableObject {
             try await DataCache.load("friends", "list", ttl: DataCache.TTL.friends, force: force,
                                      accept: { !$0.isEmpty }) {
                 try await GoodreadsFriends.fetchFriends()
-            } show: { [weak self] list, _ in
+            } show: { [weak self] list, fromCache in
                 self?.friends = list
                 if !list.isEmpty { self?.friendsNote = nil }
+                if !fromCache { Task { await FriendNotifier.friendsRefreshed(list) } }
             }
         } catch {
             friendsNote = error.localizedDescription
