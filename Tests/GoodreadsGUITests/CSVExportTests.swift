@@ -11,7 +11,7 @@ final class CSVExportTests: XCTestCase {
     func testHeaderMatchesExpectedColumns() {
         XCTAssertEqual(
             CSVExport.header,
-            "Book Id,Title,Author,ISBN,ISBN13,My Rating,Date Read,Date Added,Shelf"
+            "Book Id,Title,Author,ISBN,ISBN13,My Rating,Date Read,Date Added,Shelf,My Notes,My Quotes"
         )
     }
 
@@ -47,7 +47,9 @@ final class CSVExportTests: XCTestCase {
             q + "5" + q,
             q + "Aug 12, 2026" + q,
             q + "Jan 1, 2020" + q,
-            q + "read" + q
+            q + "read" + q,
+            q + q,
+            q + q
         ].joined(separator: ",")
 
         XCTAssertEqual(line, expected)
@@ -62,10 +64,18 @@ final class CSVExportTests: XCTestCase {
         let expected = [
             q + "123" + q, q + "Plain Title" + q, q + "Plain Author" + q,
             empty, empty, empty, empty, empty,
-            q + "to-read" + q
+            q + "to-read" + q,
+            empty, empty
         ].joined(separator: ",")
 
         XCTAssertEqual(line, expected)
+    }
+
+    func testNotesAndQuotesGoInTheirOwnColumns() {
+        let entry = makeEntry(id: "r1", bookID: "123")
+        let note = BookNote(text: "Loved the ending", quotes: ["One", "Two"])
+        let line = CSVExport.dataLines(for: [entry], shelf: .read, notes: ["123": note]).first ?? ""
+        XCTAssertTrue(line.hasSuffix(q + "Loved the ending" + q + "," + q + "One | Two" + q))
     }
 
     func testCombinedExportHasOneHeaderAndNoBlankRowsForEmptyShelves() {

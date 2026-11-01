@@ -78,10 +78,21 @@ actor DataCache {
         ImageMemoryCache.shared.removeAll()
     }
 
-    /// Signing out drops everything — it all belongs to the old account.
+    /// Things you wrote or that can't be fetched again — your notes, and
+    /// your reading progress over time. Clearing the cache keeps them.
+    static let keptNamespaces: Set<String> = ["notes", "progress-history"]
+
+    /// Signing out drops everything fetched — it all belongs to the old
+    /// account — but not `keptNamespaces`.
     func clear() {
-        memory.removeAll()
-        try? FileManager.default.removeItem(at: Self.folder)
+        memory = memory.filter { id, _ in
+            Self.keptNamespaces.contains(String(id.prefix { $0 != "/" }))
+        }
+        let folders = (try? FileManager.default.contentsOfDirectory(at: Self.folder,
+                                                                     includingPropertiesForKeys: nil)) ?? []
+        for folder in folders where !Self.keptNamespaces.contains(folder.lastPathComponent) {
+            try? FileManager.default.removeItem(at: folder)
+        }
     }
 
     private static func isStale(_ date: Date, _ ttl: TimeInterval) -> Bool {

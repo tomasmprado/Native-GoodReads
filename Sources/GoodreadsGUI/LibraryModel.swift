@@ -1140,9 +1140,12 @@ final class LibraryModel: ObservableObject {
             return
         }
 
-        let text = CSVExport.csv(for: shelfEntries, shelf: shelf)
-        report(CSVExport.save(text, suggestedName: "goodreads-\(shelf.name).csv"),
-              successText: { String(localized: "Exported \(self.shelfEntries.count) books to \($0).") })
+        let entries = shelfEntries
+        Task {
+            let text = CSVExport.csv(for: entries, shelf: shelf, notes: await BookNotes.all())
+            report(CSVExport.save(text, suggestedName: "goodreads-\(shelf.name).csv"),
+                   successText: { String(localized: "Exported \(entries.count) books to \($0).") })
+        }
     }
 
     /// Fetches every shelf and writes one combined file. This is the backup.
@@ -1175,9 +1178,10 @@ final class LibraryModel: ObservableObject {
         // and silently left a blank line for an empty shelf.
         var lines = [CSVExport.header]
         var total = 0
+        let notes = await BookNotes.all()
         for (shelf, entries) in rows {
             total += entries.count
-            lines.append(contentsOf: CSVExport.dataLines(for: entries, shelf: shelf))
+            lines.append(contentsOf: CSVExport.dataLines(for: entries, shelf: shelf, notes: notes))
         }
         let text = lines.joined(separator: "\n") + "\n"
 
