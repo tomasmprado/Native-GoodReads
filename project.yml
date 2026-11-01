@@ -22,12 +22,13 @@ targets:
     platform: iOS
     sources:
       - path: Sources/GoodreadsGUI
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: local.goodreads.ios
         PRODUCT_NAME: Goodreads
         TARGETED_DEVICE_FAMILY: "1,2"
-        CODE_SIGN_STYLE: Automatic
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Goodreads
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

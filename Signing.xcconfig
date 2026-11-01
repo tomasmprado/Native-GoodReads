@@ -1,0 +1,10 @@
+// Signing for the iOS app. The defaults here build for the simulator with
+// no account; to run on your own iPhone, create Local.xcconfig next to this
+// file (it's gitignored) with your team and a unique bundle id:
+//
+//   DEVELOPMENT_TEAM = ABCDE12345
+//   PRODUCT_BUNDLE_IDENTIFIER = com.yourname.goodreads
+//
+PRODUCT_BUNDLE_IDENTIFIER = local.goodreads.ios
+CODE_SIGN_STYLE = Automatic
+#include? "Local.xcconfig"

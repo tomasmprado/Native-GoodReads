@@ -85,6 +85,7 @@
 		7972706154CBFF97E9AFFFA8 /* GoodreadsLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoodreadsLookup.swift; sourceTree = "<group>"; };
 		7DAE2B37B6DBFA8713C4EA9E /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = en; path = en.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
 		800739CD77E60C71EB5E971E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		822213C097770BEE75030E78 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		89196E324758038EB7693EAF /* ReadingReminder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadingReminder.swift; sourceTree = "<group>"; };
 		8A3E448A0259FA7DC5FD941D /* TasteComparison.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasteComparison.swift; sourceTree = "<group>"; };
 		8E4888C115DFF3F51690538D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -114,6 +115,15 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		393CC1B4B3622349DD40FB13 /* goodreads-gui */ = {
+			isa = PBXGroup;
+			children = (
+				822213C097770BEE75030E78 /* Signing.xcconfig */,
+			);
+			name = "goodreads-gui";
+			path = .;
+			sourceTree = "<group>";
+		};
 		52F60C1EFE349AB60D84B32A /* GoodreadsGUI */ = {
 			isa = PBXGroup;
 			children = (
@@ -181,6 +191,7 @@
 		9E02F2B4447A79B1023D4D59 = {
 			isa = PBXGroup;
 			children = (
+				393CC1B4B3622349DD40FB13 /* goodreads-gui */,
 				52F60C1EFE349AB60D84B32A /* GoodreadsGUI */,
 				884846600903DD92F8B5FC99 /* Products */,
 			);
@@ -401,10 +412,10 @@
 		};
 		3A013995655C592DD7464DE5 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 822213C097770BEE75030E78 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Goodreads;
 				INFOPLIST_KEY_CFBundleLocalizations = "en pt";
@@ -417,7 +428,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = local.goodreads.ios;
 				PRODUCT_NAME = Goodreads;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -426,10 +436,10 @@
 		};
 		AD309810DC0182F076E89DBE /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 822213C097770BEE75030E78 /* Signing.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Goodreads;
 				INFOPLIST_KEY_CFBundleLocalizations = "en pt";
@@ -442,7 +452,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = local.goodreads.ios;
 				PRODUCT_NAME = Goodreads;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";

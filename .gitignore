@@ -17,3 +17,6 @@ assets/
 # Xcode per-user state
 xcuserdata/
 *.xcuserstate
+
+# Personal iOS signing (team, bundle id) — see Signing.xcconfig
+Local.xcconfig
