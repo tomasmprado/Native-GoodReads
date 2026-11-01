@@ -285,40 +285,17 @@ private struct SuggestionsPane: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject private var prefs = Preferences.shared
 
+    private var subtitle: String {
+        var bits: [String] = []
+        if !model.suggestionBasis.isEmpty {
+            bits.append("from \(model.suggestionBasis.count) finished in \(prefs.suggestionWindowDays) days")
+        }
+        if prefs.bookLanguage != .any { bits.append(prefs.bookLanguage.label) }
+        return bits.joined(separator: " · ")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            GlassHeader {
-                Text("Suggestions")
-                    .font(.system(size: 13, weight: .semibold))
-
-                if !model.suggestionBasis.isEmpty {
-                    Text("from \(model.suggestionBasis.count) finished in \(prefs.suggestionWindowDays) days")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if prefs.bookLanguage != .any {
-                    Text(prefs.bookLanguage.label)
-                        .font(.system(size: 10))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .glassCapsule()
-                }
-
-                if model.isBuildingSuggestions {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button { Task { await model.buildSuggestions(force: true) } } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .glassIconButton()
-                    .help("Rebuild suggestions")
-                    .accessibilityLabel("Rebuild suggestions")
-                }
-            }
-
             if model.suggestions.isEmpty {
                 EmptyPane(symbol: model.isBuildingSuggestions ? "hourglass" : "sparkles",
                           text: model.suggestionNote ?? "Nothing to suggest yet.")
@@ -354,6 +331,20 @@ private struct SuggestionsPane: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
+            }
+        }
+        .navigationTitle("Suggestions")
+        .navigationSubtitle(subtitle)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if model.isBuildingSuggestions {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button { Task { await model.buildSuggestions(force: true) } } label: {
+                        Label("Rebuild suggestions", systemImage: "arrow.clockwise")
+                    }
+                    .help("Rebuild suggestions")
+                }
             }
         }
     }
@@ -399,22 +390,6 @@ private struct FriendsPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            GlassHeader {
-                Text("Friends")
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
-                if model.isLoadingFriends {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button { Task { await model.loadFriends(force: true) } } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .glassIconButton()
-                    .help("Refresh")
-                    .accessibilityLabel("Refresh friends")
-                }
-            }
-
             let groups = groups
             if !groups.isEmpty {
                 ScrollView {
@@ -441,6 +416,19 @@ private struct FriendsPane: View {
             } else {
                 EmptyPane(symbol: model.isLoadingFriends ? "hourglass" : "person.2",
                           text: model.friendsNote ?? "No friends found yet.")
+            }
+        }
+        .navigationTitle("Friends")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if model.isLoadingFriends {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button { Task { await model.loadFriends(force: true) } } label: {
+                        Label("Refresh friends", systemImage: "arrow.clockwise")
+                    }
+                    .help("Refresh")
+                }
             }
         }
     }
@@ -617,7 +605,7 @@ private struct FriendProfileSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            GlassHeader {
                 Text("Profile")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
@@ -625,9 +613,6 @@ private struct FriendProfileSheet: View {
                     .keyboardShortcut(.defaultAction)
                     .glassButton()
             }
-            .padding(10)
-
-            Divider()
 
             if model.isLoadingFriendProfile {
                 EmptyPane(symbol: "hourglass", text: "Loading…")
@@ -775,7 +760,7 @@ private struct AuthorPageSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            GlassHeader {
                 Text("Author")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
@@ -783,9 +768,6 @@ private struct AuthorPageSheet: View {
                     .keyboardShortcut(.defaultAction)
                     .glassButton()
             }
-            .padding(10)
-
-            Divider()
 
             if model.isLoadingAuthorPage {
                 EmptyPane(symbol: "hourglass", text: "Loading…")
@@ -1004,6 +986,7 @@ private struct SearchPane: View {
                 .listStyle(.inset)
             }
         }
+        .navigationTitle("Search")
         .onAppear { focused = true }
     }
 }
@@ -1015,8 +998,6 @@ private struct ShelfPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-
             if model.visibleEntries.isEmpty {
                 EmptyPane(
                     symbol: model.isLoadingShelf ? "hourglass" : "tray",
@@ -1038,27 +1019,22 @@ private struct ShelfPane: View {
                 .listStyle(.inset)
             }
         }
+        .navigationTitle(model.currentShelf?.label ?? "")
+        .navigationSubtitle(subtitle)
+        .searchable(text: $model.filter, placement: .toolbar, prompt: "Filter")
+        .toolbar { toolbarContent }
     }
 
-    private var header: some View {
-        GlassHeader {
-            Text(model.currentShelf?.label ?? "")
-                .font(.system(size: 13, weight: .semibold))
+    private var subtitle: String {
+        var bits: [String] = []
+        if !model.shelfEntries.isEmpty { bits.append("\(model.visibleEntries.count) books") }
+        if let note = model.loadProgress ?? model.cacheNote { bits.append(note) }
+        return bits.joined(separator: " · ")
+    }
 
-            if !model.shelfEntries.isEmpty {
-                Text("\(model.visibleEntries.count)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-
-            if let note = model.loadProgress ?? model.cacheNote {
-                Text(note)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-            }
-
-            Spacer()
-
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
             Menu {
                 Picker("Sort", selection: $model.sortOrder) {
                     ForEach(ShelfSortOrder.allCases) { order in
@@ -1066,43 +1042,22 @@ private struct ShelfPane: View {
                     }
                 }
             } label: {
-                Image(systemName: "arrow.up.arrow.down")
+                Label("Sort shelf", systemImage: "arrow.up.arrow.down")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
             .help("Sort: \(model.sortOrder.rawValue)")
-            .accessibilityLabel("Sort shelf")
-
-            HStack(spacing: 5) {
-                Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                TextField("Filter", text: $model.filter)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .frame(width: 130)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .glassCapsule(interactive: true)
 
             Button { model.exportCurrentShelf() } label: {
-                Image(systemName: "square.and.arrow.down")
+                Label("Export shelf as CSV", systemImage: "square.and.arrow.down")
             }
-            .glassIconButton()
             .help("Export this shelf as CSV")
-            .accessibilityLabel("Export shelf as CSV")
 
             if model.isLoadingShelf {
                 ProgressView().controlSize(.small)
             } else {
                 Button { Task { await model.loadShelf(force: true) } } label: {
-                    Image(systemName: "arrow.clockwise")
+                    Label("Reload shelf", systemImage: "arrow.clockwise")
                 }
-                .glassIconButton()
                 .help("Reload this shelf")
-                .accessibilityLabel("Reload shelf")
             }
         }
     }
