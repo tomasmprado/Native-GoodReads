@@ -277,6 +277,7 @@ final class LibraryModel: ObservableObject {
         )
 
         try? await Task.sleep(for: .seconds(3))
+        indexCachedShelves()
         for shelf in Shelf.builtIn where ShelfCache.read(shelf) == nil {
             guard !Task.isCancelled else { return }
             if let entries = try? await ShelfLibrary.load(shelf) {
@@ -286,6 +287,16 @@ final class LibraryModel: ObservableObject {
         }
         if friends.isEmpty {
             await loadFriends()
+        }
+    }
+
+    /// Puts every shelf already on disk into Spotlight — for books cached
+    /// before indexing existed, or after turning it back on.
+    func indexCachedShelves() {
+        for shelf in shelves {
+            if let cached = ShelfCache.read(shelf) {
+                SpotlightIndex.update(cached.entries, shelf: shelf)
+            }
         }
     }
 

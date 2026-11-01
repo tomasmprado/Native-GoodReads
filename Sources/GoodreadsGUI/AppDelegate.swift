@@ -1,4 +1,5 @@
 import AppKit
+import CoreSpotlight
 import SwiftUI
 
 @MainActor
@@ -12,6 +13,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         HotKeyCenter.shared.onTrigger = { [weak self] in self?.togglePanel() }
         HotKeyCenter.shared.register()
+    }
+
+    /// A book picked from Spotlight.
+    func application(_ application: NSApplication,
+                     continue userActivity: NSUserActivity,
+                     restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
+        guard userActivity.activityType == CSSearchableItemActionType,
+              let identifier = userActivity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+              let bookID = SpotlightIndex.bookID(fromIdentifier: identifier),
+              let entry = ShelfCache.entry(bookID: bookID) else { return false }
+        showLibrary()
+        LibraryModel.shared.showBookDetail(entry.asBook)
+        return true
     }
 
     func applicationWillTerminate(_ notification: Notification) {

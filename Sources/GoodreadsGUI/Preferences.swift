@@ -86,6 +86,18 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(notifyFriendActivity, forKey: Keys.notify) }
     }
 
+    /// Books on your shelves show up in Spotlight.
+    @Published var indexInSpotlight: Bool {
+        didSet {
+            defaults.set(indexInSpotlight, forKey: SpotlightIndex.enabledKey)
+            if indexInSpotlight {
+                LibraryModel.shared.indexCachedShelves()
+            } else {
+                SpotlightIndex.removeAll()
+            }
+        }
+    }
+
     private let defaults = UserDefaults.standard
 
     private enum Keys {
@@ -109,6 +121,7 @@ final class Preferences: ObservableObject {
         let goal = defaults.integer(forKey: Keys.goal)
         yearlyGoal = goal > 0 ? goal : 24
         notifyFriendActivity = defaults.bool(forKey: Keys.notify)
+        indexInSpotlight = SpotlightIndex.isEnabled
 
         // One-time migration: earlier builds kept the key in UserDefaults.
         if let legacy = defaults.string(forKey: Keys.apiKey), !legacy.isEmpty,
@@ -181,6 +194,16 @@ struct PreferencesView: View {
             }
 
             Section {
+                Toggle("Show my books in Spotlight", isOn: $prefs.indexInSpotlight)
+            } header: {
+                Text("Spotlight")
+            } footer: {
+                Text("Search your shelves from ⌘Space. Choosing a book opens its details here.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 LabeledContent("Saved data") {
                     Text(cacheBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…")
                         .foregroundStyle(.secondary)
@@ -203,7 +226,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 600)
+        .frame(width: 460, height: 660)
         .task { cacheBytes = DataCache.diskUsage() }
     }
 }
