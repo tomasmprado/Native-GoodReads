@@ -55,16 +55,39 @@ final class WebSession: NSObject, ObservableObject {
 
     /// Runs a load-then-evaluate sequence with nobody else touching the web
     /// view in between.
+    ///
+    /// Ownership hands off directly from one holder to the next FIFO waiter
+    /// — `locked` never goes back to `false` while anyone is queued. The
+    /// earlier version did `locked = false` unconditionally on release, then
+    /// resumed the first waiter as a separate step; since neither of those is
+    /// itself a suspension point, a well-timed newcomer's `exclusive` call
+    /// couldn't interleave *there* on a single-threaded main actor — but the
+    /// resumed waiter's continuation is scheduled onto the actor's queue
+    /// rather than run inline, so a brand-new `exclusive()` call landing on
+    /// that same queue in between could see `locked == false` and grab the
+    /// lock before the waiter it was released for ever got to run, leaving
+    /// that waiter stuck behind whoever barged in. Never clearing `locked`
+    /// until there's truly no one left waiting closes that window: a
+    /// newcomer checking `locked` while a handoff is pending always sees it
+    /// still held, so it queues in FIFO order instead of racing the waiter
+    /// it should come after.
     func exclusive<T>(_ body: () async throws -> T) async rethrows -> T {
-        while locked {
+        if locked {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 waiting.append(continuation)
             }
+        } else {
+            locked = true
         }
-        locked = true
         defer {
-            locked = false
-            if !waiting.isEmpty { waiting.removeFirst().resume() }
+            if waiting.isEmpty {
+                locked = false
+            } else {
+                // Ownership transfers straight to the next waiter — `locked`
+                // stays true the whole time, so no newcomer can see it false
+                // and cut in line.
+                waiting.removeFirst().resume()
+            }
         }
         return try await body()
     }

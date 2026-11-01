@@ -17,6 +17,7 @@ final class LibraryModel: ObservableObject {
     @Published var selection: Pane = .home
     @Published var shelfEntries: [ShelfEntry] = []
     @Published var filter = ""
+    @Published var sortOrder: ShelfSortOrder = .asShelved
     @Published var isLoadingShelf = false
     @Published var loadProgress: String?
     @Published var cacheNote: String?
@@ -31,24 +32,59 @@ final class LibraryModel: ObservableObject {
     @Published var busyBookID: String?
     @Published var status: Status?
     @Published var loggedIn = false
-    @Published var showDiagnostics = false
 
-    /// Sign-in and the debug browser both host the same shared `WKWebView`
-    /// (`WebViewHost`), which can only be attached to one visible sheet at a
-    /// time — so they're one optional, not two independent bools, which
-    /// makes it impossible for both to be "showing" at once.
-    enum WebSheet { case signIn, browser }
-    @Published var webSheet: WebSheet?
+    /// A just-completed remove or move, offered back for ~8 seconds — see
+    /// `offerUndo`.
+    struct PendingUndo: Identifiable {
+        let id = UUID()
+        let label: String
+        let action: () async -> Void
+    }
+    @Published var pendingUndo: PendingUndo?
+    private var undoResetTask: Task<Void, Never>?
+
+    @Published var updateAvailable: UpdateChecker.Available?
+
+    /// Every sheet in the app, as one item — a book's detail sheet opening an
+    /// author page (or vice versa) just replaces this value, and SwiftUI
+    /// dismisses whatever's showing and presents the new one on its own;
+    /// nothing here needs to know or care whether something else was already
+    /// up. `.friendProfile` and `.authorPage` carry no payload of their own
+    /// since the sheets they present already read `friendProfile`/
+    /// `authorPage` below — they exist in this enum purely to gate
+    /// presentation the same way every other case does.
+    enum PresentedSheet: Identifiable, Equatable {
+        case signIn
+        case browser
+        case diagnostics
+        case progress(ShelfEntry)
+        case finish(ShelfEntry)
+        case finishBook(Book)
+        case detail(Book)
+        case friendProfile
+        case authorPage
+
+        var id: String {
+            switch self {
+            case .signIn:               return "signIn"
+            case .browser:              return "browser"
+            case .diagnostics:          return "diagnostics"
+            case .progress(let entry):  return "progress-\(entry.id)"
+            case .finish(let entry):    return "finish-\(entry.id)"
+            case .finishBook(let book): return "finishBook-\(book.id)"
+            case .detail(let book):     return "detail-\(book.id)"
+            case .friendProfile:        return "friendProfile"
+            case .authorPage:           return "authorPage"
+            }
+        }
+    }
+    @Published var activeSheet: PresentedSheet?
 
     // Home
     @Published var suggestions: [Suggestion] = []
     @Published var suggestionBasis: [ShelfEntry] = []
     @Published var isBuildingSuggestions = false
     @Published var suggestionNote: String?
-    @Published var progressTarget: ShelfEntry?
-    @Published var finishTarget: ShelfEntry?
-    @Published var finishBook: Book?
-    @Published var detailBook: Book?
 
     @Published var currentlyReading: [ShelfEntry] = []
     @Published var isLoadingCurrentlyReading = false
@@ -61,6 +97,8 @@ final class LibraryModel: ObservableObject {
     // Friends
     @Published var friends: [GoodreadsFriends.Friend] = []
     @Published var friendActivity: [GoodreadsFriends.Activity] = []
+    /// When the friend list was last refreshed this session.
+    private var friendsFetched: Date?
     @Published var isLoadingFriends = false
     @Published var friendsNote: String?
 
@@ -109,7 +147,7 @@ final class LibraryModel: ObservableObject {
     }
 
     var visibleEntries: [ShelfEntry] {
-        shelfEntries.filter { $0.matches(filter) }
+        sortOrder.sorted(shelfEntries.filter { $0.matches(filter) })
     }
 
     // MARK: - Search
@@ -191,8 +229,8 @@ final class LibraryModel: ObservableObject {
 
     // MARK: - Session
 
-    func startSignIn() { webSheet = .signIn }
-    func startBrowser() { webSheet = .browser }
+    func startSignIn() { activeSheet = .signIn }
+    func startBrowser() { activeSheet = .browser }
 
     func signInSheetClosed() async {
         loggedIn = await WebSession.shared.refreshSignInState()
@@ -208,12 +246,25 @@ final class LibraryModel: ObservableObject {
         if loggedIn { await refreshShelfList() }
     }
 
+    /// Once per launch is plenty — this is a nicety, not something worth
+    /// polling for.
+    func checkForUpdate() async {
+        updateAvailable = await UpdateChecker.checkForUpdate()
+    }
+
     func signOut() async {
         await WebSession.shared.signOut()
         loggedIn = WebSession.shared.isSignedIn
         shelfEntries = []
         shelves = Shelf.builtIn
         ShelfCache.clear()
+        await DataCache.shared.clear()
+        ImageMemoryCache.shared.removeAll()
+        suggestions = []
+        suggestionBasis = []
+        friends = []
+        friendActivity = []
+        friendsFetched = nil
     }
 
     // MARK: - Shelves
@@ -285,15 +336,35 @@ final class LibraryModel: ObservableObject {
     /// covers the common case without a fetch.
     func buildSuggestions(force: Bool = false) async {
         guard !isBuildingSuggestions else { return }
-        if !suggestions.isEmpty && !force { return }
+        let cachedRead = ShelfCache.read(.read)
+
+        // Last launch's suggestions show on the first frame; they're only
+        // rebuilt when they've aged out, the Read shelf moved, or on request.
+        var savedStale = false
+        if suggestions.isEmpty,
+           let hit = await DataCache.shared.read(SavedSuggestions.self, "suggestions", "home",
+                                                 ttl: DataCache.TTL.suggestions) {
+            suggestions = hit.value.items
+            suggestionBasis = hit.value.basis
+            suggestionNote = nil
+            savedStale = hit.isStale
+            let readStale = cachedRead.map { ShelfCache.isStale($0.fetched) } ?? true
+            if !hit.isStale && !force && !readStale { return }
+        }
+        // The cache used to never expire on its own — Home could sit on a
+        // suggestion set built from a Read shelf that's since moved on for
+        // as long as the app stayed open, since nothing else forced a
+        // rebuild once `suggestions` was non-empty.
+        let stale = cachedRead.map { ShelfCache.isStale($0.fetched) } ?? true
+        if !suggestions.isEmpty && !force && !stale && !savedStale { return }
 
         isBuildingSuggestions = true
         suggestionNote = "Looking at what you finished recently…"
         defer { isBuildingSuggestions = false }
 
-        var readEntries = ShelfCache.read(.read)?.entries ?? []
+        var readEntries = cachedRead?.entries ?? []
 
-        if readEntries.isEmpty || force {
+        if readEntries.isEmpty || force || stale {
             do {
                 readEntries = try await ShelfLibrary.load(.read)
                 ShelfCache.write(readEntries, for: .read)
@@ -333,6 +404,8 @@ final class LibraryModel: ObservableObject {
 
             suggestions = result.items
             suggestionBasis = result.basis
+            await DataCache.shared.write(SavedSuggestions(items: result.items, basis: result.basis),
+                                         "suggestions", "home")
 
             if result.basis.isEmpty {
                 suggestionNote = "Nothing finished in the last \(prefs.suggestionWindowDays) days — mark a book read and this fills in."
@@ -353,10 +426,10 @@ final class LibraryModel: ObservableObject {
     /// (if any) happens to be selected.
     func loadCurrentlyReading(force: Bool = false) async {
         guard !isLoadingCurrentlyReading else { return }
-        if let cached = ShelfCache.read(.currentlyReading) {
-            currentlyReading = cached.entries
-        }
-        guard currentlyReading.isEmpty || force else { return }
+        let cached = ShelfCache.read(.currentlyReading)
+        if let cached { currentlyReading = cached.entries }
+        let stale = cached.map { ShelfCache.isStale($0.fetched) } ?? true
+        guard currentlyReading.isEmpty || force || stale else { return }
 
         isLoadingCurrentlyReading = true
         defer { isLoadingCurrentlyReading = false }
@@ -395,13 +468,20 @@ final class LibraryModel: ObservableObject {
     /// for it).
     func loadFriends(force: Bool = false) async {
         guard !isLoadingFriends else { return }
-        if !friends.isEmpty && !force { return }
+        if let fetched = friendsFetched, !force,
+           Date().timeIntervalSince(fetched) < DataCache.TTL.friends { return }
 
         isLoadingFriends = true
-        friendsNote = "Looking at your Goodreads friends…"
+        if friends.isEmpty { friendsNote = "Looking at your Goodreads friends…" }
 
+        // Last session's list shows instantly; the page load runs behind it.
         do {
-            friends = try await GoodreadsFriends.fetchFriends()
+            try await DataCache.load("friends", "list", ttl: DataCache.TTL.friends, force: force) {
+                try await GoodreadsFriends.fetchFriends()
+            } show: { [weak self] list, _ in
+                self?.friends = list
+                if !list.isEmpty { self?.friendsNote = nil }
+            }
         } catch {
             friendsNote = error.localizedDescription
             isLoadingFriends = false
@@ -409,9 +489,12 @@ final class LibraryModel: ObservableObject {
         }
         isLoadingFriends = false
 
-        if let fetched = try? await GoodreadsFriends.fetchActivity() {
-            friendActivity = fetched
+        try? await DataCache.load("friends", "activity", ttl: DataCache.TTL.friends, force: force) {
+            try await GoodreadsFriends.fetchActivity()
+        } show: { [weak self] activity, _ in
+            self?.friendActivity = activity
         }
+        friendsFetched = Date()
 
         friendsNote = (friends.isEmpty && friendActivity.isEmpty)
             ? "Nothing found — Goodreads may have changed this page's layout."
@@ -426,6 +509,7 @@ final class LibraryModel: ObservableObject {
     }
 
     func openFriendProfile(_ url: URL) async {
+        activeSheet = .friendProfile
         friendProfileURL = url
         friendProfile = nil
         friendProfileError = nil
@@ -434,7 +518,13 @@ final class LibraryModel: ObservableObject {
         defer { isLoadingFriendProfile = false }
 
         do {
-            friendProfile = try await GoodreadsFriends.fetchProfile(url: url)
+            try await DataCache.load("profile", url.absoluteString, ttl: DataCache.TTL.profile) {
+                try await GoodreadsFriends.fetchProfile(url: url)
+            } show: { [weak self] profile, _ in
+                guard let self, self.friendProfileURL == url else { return }
+                self.friendProfile = profile
+                self.isLoadingFriendProfile = false
+            }
         } catch {
             friendProfileError = error.localizedDescription
         }
@@ -455,7 +545,14 @@ final class LibraryModel: ObservableObject {
         defer { isLoadingFriendShelf = false }
 
         do {
-            friendShelfEntries = try await ShelfLibrary.load(shelf, ofUser: userID)
+            try await DataCache.load("friend-shelf", "\(userID)/\(shelf.name)",
+                                     ttl: DataCache.TTL.friendShelf) {
+                try await ShelfLibrary.load(shelf, ofUser: userID)
+            } show: { [weak self] entries, _ in
+                guard let self, self.friendShelf == shelf else { return }
+                self.friendShelfEntries = entries
+                self.isLoadingFriendShelf = false
+            }
         } catch {
             friendShelfError = error.localizedDescription
         }
@@ -470,6 +567,7 @@ final class LibraryModel: ObservableObject {
     // MARK: - Author page
 
     func openAuthorPage(_ url: URL) async {
+        activeSheet = .authorPage
         authorPageURL = url
         authorPage = nil
         authorPageError = nil
@@ -477,46 +575,34 @@ final class LibraryModel: ObservableObject {
         defer { isLoadingAuthorPage = false }
 
         do {
-            authorPage = try await GoodreadsAuthorPage.fetch(url: url)
+            try await DataCache.load("author", url.absoluteString, ttl: DataCache.TTL.authorPage) {
+                try await GoodreadsAuthorPage.fetch(url: url)
+            } show: { [weak self] page, _ in
+                guard let self, self.authorPageURL == url else { return }
+                self.authorPage = page
+                self.isLoadingAuthorPage = false
+            }
         } catch {
             authorPageError = error.localizedDescription
         }
     }
 
-    // MARK: - Sheet hand-off
+    // MARK: - Sheet presentation
 
-    /// `detailBook`, `authorPageURL` and `friendProfileURL` each drive their
-    /// own `.sheet` on `ContentView`. SwiftUI won't stack a second sheet on a
-    /// view that's already presenting one from the same modifier chain — an
-    /// author's book row opening a detail sheet, or a detail sheet's author
-    /// link opening the author page, would otherwise silently do nothing
-    /// because the presenting view (ContentView) already has a sheet up.
-    /// This clears whatever's open, waits a beat for the dismiss, then opens
-    /// the next — a no-op delay when nothing was open to begin with.
-    private func handOffToNextSheet(_ present: @escaping () -> Void) {
-        let closingSomething = detailBook != nil || authorPageURL != nil || friendProfileURL != nil
-        detailBook = nil
-        authorPageURL = nil
-        authorPage = nil
-        friendProfileURL = nil
-        friendProfile = nil
-        closeFriendShelf()
-
-        Task { @MainActor [weak self] in
-            if closingSomething { try? await Task.sleep(for: .milliseconds(350)) }
-            guard self != nil else { return }
-            present()
-        }
-    }
-
+    /// Opening one sheet from inside another — a detail sheet's author link,
+    /// an author's book row opening a detail sheet — just reassigns
+    /// `activeSheet`; SwiftUI dismisses whatever's showing and presents the
+    /// new one on its own. `activeSheet`'s doc comment has the rest of this
+    /// story: it used to take eight sibling `.sheet` modifiers to get here,
+    /// since SwiftUI won't stack a second sheet on a view already presenting
+    /// one from the same modifier chain, and the old fix for that was a
+    /// dismiss-then-sleep-350ms-then-present hand-off.
     func showBookDetail(_ book: Book) {
-        handOffToNextSheet { [weak self] in self?.detailBook = book }
+        activeSheet = .detail(book)
     }
 
     func showAuthorPage(_ url: URL) {
-        handOffToNextSheet { [weak self] in
-            Task { await self?.openAuthorPage(url) }
-        }
+        Task { await openAuthorPage(url) }
     }
 
     /// Shows the cached copy immediately, then refreshes behind it.
@@ -570,8 +656,66 @@ final class LibraryModel: ObservableObject {
             // Superseded by another shelf — say nothing.
         } catch {
             guard !Task.isCancelled, currentShelf?.name == shelf.name else { return }
-            status = Status(text: error.localizedDescription, isError: true)
-            if !WebSession.shared.isSignedIn { webSheet = .signIn }
+            let message = error.localizedDescription
+            status = Status(text: message, isError: true)
+            // The JS side throws the literal "signed out" the moment a fetch
+            // redirects to the sign-in page — a more immediate signal than
+            // `WebSession.isSignedIn`, which is only ever refreshed by an
+            // explicit check and can otherwise sit stale for a while after
+            // the session actually lapses server-side.
+            if !WebSession.shared.isSignedIn || message.localizedCaseInsensitiveContains("signed out") {
+                loggedIn = false
+                activeSheet = .signIn
+            }
+        }
+    }
+
+    /// Offers `action` back as an "Undo" button in the status bar for a
+    /// short window — used after a remove or move, both of which are cheap
+    /// to invert (the opposite shelf call) but easy to fat-finger from a
+    /// context menu.
+    private func offerUndo(_ label: String, action: @escaping () async -> Void) {
+        undoResetTask?.cancel()
+        pendingUndo = PendingUndo(label: label, action: action)
+        undoResetTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard !Task.isCancelled else { return }
+            self?.pendingUndo = nil
+        }
+    }
+
+    func performPendingUndo() async {
+        guard let pending = pendingUndo else { return }
+        pendingUndo = nil
+        undoResetTask?.cancel()
+        await pending.action()
+    }
+
+    /// A trailing note for a status message when a write succeeded but its
+    /// own read-back verification was inconclusive — see
+    /// `ShelfService.WriteVerification`. Silent on `.confirmed`, since that's
+    /// the ordinary case and doesn't need calling out.
+    private func caveat(_ verification: ShelfService.WriteVerification) -> String {
+        verification == .unknown ? " (couldn't confirm — check the shelf)" : ""
+    }
+
+    /// Every write action funnels its failure through here so a session that
+    /// silently expired — Goodreads' cookie can lapse without the app
+    /// hearing about it any other way — gets caught and re-prompted
+    /// immediately, rather than leaving `loggedIn` showing stale state until
+    /// the next explicit `checkSession()`. `WebSession.isSignedIn` is itself
+    /// only ever refreshed by an explicit check, so it can be just as stale;
+    /// the JS side's own `getDoc` throws the literal string "signed out" the
+    /// moment a fetch redirects to the sign-in page, and that's the more
+    /// immediate signal.
+    private func reportWriteFailure(_ prefix: String, error: Error) {
+        let message = error.localizedDescription
+        if !WebSession.shared.isSignedIn || message.localizedCaseInsensitiveContains("signed out") {
+            loggedIn = false
+            status = Status(text: "\(prefix): you're signed out. Sign in and try again.", isError: true)
+            activeSheet = .signIn
+        } else {
+            status = Status(text: "\(prefix): \(message)", isError: true)
         }
     }
 
@@ -583,14 +727,55 @@ final class LibraryModel: ObservableObject {
         defer { busyBookID = nil }
 
         do {
-            try await ShelfService.remove(bookID: entry.bookID, from: shelf)
+            let verification = try await ShelfService.remove(bookID: entry.bookID, from: shelf)
             shelfEntries.removeAll { $0.id == entry.id }
             ShelfCache.write(shelfEntries, for: shelf)
             setCount(shelfEntries.count, for: shelf)
-            status = Status(text: "Removed “\(entry.title)” from \(shelf.label).", isError: false)
+            status = Status(text: "Removed “\(entry.title)” from \(shelf.label).\(caveat(verification))", isError: false)
+
+            offerUndo("Undo remove of “\(entry.title)”") { [weak self] in
+                await self?.restoreRemoved(entry, to: shelf)
+            }
         } catch {
-            status = Status(text: "Couldn’t remove “\(entry.title)”: \(error.localizedDescription)",
-                            isError: true)
+            reportWriteFailure("Couldn’t remove “\(entry.title)”", error: error)
+        }
+    }
+
+    /// Re-adds a book removed via `remove(_:)`, for the undo button. A plain
+    /// `ShelfService.add` — Goodreads doesn't distinguish "never shelved"
+    /// from "shelved, then removed", so this is exactly what re-shelving it
+    /// by hand would do.
+    private func restoreRemoved(_ entry: ShelfEntry, to shelf: Shelf) async {
+        do {
+            try await ShelfService.add(bookID: entry.bookID, to: shelf)
+            bumpCountIfNew(bookID: entry.bookID, shelf: shelf)
+            if currentShelf?.name == shelf.name, !shelfEntries.contains(where: { $0.id == entry.id }) {
+                shelfEntries.append(entry)
+                ShelfCache.write(shelfEntries, for: shelf)
+                setCount(shelfEntries.count, for: shelf)
+            }
+            status = Status(text: "Restored “\(entry.title)” to \(shelf.label).", isError: false)
+        } catch {
+            reportWriteFailure("Couldn’t undo", error: error)
+        }
+    }
+
+    /// Removes `entry` from `shelf` without assuming it's the shelf pane
+    /// currently on screen — used to undo a "move to a custom shelf" (a
+    /// stacking add, not a move), which can be triggered from Search or
+    /// Suggestions just as easily as from a shelf pane.
+    private func removeFromShelf(_ entry: ShelfEntry, shelf: Shelf, successText: String) async {
+        do {
+            try await ShelfService.remove(bookID: entry.bookID, from: shelf)
+            bumpCount(-1, for: shelf)
+            if currentShelf?.name == shelf.name {
+                shelfEntries.removeAll { $0.id == entry.id }
+                ShelfCache.write(shelfEntries, for: shelf)
+                setCount(shelfEntries.count, for: shelf)
+            }
+            status = Status(text: successText, isError: false)
+        } catch {
+            reportWriteFailure("Couldn’t undo", error: error)
         }
     }
 
@@ -601,20 +786,34 @@ final class LibraryModel: ObservableObject {
         status = nil
         defer { busyBookID = nil }
 
+        let previousShelf = currentShelf
         do {
-            try await ShelfService.add(bookID: entry.bookID, to: shelf)
+            let verification = try await ShelfService.add(bookID: entry.bookID, to: shelf)
             bumpCountIfNew(bookID: entry.bookID, shelf: shelf)
-            if let current = currentShelf, current.isExclusive, shelf.isExclusive,
+
+            var movedAwayFrom: Shelf?
+            if let current = previousShelf, current.isExclusive, shelf.isExclusive,
                current.name != shelf.name {
                 shelfEntries.removeAll { $0.id == entry.id }
                 ShelfCache.write(shelfEntries, for: current)
                 setCount(shelfEntries.count, for: current)
+                movedAwayFrom = current
             }
             let verb = shelf.isExclusive ? "→" : "also on"
-            status = Status(text: "“\(entry.title)” \(verb) \(shelf.label)", isError: false)
+            status = Status(text: "“\(entry.title)” \(verb) \(shelf.label)\(caveat(verification))", isError: false)
+
+            if let movedAwayFrom {
+                offerUndo("Undo move of “\(entry.title)”") { [weak self] in
+                    await self?.move(entry, to: movedAwayFrom)
+                }
+            } else if !shelf.isExclusive {
+                offerUndo("Undo") { [weak self] in
+                    await self?.removeFromShelf(entry, shelf: shelf,
+                                                successText: "Removed “\(entry.title)” from \(shelf.label).")
+                }
+            }
         } catch {
-            status = Status(text: "Couldn’t move “\(entry.title)”: \(error.localizedDescription)",
-                            isError: true)
+            reportWriteFailure("Couldn’t move “\(entry.title)”", error: error)
         }
     }
 
@@ -700,17 +899,16 @@ final class LibraryModel: ObservableObject {
 
         do {
             let bookID = try await GoodreadsLookup.bookID(for: book)
-            try await ShelfService.add(bookID: bookID, to: shelf)
+            let verification = try await ShelfService.add(bookID: bookID, to: shelf)
             loggedIn = true
             bumpCountIfNew(bookID: bookID, shelf: shelf)
-            status = Status(text: "“\(book.title)” → \(shelf.label)", isError: false)
+            status = Status(text: "“\(book.title)” → \(shelf.label)\(caveat(verification))", isError: false)
         } catch {
             if !WebSession.shared.isSignedIn {
                 status = Status(text: "Sign in first — click Log In below.", isError: true)
-                webSheet = .signIn
+                activeSheet = .signIn
             } else {
-                status = Status(text: "Couldn’t shelve “\(book.title)”: \(error.localizedDescription)",
-                                isError: true)
+                reportWriteFailure("Couldn’t shelve “\(book.title)”", error: error)
             }
         }
     }
@@ -765,11 +963,17 @@ final class LibraryModel: ObservableObject {
         }
 
         var rows: [(Shelf, [ShelfEntry])] = []
+        // This is the backup — a shelf that silently drops out of it because
+        // its fetch failed is worse than one the export just tells you about.
+        var failedShelves: [String] = []
         for shelf in shelves {
             exportProgress = "Reading \(shelf.label)…"
-            if let entries = try? await ShelfLibrary.load(shelf) {
+            do {
+                let entries = try await ShelfLibrary.load(shelf)
                 ShelfCache.write(entries, for: shelf)
                 rows.append((shelf, entries))
+            } catch {
+                failedShelves.append(shelf.label)
             }
         }
         exportProgress = "Writing file…"
@@ -786,14 +990,18 @@ final class LibraryModel: ObservableObject {
         }
         let text = lines.joined(separator: "\n") + "\n"
 
-        report(CSVExport.save(text, suggestedName: "goodreads-library.csv"),
-              successText: { "Exported \(total) books to \($0)." })
+        report(CSVExport.save(text, suggestedName: "goodreads-library.csv"), successText: { name in
+            failedShelves.isEmpty
+                ? "Exported \(total) books to \(name)."
+                : "Exported \(total) books to \(name). Couldn’t read: \(failedShelves.joined(separator: ", "))."
+        }, hadPartialFailure: !failedShelves.isEmpty)
     }
 
-    private func report(_ result: CSVExport.SaveResult, successText: (String) -> String) {
+    private func report(_ result: CSVExport.SaveResult, successText: (String) -> String,
+                        hadPartialFailure: Bool = false) {
         switch result {
         case .saved(let name):
-            status = Status(text: successText(name), isError: false)
+            status = Status(text: successText(name), isError: hadPartialFailure)
         case .cancelled:
             break
         case .failed(let message):
@@ -805,4 +1013,10 @@ final class LibraryModel: ObservableObject {
         guard let url = URL(string: "https://www.goodreads.com/book/show/\(bookID)") else { return }
         NSWorkspace.shared.open(url)
     }
+}
+
+/// What Home's suggestions cache stores between launches.
+struct SavedSuggestions: Codable {
+    let items: [Suggestion]
+    let basis: [ShelfEntry]
 }

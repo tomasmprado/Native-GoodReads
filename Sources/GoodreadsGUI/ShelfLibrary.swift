@@ -5,6 +5,10 @@ struct ShelfEntryEnvelope: Decodable {
     let rows: [ShelfLibrary.Row]?
     let pages: Int?
     let error: String?
+    /// Only ever set on page 1: whether the page looked like a shelf page at
+    /// all. Lets an empty `rows` be told apart from a page whose markup this
+    /// app no longer recognises — see `pageLooksBroken` in `WebScripts`.
+    let broken: Bool?
 }
 
 /// Reads shelves by fetching `/review/list` from inside a loaded page and
@@ -25,6 +29,8 @@ enum ShelfLibrary {
         let rating: Int?
         let dateRead: String?
         let dateAdded: String?
+        let isbn: String?
+        let isbn13: String?
     }
 
     /// Fetches page 1 to learn the page count, then the rest `pageConcurrency`
@@ -57,6 +63,12 @@ enum ShelfLibrary {
         let firstEnvelope = try decodeEnvelope(firstRaw)
         guard firstEnvelope.ok, var rows = firstEnvelope.rows else {
             throw AppError(firstEnvelope.error ?? "The shelf page couldn't be read.")
+        }
+        // Zero rows is either a genuinely empty shelf or a page whose markup
+        // no longer matches what this app scrapes for it — the second one
+        // deserves a very different message than "Nothing here yet."
+        if rows.isEmpty, firstEnvelope.broken == true {
+            throw AppError("Goodreads' page layout may have changed — this didn't look like a normal shelf page. Open Browser to check.")
         }
         let pages = firstEnvelope.pages ?? 1
         await onPage(rows.count, pages)
@@ -107,6 +119,9 @@ enum ShelfLibrary {
                 coverURLString: row.cover,
                 rating: row.rating,
                 dateRead: row.dateRead?.isEmpty == false ? row.dateRead : nil,
+                dateAdded: row.dateAdded?.isEmpty == false ? row.dateAdded : nil,
+                isbn: row.isbn?.isEmpty == false ? row.isbn : nil,
+                isbn13: row.isbn13?.isEmpty == false ? row.isbn13 : nil,
                 progress: nil
             )
         }
@@ -187,7 +202,7 @@ enum ShelfLibrary {
         const doc = await getDoc(shelfURL(shelf, 1, perPage, null, userId));
         const rows = parseRows(doc);
         const pages = Math.min(lastPageNumber(doc), maxPages);
-        return JSON.stringify({ ok: true, rows: rows, pages: pages });
+        return JSON.stringify({ ok: true, rows: rows, pages: pages, broken: rows.length === 0 ? pageLooksBroken(doc) : false });
     } catch (e) {
         return JSON.stringify({ ok: false, error: 'shelf: ' + (e && e.message ? e.message : String(e)) });
     }

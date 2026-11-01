@@ -19,14 +19,37 @@ enum GoogleBooksClient {
         let subjectTerm = subject.trimmingCharacters(in: .whitespacesAndNewlines)
         if !subjectTerm.isEmpty { q += " subject:\"\(subjectTerm)\"" }
 
-        return try await volumes(q: q, langRestrict: language.restrictCode, sortNewest: sortNewest)
+        do {
+            return try await volumes(q: q, langRestrict: language.restrictCode, sortNewest: sortNewest)
+        } catch let httpError as GoogleBooksHTTPError {
+            // The free shared tier (no personal key) stays exhausted — it's
+            // shared across every caller of this app on the internet — which
+            // turns search, the one thing the app is built around, into a
+            // quota error on a fresh install. Fall back to Goodreads' own
+            // unauthenticated autocomplete instead of surfacing that,
+            // trading away language/publisher/ISBN data for a search that
+            // actually returns something. Only when there's no key to blame
+            // instead: a *personal* key failing this way (wrong API enabled,
+            // bad key) is a real problem that a silent fallback would hide,
+            // and this only catches an HTTP-status failure in the first
+            // place — a genuinely malformed response still surfaces directly.
+            guard httpError.apiKeyWasEmpty else { throw httpError }
+            return try await SearchClient.search(trimmed)
+        }
     }
 
     /// Used by suggestions to find more books by an author already read.
     static func searchByAuthor(_ author: String) async throws -> [Book] {
         let trimmed = author.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
-        return try await volumes(q: "inauthor:\"\(trimmed)\"")
+        let key = trimmed.lowercased()
+        if let hit = await DataCache.shared.read([Book].self, "author-search", key,
+                                                 ttl: DataCache.TTL.authorSearch), !hit.isStale {
+            return hit.value
+        }
+        let books = try await volumes(q: "inauthor:\"\(trimmed)\"")
+        await DataCache.shared.write(books, "author-search", key)
+        return books
     }
 
     private static func volumes(q: String,
@@ -62,7 +85,7 @@ enum GoogleBooksClient {
             let message = (try? JSONDecoder().decode(ErrorEnvelope.self, from: data))?.error.message
                 ?? "Google Books returned HTTP \(http.statusCode)."
             let hint = apiKey.isEmpty ? " Add a free API key in Settings — the shared tier is out of quota." : ""
-            throw AppError(message + hint)
+            throw GoogleBooksHTTPError(message: message + hint, apiKeyWasEmpty: apiKey.isEmpty)
         }
 
         let decoded: VolumesResponse
@@ -101,6 +124,17 @@ enum GoogleBooksClient {
             pageCount: info.pageCount,
             publishedDate: info.publishedDate
         )
+    }
+
+    /// An HTTP-level failure from the `volumes` endpoint specifically —
+    /// distinguished from a decode failure (a real bug worth seeing
+    /// directly) so `search(_:)` can tell "Google rejected this request"
+    /// apart from "the response didn't parse", and only treat the former as
+    /// grounds for falling back to `SearchClient`.
+    private struct GoogleBooksHTTPError: LocalizedError {
+        let message: String
+        let apiKeyWasEmpty: Bool
+        var errorDescription: String? { message }
     }
 
     private struct ErrorEnvelope: Decodable {

@@ -8,6 +8,16 @@ let package = Package(
         .executableTarget(
             name: "GoodreadsGUI",
             path: "Sources/GoodreadsGUI"
+        ),
+        // Tests `@testable import` the executable target directly — SwiftPM
+        // has supported that since Swift 5.5 as long as the target uses the
+        // `@main` attribute (this one does, in App.swift) rather than a
+        // `main.swift`. No separate library target needed just to make the
+        // pure logic reachable from a test.
+        .testTarget(
+            name: "GoodreadsGUITests",
+            dependencies: ["GoodreadsGUI"],
+            path: "Tests/GoodreadsGUITests"
         )
     ]
 )

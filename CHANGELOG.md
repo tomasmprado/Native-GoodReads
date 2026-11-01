@@ -1,0 +1,140 @@
+# Changelog
+
+Everything below is relative to `v1.0.0`, current as of `main`. That range
+(https://github.com/tomasmprado/Native-GoodReads/compare/v1.0.0...main)
+landed on GitHub as one squashed "Initial commit" — 32 files changed,
++5226/−470 — so this groups the actual changes by what they do instead of
+repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
+added in that diff, meaning `v1.0.0` predates all of it.
+
+## [Unreleased] — 2026-09-10
+
+### Added
+
+- **Friends** — recent activity from your friends, grouped by friend; open
+  a profile for their stats and more updates. A **Collections** view lets
+  you browse a friend's own shelves (Want to Read / Currently Reading /
+  Read) with their star ratings, the same way you'd browse your own.
+- **Suggestions / Read Next** — recommendations built from the authors
+  you've read most recently, excluding anything already shelved. One pick
+  surfaces on Home; the full list lives in its own Suggestions pane.
+- **Search via Google Books** — replaces reliance on Goodreads' bare
+  `auto_complete` endpoint, adding language, publisher, and ISBN data
+  Goodreads' own autocomplete doesn't report. Needs a free Google Books API
+  key, kept in the Keychain. Without one, search now falls back to that same
+  `auto_complete` endpoint instead of surfacing a quota error, so it still
+  works — with less metadata — out of the box.
+- **Book Details** — a sheet with a book's description, Google Books
+  metadata, and a handful of Goodreads' own community reviews (scraped from
+  the book page's embedded JSON). Post your own rating and review from
+  here, or jump to the author's Goodreads page.
+- **⌥Space quick panel** — a floating, global-hotkey search panel for
+  shelving a book without opening the main window, plus a matching menu
+  bar item. ↑/↓ now moves a highlight through the results and ⌘1/⌘2/⌘3
+  shelves the highlighted book, so the mouse is optional.
+- **Diagnostics log** — a copyable, in-app record of every request the app
+  has made, for troubleshooting the scraping-based parts of the app.
+- **CSV export** — per-shelf, or the whole library in one file, now
+  including ISBN, ISBN13 (Excel-safe-wrapped, matching Goodreads' own
+  export) and Date Added columns; a failed shelf during **Export
+  Library…** is reported instead of just silently missing from the file.
+- **In-app sign-in and Browser** — sign in on Goodreads' own page inside
+  the app (the app never sees your password), and a debug view of whatever
+  page it's currently driving.
+- **Undo** for Remove and Move — a status-bar button for a few seconds
+  after either action, running the same shelf calls in reverse.
+- **Shelf sorting** — by title, author, rating, date read or date added, or
+  Goodreads' own order, from a menu next to the filter box.
+- **`selectors.json`** — user-editable extra CSS selectors for the four
+  spots in "The fragile part" most likely to drift, so a `.dmg` install
+  (not just a from-source build) can be patched when Goodreads' markup
+  moves.
+- **Update check** — a quiet, best-effort look at GitHub Releases on
+  launch; a status-bar button appears when a newer build is out.
+- Unit tests (`swift test`) for the app's pure logic — date parsing, CSV
+  escaping, shelf sorting, the author-matching heuristic, version
+  comparison — plus a CI workflow that builds and runs them on every push.
+
+### Fixed
+
+- Several scripts that read the live page could race a concurrent
+  navigation on the shared web view — reading or writing against whichever
+  page happened to load in between. Every such script now holds the
+  navigation lock across its whole load-then-read sequence, not just the
+  load.
+- A navigation WebKit never calls back for (e.g. one that turns into a
+  file download) could hang the app indefinitely with that lock held.
+  Loads now carry their own timeout independent of WebKit's delegate
+  callbacks.
+- Rating a book silently moved it to the Read shelf — it now only posts
+  the rating, matching what the UI already claimed it did.
+- Removing a book from a shelf wasn't verified the way adding one is; it
+  now is.
+- Exporting the whole library could emit a stray blank line for each empty
+  shelf, and could corrupt on any review text containing a newline. The
+  combined CSV is now built from data rows directly instead of splitting
+  each shelf's own header off after the fact.
+- Shelf-load progress only ever updated once, at the very end, regardless
+  of how many pages a shelf had. Pagination is now driven from Swift so
+  progress updates as each page lands.
+- The Friends pane's scrapers had drifted out from under Goodreads'
+  current markup: the home-feed activity table no longer matches anything
+  (confirmed against a real signed-in fetch), and the friend-list page's
+  selectors were scoped under a wrapper class that no longer exists. The
+  pane now falls back to each friend's own current-status line when the
+  activity feed comes back empty.
+- The ISBN-to-Goodreads-id lookup cache was a plain mutable dictionary
+  shared across concurrent lookups — now an actor.
+- `Package.swift` targeted `.macOS(.v11)` while the app (and its own build
+  script) required macOS 13 APIs, so `swift build` didn't actually build.
+- Smaller fixes: a failed hotkey registration could leave a duplicate
+  event handler behind; the quick panel's search field didn't refocus on
+  reopen; the book-detail and author-page sheets could fail to open one
+  from inside the other; signing out didn't clear the persistent cookie
+  store.
+- A shelf write whose own read-back verification came back inconclusive
+  (rather than confirming presence or absence) was silently treated as a
+  clean success, with nothing logged — the fail-safe policy was right, but
+  the caller had no way to know its "success" was actually unverified. Both
+  add and remove now say so.
+- An empty shelf and a shelf page Goodreads restructured out from under this
+  app's selectors both showed "Nothing here yet." — now told apart by a
+  generic (non-Goodreads-specific) check for whether the response even
+  looked like a normal page.
+- `WebSession.exclusive`'s lock briefly went back to "unlocked" between
+  releasing it and waking the next queued caller — a window a brand-new
+  caller could win, cutting in line ahead of whoever had actually been
+  waiting. Ownership now hands off directly, with the lock never appearing
+  free while anyone is still queued.
+- A session that lapsed server-side went unnoticed until the next explicit
+  sign-in check — shelf loads and writes now recognise Goodreads' own
+  "signed out" redirect immediately and re-prompt instead of waiting.
+- `exportEverything()` dropped any shelf that failed to load with no
+  indication in the final "Exported N books" message.
+
+### Changed
+
+- The app icon now follows macOS's Dock icon proportions (content scaled
+  to about 80% of the canvas, matching Safari/Finder) instead of filling
+  the canvas edge-to-edge.
+- Local builds are universal (arm64 + x86_64); a separate script builds a
+  `.dmg` installer with its own background art and volume icon.
+- The Google Books API key moved from a plaintext `UserDefaults` plist to
+  the Keychain.
+- The published repo is source-only (`Sources/`, `Package.swift`,
+  `README.md`). Build scripts, icon assets, and release artifacts stay
+  local; releases are distributed as prebuilt `.dmg`s on GitHub Releases
+  instead.
+- The shelf cache refreshes itself in the background after six hours
+  instead of only ever refreshing when something else happened to trigger
+  it.
+- Every fetch-based read retries once or twice, with backoff, on a 429 or
+  503 rather than treating a rate limit the same as any other failure.
+- `AsyncImage`'s cache capacity is bumped well past its 512KB/10MB default
+  at launch, so covers and avatars stop re-fetching on every pane switch or
+  scroll-recycle.
+- Eight sibling `.sheet` modifiers on `ContentView` — worked around with a
+  dismiss-then-sleep-350ms-then-present hand-off, since SwiftUI won't stack
+  a second sheet from the same modifier chain — are now one `.sheet(item:)`
+  driven by a single `PresentedSheet` enum. Opening one sheet from inside
+  another is instant.

@@ -54,6 +54,17 @@ enum ShelfCache {
         try? FileManager.default.removeItem(at: folder)
     }
 
+    /// How long a cached copy is trusted without a background refresh — the
+    /// cache used to never expire on its own (README's own "Limits worth
+    /// knowing"), which meant Home could show a Currently Reading carousel or
+    /// suggestion set from days ago until something else happened to trigger
+    /// a reload.
+    static let defaultTTL: TimeInterval = 6 * 3600
+
+    static func isStale(_ date: Date, ttl: TimeInterval = defaultTTL) -> Bool {
+        Date().timeIntervalSince(date) > ttl
+    }
+
     static func age(_ date: Date) -> String {
         let seconds = Int(Date().timeIntervalSince(date))
         switch seconds {

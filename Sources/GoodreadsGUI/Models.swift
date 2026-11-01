@@ -1,6 +1,6 @@
 import Foundation
 
-struct Book: Identifiable, Hashable {
+struct Book: Identifiable, Hashable, Codable {
     /// ISBN-13, falling back to ISBN-10, falling back to a "gb:" prefixed
     /// Google volume id for the rare item with neither. Not a Goodreads id.
     let id: String
@@ -85,6 +85,9 @@ struct ShelfEntry: Identifiable, Hashable, Codable {
     let coverURLString: String?
     var rating: Int?        // 0-5
     var dateRead: String?
+    var dateAdded: String?
+    var isbn: String?
+    var isbn13: String?
     var progress: Int?      // percent, currently-reading only
 
     var coverURL: URL? { coverURLString.flatMap(URL.init(string:)) }
@@ -99,5 +102,42 @@ struct ShelfEntry: Identifiable, Hashable, Codable {
         guard !term.isEmpty else { return true }
         let needle = term.lowercased()
         return title.lowercased().contains(needle) || author.lowercased().contains(needle)
+    }
+}
+
+/// How a shelf pane orders its rows. `.asShelved` is whatever order
+/// `/review/list` handed back (Goodreads' own default sort for the shelf).
+enum ShelfSortOrder: String, CaseIterable, Identifiable {
+    case asShelved  = "As Shelved"
+    case title      = "Title"
+    case author     = "Author"
+    case rating     = "Rating"
+    case dateRead   = "Date Read"
+    case dateAdded  = "Date Added"
+
+    var id: String { rawValue }
+
+    func sorted(_ entries: [ShelfEntry]) -> [ShelfEntry] {
+        switch self {
+        case .asShelved:
+            return entries
+        case .title:
+            return entries.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        case .author:
+            return entries.sorted { $0.author.localizedCaseInsensitiveCompare($1.author) == .orderedAscending }
+        case .rating:
+            // Unrated books sink to the bottom rather than being treated as 0★.
+            return entries.sorted { ($0.rating ?? -1) > ($1.rating ?? -1) }
+        case .dateRead:
+            return entries.sorted {
+                (Suggestions.parseDate($0.dateRead ?? "") ?? .distantPast)
+                    > (Suggestions.parseDate($1.dateRead ?? "") ?? .distantPast)
+            }
+        case .dateAdded:
+            return entries.sorted {
+                (Suggestions.parseDate($0.dateAdded ?? "") ?? .distantPast)
+                    > (Suggestions.parseDate($1.dateAdded ?? "") ?? .distantPast)
+            }
+        }
     }
 }

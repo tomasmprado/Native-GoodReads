@@ -15,6 +15,20 @@ struct GoodreadsGUIApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @Environment(\.openWindow) private var openWindow
 
+    init() {
+        // `AsyncImage` (used everywhere here for covers and avatars) goes
+        // through `URLSession.shared`, which respects `URLCache.shared` —
+        // but that default cache is only 512KB memory / 10MB disk, tiny
+        // next to a library's worth of cover art. A shelf pane recycling
+        // rows while scrolling, or just switching panes and back, was
+        // re-fetching covers that had already loaded once this session.
+        URLCache.shared = URLCache(
+            memoryCapacity: 64 * 1024 * 1024,
+            diskCapacity: 256 * 1024 * 1024,
+            directory: nil
+        )
+    }
+
     var body: some Scene {
         WindowGroup("Goodreads", id: "main") {
             ContentView()

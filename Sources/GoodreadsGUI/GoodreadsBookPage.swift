@@ -10,13 +10,13 @@ import Foundation
 /// between them. `ROOT_QUERY.getReviews` holds the ordered review list.
 enum GoodreadsBookPage {
 
-    struct Detail {
+    struct Detail: Codable {
         let language: String?
         let authorURL: URL?
         let reviews: [Review]
     }
 
-    struct Review: Identifiable {
+    struct Review: Identifiable, Codable {
         let id: String
         let reviewerName: String
         let reviewerAvatarURL: URL?

@@ -1,6 +1,15 @@
-.DS_Store
 .build/
-*.xcuserstate
-DerivedData/
 Goodreads.app/
 *.dmg
+.DS_Store
+
+# Local build/release tooling and icon assets — kept on disk for building
+# releases locally, but not published to GitHub. The repo is source-only:
+# Sources/, Package.swift, README.md. See build-dmg.sh's own comments for
+# what it needs to run.
+build-app.sh
+build-dmg.sh
+make-icns.sh
+AppIcon.icns
+icon-source.png
+assets/

@@ -63,13 +63,16 @@ struct StarPicker: View {
     var body: some View {
         HStack(spacing: 4) {
             ForEach(1...5, id: \.self) { star in
-                Image(systemName: star <= rating ? "star.fill" : "star")
-                    .font(.system(size: size))
-                    .foregroundStyle(star <= rating ? Color.yellow : Color.secondary.opacity(0.5))
-                    .onTapGesture {
-                        // Tapping the current rating clears it.
-                        rating = (rating == star) ? 0 : star
-                    }
+                Button {
+                    // Tapping the current rating clears it.
+                    rating = (rating == star) ? 0 : star
+                } label: {
+                    Image(systemName: star <= rating ? "star.fill" : "star")
+                        .font(.system(size: size))
+                        .foregroundStyle(star <= rating ? Color.yellow : Color.secondary.opacity(0.5))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(star) star\(star == 1 ? "" : "s")")
             }
 
             if rating > 0 {
