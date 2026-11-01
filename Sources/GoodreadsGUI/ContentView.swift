@@ -1367,10 +1367,7 @@ private struct StatusBar: View {
             }
 
             if let update = model.updateAvailable {
-                Button("Update to \(update.version)…") { NSWorkspace.shared.open(update.url) }
-                    .controlSize(.small)
-                    .glassButton()
-                    .help("A newer build is on GitHub Releases.")
+                UpdateButton(update: update)
             }
 
             if session.isBusy { ProgressView().controlSize(.small) }
@@ -1397,5 +1394,41 @@ private struct StatusBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+}
+
+/// "Update to x.y.z" in the status bar — installs and relaunches when it
+/// can, otherwise opens the release page.
+private struct UpdateButton: View {
+    let update: UpdateChecker.Available
+    @ObservedObject private var updater = SelfUpdater.shared
+
+    var body: some View {
+        switch updater.state {
+        case .downloading:
+            Label("Downloading \(update.version)…", systemImage: "arrow.down.circle")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+        case .installing:
+            Label("Installing…", systemImage: "gearshape")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+        case .idle, .failed:
+            Button(updater.canInstallInPlace && update.dmgURL != nil
+                   ? "Update to \(update.version)"
+                   : "Update to \(update.version)…") {
+                updater.install(update)
+            }
+            .controlSize(.small)
+            .glassProminentButton()
+            .help(helpText)
+        }
+    }
+
+    private var helpText: String {
+        if case .failed(let message) = updater.state {
+            return "The last attempt failed: \(message). Click to try again."
+        }
+        return updater.canInstallInPlace
+            ? "Downloads the new version, replaces this one and reopens the app."
+            : "Opens the release page. Move the app to Applications to update it in one click."
     }
 }
