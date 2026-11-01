@@ -144,6 +144,8 @@ actor DataCache {
         static let friendShelf: TimeInterval = 6 * 3600
         static let authorSearch: TimeInterval = 3 * 24 * 3600
         static let suggestions: TimeInterval = 6 * 3600
+        static let series: TimeInterval = 3 * 24 * 3600
+        static let newReleases: TimeInterval = 24 * 3600
     }
 }
 
