@@ -988,34 +988,57 @@ private struct SearchPane: View {
             SearchFilterRow(model: model)
                 .glassGroup()
 
-            if model.results.isEmpty {
+            if model.results.isEmpty && model.libraryMatches.isEmpty {
                 EmptyPane(symbol: "books.vertical",
                           text: String(localized: "Search for a book, then add it to a shelf."))
             } else {
-                List(model.results) { book in
-                    BookRow(
-                        title: book.title,
-                        author: book.author,
-                        cover: book.coverURL,
-                        detail: detailLine(book.rating.map { "★ \($0)" }, publisher: book.publisher),
-                        stars: nil,
-                        isBusy: model.busyBookID == book.id
-                    ) {
-                        ForEach(model.shelves) { shelf in
-                            Button {
-                                Task { await model.shelve(book, to: shelf) }
-                            } label: {
-                                Label(shelf.title, systemImage: shelf.symbol)
+                List {
+                    if !model.libraryMatches.isEmpty {
+                        Section("On Your Shelves") {
+                            ForEach(model.libraryMatches) { match in
+                                BookRow(
+                                    title: match.entry.title,
+                                    author: match.entry.author,
+                                    cover: match.entry.coverURL,
+                                    detail: match.shelves.joined(separator: " · "),
+                                    stars: match.entry.rating,
+                                    isBusy: model.busyBookID == match.entry.bookID
+                                ) {
+                                    Button("View Details…") { model.showBookDetail(match.entry.asBook) }
+                                    Button("Open on Goodreads") { model.openOnGoodreads(bookID: match.entry.bookID) }
+                                }
                             }
                         }
-                        Divider()
-                        Button {
-                            model.activeSheet = .finishBook(book)
-                        } label: {
-                            Label("Mark Read & Rate…", systemImage: "star")
+                    }
+                    if !model.results.isEmpty {
+                        Section("Goodreads") {
+                            ForEach(model.results) { book in
+                                BookRow(
+                                    title: book.title,
+                                    author: book.author,
+                                    cover: book.coverURL,
+                                    detail: detailLine(book.rating.map { "★ \($0)" }, publisher: book.publisher),
+                                    stars: nil,
+                                    isBusy: model.busyBookID == book.id
+                                ) {
+                                    ForEach(model.shelves) { shelf in
+                                        Button {
+                                            Task { await model.shelve(book, to: shelf) }
+                                        } label: {
+                                            Label(shelf.title, systemImage: shelf.symbol)
+                                        }
+                                    }
+                                    Divider()
+                                    Button {
+                                        model.activeSheet = .finishBook(book)
+                                    } label: {
+                                        Label("Mark Read & Rate…", systemImage: "star")
+                                    }
+                                    Button("View Details…") { model.showBookDetail(book) }
+                                    Button("Open on Goodreads") { Task { await model.openOnGoodreads(book) } }
+                                }
+                            }
                         }
-                        Button("View Details…") { model.showBookDetail(book) }
-                        Button("Open on Goodreads") { Task { await model.openOnGoodreads(book) } }
                     }
                 }
                 .listStyle(.inset)
@@ -1030,6 +1053,7 @@ private struct SearchPane: View {
 
 private struct ShelfPane: View {
     @ObservedObject var model: LibraryModel
+    @AppStorage("shelfLayout") private var layout = "list"
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1038,24 +1062,50 @@ private struct ShelfPane: View {
                     symbol: model.isLoadingShelf ? "hourglass" : "tray",
                     text: emptyText
                 )
+            } else if layout == "grid" {
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 112), spacing: 16, alignment: .top)],
+                              spacing: 18) {
+                        ForEach(model.visibleEntries) { entry in
+                            CoverTile(entry: entry, isBusy: model.busyBookID == entry.bookID) {
+                                model.showBookDetail(entry.asBook)
+                            }
+                            .contextMenu { rowActions(entry) }
+                            .draggable(LibraryModel.dragPrefix + entry.id) {
+                                Label(entry.title, systemImage: "book.closed").padding(6)
+                            }
+                        }
+                    }
+                    .padding(16)
+                }
             } else {
-                List(model.visibleEntries) { entry in
-                    BookRow(
-                        title: entry.title,
-                        author: entry.author,
-                        cover: entry.coverURL,
-                        detail: detailLine(entry),
-                        stars: entry.rating,
-                        isBusy: model.busyBookID == entry.bookID
-                    ) {
-                        rowActions(entry)
+                List {
+                    ForEach(model.visibleEntries) { entry in
+                        BookRow(
+                            title: entry.title,
+                            author: entry.author,
+                            cover: entry.coverURL,
+                            detail: detailLine(entry),
+                            stars: entry.rating,
+                            isBusy: model.busyBookID == entry.bookID
+                        ) {
+                            rowActions(entry)
+                        }
+                        .draggable(LibraryModel.dragPrefix + entry.id) {
+                            Label(entry.title, systemImage: "book.closed")
+                                .padding(6)
+                        }
                     }
-                    .draggable(LibraryModel.dragPrefix + entry.id) {
-                        Label(entry.title, systemImage: "book.closed")
-                            .padding(6)
-                    }
+                    .onMove(perform: model.canReorder ? { model.moveInQueue(from: $0, to: $1) } : nil)
                 }
                 .listStyle(.inset)
+            }
+            if model.sortOrder == .myOrder && !model.canReorder && !model.visibleEntries.isEmpty {
+                Divider()
+                Text("Clear the filters to drag books into your order.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .padding(6)
             }
         }
         .navigationTitle(model.currentShelf?.title ?? "")
@@ -1077,9 +1127,20 @@ private struct ShelfPane: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            Picker("Layout", selection: $layout) {
+                Label("List", systemImage: "list.bullet").tag("list")
+                Label("Covers", systemImage: "square.grid.2x2").tag("grid")
+            }
+            .pickerStyle(.segmented)
+            .help("Show as a list or as covers")
+
+            filterMenu
+
             Menu {
                 Picker("Sort", selection: $model.sortOrder) {
-                    ForEach(ShelfSortOrder.allCases) { order in
+                    ForEach(ShelfSortOrder.allCases.filter {
+                        $0 != .myOrder || model.currentShelf?.name == Shelf.wantToRead.name
+                    }) { order in
                         Text(order.title).tag(order)
                     }
                 }
@@ -1104,8 +1165,43 @@ private struct ShelfPane: View {
         }
     }
 
+    private var filterMenu: some View {
+        Menu {
+            Picker("Rating", selection: $model.filters.rating) {
+                ForEach(ShelfFilters.Rating.allCases) { Text($0.title).tag($0) }
+            }
+            let years = ShelfFilters.years(in: model.shelfEntries)
+            if !years.isEmpty {
+                Picker("Year Read", selection: $model.filters.year) {
+                    Text("Any year").tag(Int?.none)
+                    ForEach(years, id: \.self) { Text(String($0)).tag(Int?.some($0)) }
+                }
+            }
+            let genres = ShelfFilters.genres(in: model.shelfEntries, extras: model.bookExtras)
+            if !genres.isEmpty {
+                Picker("Genre", selection: $model.filters.genre) {
+                    Text("Any genre").tag(String?.none)
+                    ForEach(genres, id: \.self) { Text($0).tag(String?.some($0)) }
+                }
+            } else {
+                Text("Genres appear once books have been opened, or after Stats → Fill In.")
+            }
+            if model.filters.isActive {
+                Divider()
+                Button("Clear Filters") { model.filters = ShelfFilters() }
+            }
+        } label: {
+            Label("Filter shelf",
+                  systemImage: model.filters.isActive
+                    ? "line.3.horizontal.decrease.circle.fill"
+                    : "line.3.horizontal.decrease.circle")
+        }
+        .help("Filter by rating, year read or genre")
+    }
+
     private var emptyText: String {
         if model.isLoadingShelf { return model.loadProgress ?? String(localized: "Loading your shelf…") }
+        if model.filters.isActive { return String(localized: "No books match these filters.") }
         if !model.filter.isEmpty { return String(localized: "Nothing matches “\(model.filter)”.") }
         return String(localized: "Nothing here yet.")
     }
@@ -1174,6 +1270,59 @@ private struct ShelfPane: View {
 private func detailLine(_ existing: String?, publisher: String?) -> String? {
     let parts = [existing, publisher.map { "· \($0)" }].compactMap { $0 }
     return parts.isEmpty ? nil : parts.joined(separator: " ")
+}
+
+/// A shelf book in the Covers layout.
+private struct CoverTile: View {
+    let entry: ShelfEntry
+    let isBusy: Bool
+    let open: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Button(action: open) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color.secondary.opacity(0.15))
+                        .overlay(Image(systemName: "book.closed").foregroundStyle(.tertiary))
+                    if let cover = entry.coverURL {
+                        CachedAsyncImage(url: cover) { phase in
+                            if case .success(let image) = phase {
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            }
+                        }
+                    }
+                    if isBusy {
+                        ProgressView().controlSize(.small)
+                    }
+                }
+                .frame(width: 112, height: 166)
+                .clipShape(RoundedRectangle(cornerRadius: 5))
+                .shadow(color: .black.opacity(0.15), radius: 3, y: 2)
+            }
+            .buttonStyle(.plain)
+
+            Text(entry.title)
+                .font(.system(size: 11, weight: .medium))
+                .lineLimit(2)
+            Text(entry.author)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            if let stars = entry.rating, stars > 0 {
+                Text(String(repeating: "★", count: stars))
+                    .font(.system(size: 9))
+                    .foregroundStyle(.yellow)
+                    .accessibilityLabel(Text("\(stars) stars"))
+            } else if let progress = entry.progress {
+                ProgressView(value: Double(progress), total: 100)
+                    .accessibilityLabel(Text("Progress"))
+            }
+        }
+        .frame(width: 112, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
 }
 
 // MARK: - Currently Reading carousel

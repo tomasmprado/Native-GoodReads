@@ -18,6 +18,12 @@ final class LibraryModel: ObservableObject {
     @Published var shelfEntries: [ShelfEntry] = []
     @Published var filter = ""
     @Published var sortOrder: ShelfSortOrder = .asShelved
+    @Published var filters = ShelfFilters()
+    /// Page counts and genres, for the genre filter.
+    @Published var bookExtras: [String: BookExtras] = [:]
+    /// Search: books already on your shelves that match the query.
+    @Published var libraryMatches: [LibraryMatch] = []
+    private var libraryCache: (loaded: Date, shelves: [(shelf: Shelf, entries: [ShelfEntry])])?
     @Published var isLoadingShelf = false
     @Published var loadProgress: String?
     @Published var cacheNote: String?
@@ -160,7 +166,25 @@ final class LibraryModel: ObservableObject {
     }
 
     var visibleEntries: [ShelfEntry] {
-        sortOrder.sorted(shelfEntries.filter { $0.matches(filter) })
+        sortOrder.sorted(shelfEntries.filter { $0.matches(filter) && filters.matches($0, extras: bookExtras) })
+    }
+
+    /// Rows can be dragged into your own order only when all of them show.
+    var canReorder: Bool {
+        sortOrder == .myOrder && filter.isEmpty && !filters.isActive
+    }
+
+    func moveInQueue(from source: IndexSet, to destination: Int) {
+        objectWillChange.send()
+        QueueOrder.save(QueueOrder.moved(visibleEntries, from: source, to: destination))
+    }
+
+    /// Every cached shelf, re-read from disk at most once a minute.
+    private func library() -> [(shelf: Shelf, entries: [ShelfEntry])] {
+        if let cache = libraryCache, Date().timeIntervalSince(cache.loaded) < 60 { return cache.shelves }
+        let shelves = shelves.compactMap { shelf in ShelfCache.read(shelf).map { (shelf, $0.entries) } }
+        libraryCache = (Date(), shelves)
+        return shelves
     }
 
     // MARK: - Search
@@ -172,6 +196,7 @@ final class LibraryModel: ObservableObject {
         status = nil
 
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        libraryMatches = LibraryMatch.find(term, in: library())
 
         // One character matches half of Goodreads — not worth the round trip.
         guard term.count >= 2 else {
@@ -372,6 +397,8 @@ final class LibraryModel: ObservableObject {
 
         status = nil
         filter = ""
+        filters = ShelfFilters()
+        if sortOrder == .myOrder, currentShelf?.name != Shelf.wantToRead.name { sortOrder = .asShelved }
         shelfEntries = []
         cacheNote = nil
 
@@ -769,6 +796,7 @@ final class LibraryModel: ObservableObject {
     }
 
     private func performLoad(of shelf: Shelf) async {
+        bookExtras = await BookExtras.all()
         if let cached = ShelfCache.read(shelf) {
             shelfEntries = cached.entries
             cacheNote = String(localized: "cached \(ShelfCache.age(cached.fetched))")
