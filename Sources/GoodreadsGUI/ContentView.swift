@@ -23,6 +23,7 @@ struct ContentView: View {
             .frame(minWidth: 480, minHeight: 420)
         }
         .task {
+            model.refreshUpNext()
             await model.checkSession()
             if model.isHome {
                 await model.buildSuggestions()
@@ -196,6 +197,24 @@ private struct HomePane: View {
                 Text("Nothing on Currently Reading yet.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
+            }
+
+            if let next = model.upNext {
+                Button {
+                    model.showBookDetail(next.asBook)
+                } label: {
+                    Label {
+                        Text("Up next: \(next.title)")
+                    } icon: {
+                        Image(systemName: "arrow.right.circle")
+                    }
+                    .font(.system(size: 12))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .glassCapsule(interactive: true)
+                }
+                .buttonStyle(.plain)
+                .help("The first book in your Want to Read order")
             }
 
             Spacer()

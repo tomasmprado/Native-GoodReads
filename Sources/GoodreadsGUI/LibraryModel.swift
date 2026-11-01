@@ -23,6 +23,8 @@ final class LibraryModel: ObservableObject {
     @Published var bookExtras: [String: BookExtras] = [:]
     /// Search: books already on your shelves that match the query.
     @Published var libraryMatches: [LibraryMatch] = []
+    /// The top of your own Want to Read order, for Home.
+    @Published var upNext: ShelfEntry?
     private var libraryCache: (loaded: Date, shelves: [(shelf: Shelf, entries: [ShelfEntry])])?
     @Published var isLoadingShelf = false
     @Published var loadProgress: String?
@@ -177,6 +179,11 @@ final class LibraryModel: ObservableObject {
     func moveInQueue(from source: IndexSet, to destination: Int) {
         objectWillChange.send()
         QueueOrder.save(QueueOrder.moved(visibleEntries, from: source, to: destination))
+        refreshUpNext()
+    }
+
+    func refreshUpNext() {
+        upNext = QueueOrder.upNext(in: ShelfCache.read(.wantToRead)?.entries ?? [])
     }
 
     /// Every cached shelf, re-read from disk at most once a minute.
@@ -406,6 +413,7 @@ final class LibraryModel: ObservableObject {
         case .shelf:
             await loadShelf()
         case .home:
+            refreshUpNext()
             await buildSuggestions()
             await loadCurrentlyReading()
         case .suggestions:
