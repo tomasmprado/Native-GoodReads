@@ -616,6 +616,7 @@ private struct FriendActivityRow: View {
                         Text(String(repeating: "★", count: rating))
                             .font(.system(size: 10))
                             .foregroundStyle(.yellow)
+                            .accessibilityLabel(Text("\(rating) stars"))
                     }
                 }
 
@@ -1236,6 +1237,7 @@ private struct CurrentlyReadingCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 5))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(Text("Details for \(entry.title)"))
 
             Text(entry.title)
                 .font(.system(size: 12, weight: .medium))
@@ -1245,9 +1247,11 @@ private struct CurrentlyReadingCard: View {
             if let progress = entry.progress {
                 ProgressView(value: Double(progress), total: 100)
                     .frame(width: 96)
+                    .accessibilityLabel(Text("Progress"))
                 Text("\(progress)%")
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             } else {
                 Text("No progress yet")
                     .font(.system(size: 10))
@@ -1320,6 +1324,7 @@ private struct BookRow<Actions: View>: View {
                         Text(String(repeating: "★", count: stars))
                             .font(.system(size: 11))
                             .foregroundStyle(.yellow)
+                            .accessibilityLabel(Text("\(stars) stars"))
                     }
                     if let detail, !detail.isEmpty {
                         Text(detail)
@@ -1328,6 +1333,7 @@ private struct BookRow<Actions: View>: View {
                     }
                 }
             }
+            .accessibilityElement(children: .combine)
 
             Spacer(minLength: 8)
 
@@ -1370,6 +1376,7 @@ private struct BookRow<Actions: View>: View {
                     .font(.system(size: 14))
                     .foregroundStyle(.tertiary)
             )
+            .accessibilityHidden(true)
     }
 }
 

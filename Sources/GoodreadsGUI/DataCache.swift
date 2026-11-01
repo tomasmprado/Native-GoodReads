@@ -229,6 +229,7 @@ struct CachedAsyncImage<Content: View>: View {
 
     var body: some View {
         content(phase)
+            .accessibilityHidden(true)
             .task(id: url) {
                 guard let url else { phase = .empty; return }
                 if let image = ImageMemoryCache.shared.cached(url) {

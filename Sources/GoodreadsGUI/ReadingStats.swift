@@ -248,6 +248,7 @@ struct StatsPane: View {
             }
             .chartXScale(domain: (0..<12).map(monthName))
             .frame(height: 90)
+            .accessibilityLabel(Text("Books read each month this year"))
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -281,6 +282,7 @@ struct StatsPane: View {
                     }
             }
             .frame(height: 150)
+            .accessibilityLabel(Text("Books per year"))
         }
         .padding(16)
         .glassCard(cornerRadius: 18)
@@ -356,6 +358,7 @@ struct StatsPane: View {
             }
             .chartYScale(domain: (1...5).reversed().map { String(repeating: "★", count: $0) })
             .frame(height: 130)
+            .accessibilityLabel(Text("How many books got each rating"))
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -377,6 +380,7 @@ struct StatsPane: View {
                     Spacer()
                     Text("\(item.count)").font(.system(size: 12)).foregroundStyle(.secondary)
                 }
+                .accessibilityElement(children: .combine)
             }
         }
         .padding(16)
