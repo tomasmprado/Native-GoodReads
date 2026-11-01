@@ -1,6 +1,27 @@
 import Charts
 import SwiftUI
 
+/// Page count and genres for one book, from its Goodreads page. Shelf rows
+/// carry neither, so these are collected as book pages get loaded (opening
+/// a book, or "Fill In" on the Stats pane) and kept for good.
+struct BookExtras: Codable, Sendable, Equatable {
+    let pages: Int?
+    let genres: [String]
+
+    private static let namespace = "book-extras"
+    private static let key = "all"
+
+    static func all() async -> [String: BookExtras] {
+        await DataCache.shared.read([String: BookExtras].self, namespace, key, ttl: .infinity)?.value ?? [:]
+    }
+
+    static func save(_ extras: BookExtras, for bookID: String) async {
+        await DataCache.shared.modify([String: BookExtras].self, namespace, key, default: [:]) {
+            $0[bookID] = extras
+        }
+    }
+}
+
 /// Numbers about your reading, worked out from the Read shelf. Goodreads
 /// shelf rows carry no page counts, so everything here is book-based.
 struct ReadingStats: Equatable {
@@ -16,6 +37,12 @@ struct ReadingStats: Equatable {
         var id: String { author }
     }
 
+    struct GenreCount: Identifiable, Equatable {
+        let genre: String
+        let count: Int
+        var id: String { genre }
+    }
+
     let totalRead: Int
     let readThisYear: Int
     /// Oldest year first, with empty years in between filled in as 0.
@@ -28,28 +55,61 @@ struct ReadingStats: Equatable {
     /// Books read in each month of this year, index 0 = January.
     let thisYearByMonth: [Int]
 
+    /// Pages read per year, over the same years as `byYear` — counting only
+    /// books whose page count is known.
+    var pagesByYear: [YearCount] = []
+    var pagesThisYear = 0
+    /// Most common genres across the books read (each book's top three).
+    var topGenres: [GenreCount] = []
+    /// How many of the books read have a known page count / genre list.
+    var booksWithExtras = 0
+
+    /// Too broad to say anything — nearly every book is one or the other.
+    static let ignoredGenres: Set<String> = ["Fiction", "Nonfiction", "Audiobook"]
+
     static func compute(from entries: [ShelfEntry],
+                        extras: [String: BookExtras] = [:],
                         now: Date = Date(),
                         calendar: Calendar = .current) -> ReadingStats {
         let thisYear = calendar.component(.year, from: now)
         var perYear: [Int: Int] = [:]
+        var pagesPerYear: [Int: Int] = [:]
         var perMonth = Array(repeating: 0, count: 12)
 
         for entry in entries {
             guard let date = Suggestions.parseDate(entry.dateRead ?? "") else { continue }
             let year = calendar.component(.year, from: date)
             perYear[year, default: 0] += 1
+            if let pages = extras[entry.bookID]?.pages {
+                pagesPerYear[year, default: 0] += pages
+            }
             if year == thisYear {
                 perMonth[calendar.component(.month, from: date) - 1] += 1
             }
         }
 
         var byYear: [YearCount] = []
+        var pagesByYear: [YearCount] = []
         if let first = perYear.keys.min() {
             for year in first...max(thisYear, perYear.keys.max() ?? thisYear) {
                 byYear.append(YearCount(year: year, count: perYear[year] ?? 0))
+                pagesByYear.append(YearCount(year: year, count: pagesPerYear[year] ?? 0))
             }
         }
+
+        var perGenre: [String: Int] = [:]
+        var withExtras = 0
+        for entry in entries {
+            guard let found = extras[entry.bookID] else { continue }
+            withExtras += 1
+            for genre in found.genres.filter({ !ignoredGenres.contains($0) }).prefix(3) {
+                perGenre[genre, default: 0] += 1
+            }
+        }
+        let topGenres = perGenre
+            .sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
+            .prefix(6)
+            .map { GenreCount(genre: $0.key, count: $0.value) }
 
         let ratings = entries.compactMap(\.rating).filter { (1...5).contains($0) }
         var ratingCounts = Array(repeating: 0, count: 5)
@@ -72,7 +132,11 @@ struct ReadingStats: Equatable {
             averageRating: ratings.isEmpty ? nil : Double(ratings.reduce(0, +)) / Double(ratings.count),
             ratingCounts: ratingCounts,
             topAuthors: Array(topAuthors),
-            thisYearByMonth: perMonth
+            thisYearByMonth: perMonth,
+            pagesByYear: pagesByYear,
+            pagesThisYear: pagesPerYear[thisYear] ?? 0,
+            topGenres: Array(topGenres),
+            booksWithExtras: withExtras
         )
     }
 
@@ -104,6 +168,10 @@ struct StatsPane: View {
                                        symbol: "star")
                             numberCard(String(localized: "Currently reading"), "\(model.currentlyReading.count)",
                                        symbol: "book")
+                            if stats.pagesThisYear > 0 {
+                                numberCard(String(localized: "Pages this year"),
+                                           stats.pagesThisYear.formatted(), symbol: "doc.plaintext")
+                            }
                         }
                         .glassGroup(spacing: 16)
                         perYearCard(stats)
@@ -111,6 +179,7 @@ struct StatsPane: View {
                             ratingsCard(stats)
                             authorsCard(stats)
                         }
+                        extrasCard(stats)
                     }
                     .padding(16)
                 }
@@ -214,6 +283,66 @@ struct StatsPane: View {
             .frame(height: 150)
         }
         .padding(16)
+        .glassCard(cornerRadius: 18)
+    }
+
+    /// Pages per year and top genres — only as complete as the book pages
+    /// fetched so far, which this card also offers to fill in.
+    private func extrasCard(_ stats: ReadingStats) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Pages and Genres")
+                    .font(.system(size: 13, weight: .semibold))
+                Spacer()
+                if model.isFillingExtras {
+                    ProgressView(value: Double(model.extrasDone), total: Double(max(model.extrasTotal, 1)))
+                        .frame(width: 120)
+                    Text("\(model.extrasDone) of \(model.extrasTotal)")
+                        .font(.system(size: 11).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                } else if stats.booksWithExtras < stats.totalRead {
+                    Button("Fill In") { Task { await model.fillBookExtras() } }
+                        .controlSize(.small)
+                        .glassButton()
+                        .help("Fetch the Goodreads page of each read book for its page count and genres")
+                }
+            }
+            Text("Known for \(stats.booksWithExtras) of \(stats.totalRead) books read.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+            if stats.booksWithExtras > 0 {
+                HStack(alignment: .top, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Pages per Year")
+                            .font(.system(size: 12, weight: .medium))
+                        Chart(stats.pagesByYear.suffix(10)) { item in
+                            BarMark(x: .value("Year", String(item.year)), y: .value("Pages", item.count))
+                                .foregroundStyle(Color.teal.gradient)
+                        }
+                        .frame(height: 130)
+                        .accessibilityLabel(Text("Pages per year"))
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Top Genres")
+                            .font(.system(size: 12, weight: .medium))
+                        ForEach(stats.topGenres) { item in
+                            HStack {
+                                Text(item.genre).font(.system(size: 12)).lineLimit(1)
+                                Spacer()
+                                Text("\(item.count)").font(.system(size: 12)).foregroundStyle(.secondary)
+                            }
+                            .accessibilityElement(children: .combine)
+                        }
+                    }
+                    .frame(width: 200)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard(cornerRadius: 18)
     }
 
