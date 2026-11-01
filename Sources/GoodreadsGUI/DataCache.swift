@@ -8,7 +8,7 @@ import SwiftUI
 actor DataCache {
     static let shared = DataCache()
 
-    struct Hit<T> {
+    struct Hit<T: Sendable>: Sendable {
         let value: T
         let fetched: Date
         let isStale: Bool
@@ -117,7 +117,7 @@ actor DataCache {
         _ namespace: String, _ key: String,
         ttl: TimeInterval, force: Bool = false,
         accept: @escaping @Sendable (T) -> Bool = { _ in true },
-        fetch: @escaping () async throws -> T,
+        fetch: @escaping @Sendable () async throws -> T,
         show: @MainActor @escaping (T, _ fromCache: Bool) -> Void
     ) async throws {
         let hit = await shared.read(T.self, namespace, key, ttl: ttl)
