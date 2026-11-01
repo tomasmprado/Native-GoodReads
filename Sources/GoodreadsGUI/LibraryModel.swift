@@ -18,6 +18,14 @@ final class LibraryModel: ObservableObject {
     @Published var shelfEntries: [ShelfEntry] = []
     @Published var filter = ""
     @Published var sortOrder: ShelfSortOrder = .asShelved
+    @Published var filters = ShelfFilters()
+    /// Page counts and genres, for the genre filter.
+    @Published var bookExtras: [String: BookExtras] = [:]
+    /// Search: books already on your shelves that match the query.
+    @Published var libraryMatches: [LibraryMatch] = []
+    /// The top of your own Want to Read order, for Home.
+    @Published var upNext: ShelfEntry?
+    private var libraryCache: (loaded: Date, shelves: [(shelf: Shelf, entries: [ShelfEntry])])?
     @Published var isLoadingShelf = false
     @Published var loadProgress: String?
     @Published var cacheNote: String?
@@ -85,8 +93,12 @@ final class LibraryModel: ObservableObject {
     @Published var suggestionBasis: [ShelfEntry] = []
     @Published var isBuildingSuggestions = false
     @Published var suggestionNote: String?
+    /// Recent books by authors you've read more than once.
+    @Published var newReleases: [Suggestion] = []
 
     @Published var currentlyReading: [ShelfEntry] = []
+    /// Progress over time per book id, for finish-date estimates.
+    @Published var progressHistory: [String: [ProgressPoint]] = [:]
     @Published var isLoadingCurrentlyReading = false
 
     // Search filters
@@ -123,6 +135,11 @@ final class LibraryModel: ObservableObject {
     @Published var isLoadingFriendShelf = false
     @Published var friendShelfError: String?
 
+    // Comparing your Read shelf with the open friend's
+    @Published var tasteComparison: TasteComparison?
+    @Published var isComparingTastes = false
+    @Published var tasteError: String?
+
     // Author page
     @Published var authorPageURL: URL?
     @Published var authorPage: GoodreadsAuthorPage.Detail?
@@ -158,7 +175,30 @@ final class LibraryModel: ObservableObject {
     }
 
     var visibleEntries: [ShelfEntry] {
-        sortOrder.sorted(shelfEntries.filter { $0.matches(filter) })
+        sortOrder.sorted(shelfEntries.filter { $0.matches(filter) && filters.matches($0, extras: bookExtras) })
+    }
+
+    /// Rows can be dragged into your own order only when all of them show.
+    var canReorder: Bool {
+        sortOrder == .myOrder && filter.isEmpty && !filters.isActive
+    }
+
+    func moveInQueue(from source: IndexSet, to destination: Int) {
+        objectWillChange.send()
+        QueueOrder.save(QueueOrder.moved(visibleEntries, from: source, to: destination))
+        refreshUpNext()
+    }
+
+    func refreshUpNext() {
+        upNext = QueueOrder.upNext(in: ShelfCache.read(.wantToRead)?.entries ?? [])
+    }
+
+    /// Every cached shelf, re-read from disk at most once a minute.
+    private func library() -> [(shelf: Shelf, entries: [ShelfEntry])] {
+        if let cache = libraryCache, Date().timeIntervalSince(cache.loaded) < 60 { return cache.shelves }
+        let shelves = shelves.compactMap { shelf in ShelfCache.read(shelf).map { (shelf, $0.entries) } }
+        libraryCache = (Date(), shelves)
+        return shelves
     }
 
     // MARK: - Search
@@ -170,6 +210,7 @@ final class LibraryModel: ObservableObject {
         status = nil
 
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        libraryMatches = LibraryMatch.find(term, in: library())
 
         // One character matches half of Goodreads — not worth the round trip.
         guard term.count >= 2 else {
@@ -292,6 +333,32 @@ final class LibraryModel: ObservableObject {
         if friends.isEmpty {
             await loadFriends()
         }
+        await loadNewReleases()
+    }
+
+    /// "New from your authors" — refreshed at most daily, since each author
+    /// costs a Google Books query.
+    func loadNewReleases(force: Bool = false) async {
+        if let hit = await DataCache.shared.read([Suggestion].self, "new-releases", "all",
+                                                 ttl: DataCache.TTL.newReleases) {
+            newReleases = hit.value
+            if !hit.isStale && !force { return }
+        }
+        guard let read = ShelfCache.read(.read)?.entries, !read.isEmpty else { return }
+
+        var shelved = Set<String>()
+        for shelf in shelves {
+            for entry in ShelfCache.read(shelf)?.entries ?? [] {
+                shelved.insert(Suggestions.normalizedTitle(entry.title))
+            }
+        }
+        let prefs = Preferences.shared
+        let found = await NewReleases.find(read: read, shelvedTitles: shelved,
+                                           language: prefs.bookLanguage,
+                                           includeUnknown: prefs.includeUnknownLanguage)
+        newReleases = found
+        await DataCache.shared.write(found, "new-releases", "all")
+        if prefs.notifyNewReleases { await NewReleases.notify(about: found) }
     }
 
     /// Puts every shelf already on disk into Spotlight — for books cached
@@ -370,6 +437,8 @@ final class LibraryModel: ObservableObject {
 
         status = nil
         filter = ""
+        filters = ShelfFilters()
+        if sortOrder == .myOrder, currentShelf?.name != Shelf.wantToRead.name { sortOrder = .asShelved }
         shelfEntries = []
         cacheNote = nil
 
@@ -377,10 +446,12 @@ final class LibraryModel: ObservableObject {
         case .shelf:
             await loadShelf()
         case .home:
+            refreshUpNext()
             await buildSuggestions()
             await loadCurrentlyReading()
         case .suggestions:
             await buildSuggestions()
+            await loadNewReleases()
         case .friends:
             await loadFriends()
         case .stats:
@@ -499,6 +570,7 @@ final class LibraryModel: ObservableObject {
     /// (if any) happens to be selected.
     func loadCurrentlyReading(force: Bool = false) async {
         guard !isLoadingCurrentlyReading else { return }
+        if progressHistory.isEmpty { progressHistory = await ReadingPace.all() }
         let cached = ShelfCache.read(.currentlyReading)
         if let cached { currentlyReading = cached.entries }
         let stale = cached.map { ShelfCache.isStale($0.fetched) } ?? true
@@ -512,6 +584,7 @@ final class LibraryModel: ObservableObject {
             currentlyReading = fetched
             ShelfCache.write(fetched, for: .currentlyReading)
             setCount(fetched.count, for: .currentlyReading)
+            ReadingReminder.reschedule()
         }
     }
 
@@ -523,8 +596,21 @@ final class LibraryModel: ObservableObject {
         for i in entries.indices {
             if let percent = progress[entries[i].bookID] {
                 entries[i].progress = percent
+                await ReadingPace.record(percent, for: entries[i].bookID)
             }
         }
+        progressHistory = await ReadingPace.all()
+    }
+
+    /// "14 Nov" — for finish estimates.
+    nonisolated static func shortDate(_ date: Date) -> String {
+        date.formatted(.dateTime.day().month(.abbreviated))
+    }
+
+    /// Roughly when `entry` will be finished at the pace so far.
+    func finishEstimate(for entry: ShelfEntry) -> Date? {
+        guard let history = progressHistory[entry.bookID] else { return nil }
+        return ReadingPace.estimate(history, startedOn: entry.dateAdded.flatMap(Suggestions.parseDate))
     }
 
     // MARK: - Stats
@@ -647,6 +733,8 @@ final class LibraryModel: ObservableObject {
         friendProfileError = nil
         isLoadingFriendProfile = true
         closeFriendShelf()
+        tasteComparison = nil
+        tasteError = nil
         defer { isLoadingFriendProfile = false }
 
         do {
@@ -688,6 +776,39 @@ final class LibraryModel: ObservableObject {
             }
         } catch {
             friendShelfError = error.localizedDescription
+        }
+    }
+
+    /// Loads the friend's Read shelf (cached like any friend shelf) and
+    /// your own, and compares them.
+    func compareTastes() async {
+        guard let userID = GoodreadsFriends.userID(from: friendProfileURL), !isComparingTastes else { return }
+        closeFriendShelf()
+        isComparingTastes = true
+        tasteError = nil
+        defer { isComparingTastes = false }
+
+        do {
+            let key = "\(userID)/\(Shelf.read.name)"
+            let theirs: [ShelfEntry]
+            if let hit = await DataCache.shared.read([ShelfEntry].self, "friend-shelf", key,
+                                                     ttl: DataCache.TTL.friendShelf), !hit.isStale {
+                theirs = hit.value
+            } else {
+                theirs = try await ShelfLibrary.load(.read, ofUser: userID)
+                await DataCache.shared.write(theirs, "friend-shelf", key)
+            }
+
+            var mine = ShelfCache.read(.read)?.entries ?? []
+            if mine.isEmpty {
+                mine = try await ShelfLibrary.load(.read)
+                ShelfCache.write(mine, for: .read)
+            }
+            let others = shelves.filter { $0.name != Shelf.read.name }
+                .flatMap { ShelfCache.read($0)?.entries ?? [] }
+            tasteComparison = TasteComparison.compute(myRead: mine, myOtherShelves: others, theirRead: theirs)
+        } catch {
+            tasteError = error.localizedDescription
         }
     }
 
@@ -752,6 +873,7 @@ final class LibraryModel: ObservableObject {
     }
 
     private func performLoad(of shelf: Shelf) async {
+        bookExtras = await BookExtras.all()
         if let cached = ShelfCache.read(shelf) {
             shelfEntries = cached.entries
             cacheNote = String(localized: "cached \(ShelfCache.age(cached.fetched))")
@@ -962,6 +1084,10 @@ final class LibraryModel: ObservableObject {
             // Prefer what Goodreads actually recorded — a page-mode entry
             // has no percent from the caller otherwise.
             let resolvedPercent = result.percent ?? percent
+            if let resolvedPercent {
+                await ReadingPace.record(resolvedPercent, for: entry.bookID)
+                progressHistory = await ReadingPace.all()
+            }
 
             if let index = shelfEntries.firstIndex(where: { $0.id == entry.id }) {
                 shelfEntries[index].progress = resolvedPercent
@@ -969,6 +1095,7 @@ final class LibraryModel: ObservableObject {
             if let index = currentlyReading.firstIndex(where: { $0.id == entry.id }) {
                 currentlyReading[index].progress = resolvedPercent
                 ShelfCache.write(currentlyReading, for: .currentlyReading)
+                ReadingReminder.reschedule()
             }
             let amount = resolvedPercent.map { "\($0)%" } ?? page.map { String(localized: "page \($0)") } ?? String(localized: "progress")
             status = Status(text: String(localized: "Updated “\(entry.title)” to \(amount)."), isError: false)
@@ -1082,9 +1209,12 @@ final class LibraryModel: ObservableObject {
             return
         }
 
-        let text = CSVExport.csv(for: shelfEntries, shelf: shelf)
-        report(CSVExport.save(text, suggestedName: "goodreads-\(shelf.name).csv"),
-              successText: { String(localized: "Exported \(self.shelfEntries.count) books to \($0).") })
+        let entries = shelfEntries
+        Task {
+            let text = CSVExport.csv(for: entries, shelf: shelf, notes: await BookNotes.all())
+            report(CSVExport.save(text, suggestedName: "goodreads-\(shelf.name).csv"),
+                   successText: { String(localized: "Exported \(entries.count) books to \($0).") })
+        }
     }
 
     /// Fetches every shelf and writes one combined file. This is the backup.
@@ -1117,9 +1247,10 @@ final class LibraryModel: ObservableObject {
         // and silently left a blank line for an empty shelf.
         var lines = [CSVExport.header]
         var total = 0
+        let notes = await BookNotes.all()
         for (shelf, entries) in rows {
             total += entries.count
-            lines.append(contentsOf: CSVExport.dataLines(for: entries, shelf: shelf))
+            lines.append(contentsOf: CSVExport.dataLines(for: entries, shelf: shelf, notes: notes))
         }
         let text = lines.joined(separator: "\n") + "\n"
 

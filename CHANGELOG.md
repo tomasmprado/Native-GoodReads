@@ -7,6 +7,34 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
+## [2.4.0] — 2026-11-01
+
+### Added
+
+- **Series** — Book Details shows a book's series and position, and the next
+  volume with a one-click Want to Read.
+- **Finish estimates** — when you'll finish each book at your pace so far, on
+  Home and in the menu bar. The app now keeps a history of your progress
+  updates.
+- **Reading reminder** — a daily notification at a time you choose; type a
+  percentage into it to update your progress.
+- **Covers layout** for shelves, next to the list.
+- **Shelf filters** — by your rating, year read and genre.
+- **Search across your shelves** — matches from your own library come first.
+- **My Order** for Want to Read: drag books into the order you'll read them;
+  Home shows what's up next.
+- **Notes and quotes** per book, kept on this Mac, kept through Clear Cache,
+  and exported to CSV (two new columns).
+- **Compare tastes** with a friend: books in common, how often you agree,
+  where you disagree, and their favourites you haven't read.
+- **New from your authors** in Suggestions, with optional notifications.
+- **Your Year in Books** — a summary card for any year, saved as an image.
+
+### Changed
+
+- Clear Cache (and signing out) no longer touches your notes or progress
+  history.
+
 ## [2.3.0] — 2026-11-01
 
 ### Added

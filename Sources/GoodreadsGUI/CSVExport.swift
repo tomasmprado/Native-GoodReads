@@ -5,17 +5,19 @@ import UniformTypeIdentifiers
 /// A local copy of your library is cheap insurance.
 enum CSVExport {
 
-    static let header = "Book Id,Title,Author,ISBN,ISBN13,My Rating,Date Read,Date Added,Shelf"
+    static let header = "Book Id,Title,Author,ISBN,ISBN13,My Rating,Date Read,Date Added,Shelf,My Notes,My Quotes"
 
-    static func csv(for entries: [ShelfEntry], shelf: Shelf) -> String {
-        ([header] + dataLines(for: entries, shelf: shelf)).joined(separator: "\n") + "\n"
+    static func csv(for entries: [ShelfEntry], shelf: Shelf, notes: [String: BookNote] = [:]) -> String {
+        ([header] + dataLines(for: entries, shelf: shelf, notes: notes)).joined(separator: "\n") + "\n"
     }
 
     /// Just the data rows, no header — for combining several shelves into one
     /// file without re-splitting already-escaped CSV text (a quoted field
     /// can itself contain a newline, which a naive `split("\n")` would break).
-    static func dataLines(for entries: [ShelfEntry], shelf: Shelf) -> [String] {
+    static func dataLines(for entries: [ShelfEntry], shelf: Shelf,
+                          notes: [String: BookNote] = [:]) -> [String] {
         entries.map { entry in
+            let note = notes[entry.bookID]
             let fields = [
                 entry.bookID,
                 entry.title,
@@ -25,7 +27,10 @@ enum CSVExport {
                 entry.rating.map(String.init) ?? "",
                 entry.dateRead ?? "",
                 entry.dateAdded ?? "",
-                shelf.name
+                shelf.name,
+                note?.text ?? "",
+                // One cell; " | " rarely appears inside a quote.
+                (note?.quotes ?? []).joined(separator: " | ")
             ]
             return fields.map(escape).joined(separator: ",")
         }

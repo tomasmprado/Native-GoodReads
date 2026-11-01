@@ -15,6 +15,12 @@ struct BookDetailView: View {
     @State private var reviews: [GoodreadsBookPage.Review] = []
     @State private var pageLanguage: String?
     @State private var authorURL: URL?
+    @State private var series: GoodreadsSeries.Ref?
+    @State private var note = BookNote()
+    @State private var noteLoaded = false
+    @State private var savedNote = BookNote()
+    @State private var newQuote = ""
+    @State private var nextInSeries: GoodreadsSeries.Volume?
     @State private var isLoadingReviews = false
     @State private var reviewsError: String?
 
@@ -53,6 +59,8 @@ struct BookDetailView: View {
                     Divider()
                     composeBox
                     Divider()
+                    notesSection
+                    Divider()
                     reviewsSection
                 }
                 .padding(16)
@@ -61,6 +69,27 @@ struct BookDetailView: View {
         .frame(width: 700, height: 680)
         .background(alignment: .top) { CoverBackdrop(url: book.coverURL) }
         .task { await resolveAndLoad() }
+        .task(id: series) { await loadNextInSeries() }
+        .task(id: noteKey) {
+            guard let noteKey else { return }
+            note = await BookNotes.note(for: noteKey)
+            savedNote = note
+            noteLoaded = true
+        }
+        .task(id: note) {
+            // Saved a moment after typing stops.
+            guard noteLoaded, let noteKey, note != savedNote else { return }
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            await BookNotes.save(note, for: noteKey)
+            savedNote = note
+        }
+        .onDisappear {
+            // Closing within the pause above would otherwise drop the last edit.
+            guard noteLoaded, let noteKey, note != savedNote else { return }
+            let pending = note
+            Task { await BookNotes.save(pending, for: noteKey) }
+        }
     }
 
     // MARK: - Header
@@ -96,6 +125,10 @@ struct BookDetailView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                if let series {
+                    seriesLine(series)
+                }
+
                 HStack(spacing: 6) {
                     ForEach(metaBits, id: \.self) { bit in
                         Text(bit)
@@ -129,11 +162,50 @@ struct BookDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private func seriesLine(_ series: GoodreadsSeries.Ref) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button {
+                NSWorkspace.shared.open(series.url)
+            } label: {
+                Label(series.position.map { String(localized: "\(series.title) #\($0)") } ?? series.title,
+                      systemImage: "books.vertical")
+            }
+            .buttonStyle(.link)
+            .font(.system(size: 12))
+            .help("Open the series on Goodreads")
+
+            if let next = nextInSeries {
+                HStack(spacing: 6) {
+                    Text("Next: \(next.title)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Button("Details") { model.showBookDetail(next.asBook) }
+                        .controlSize(.small)
+                        .glassButton()
+                    Button("Want to Read") {
+                        Task { await model.shelve(next.asBook, to: .wantToRead) }
+                    }
+                    .controlSize(.small)
+                    .glassButton()
+                    .disabled(model.busyBookID != nil)
+                }
+            }
+        }
+    }
+
+    private func loadNextInSeries() async {
+        guard let series else { nextInSeries = nil; return }
+        let volumes = (try? await GoodreadsSeries.volumes(at: series.url)) ?? []
+        nextInSeries = GoodreadsSeries.next(after: series.position, in: volumes)
+    }
+
     private var metaBits: [String] {
         var bits: [String] = []
         if let publisher = book.publisher { bits.append(publisher) }
         if let date = book.publishedDate { bits.append(date) }
-        if let pages = book.pageCount { bits.append("\(pages) pages") }
+        if let pages = book.pageCount { bits.append(String(localized: "\(pages) pages")) }
         if let language = pageLanguage ?? book.language { bits.append(language.capitalized) }
         return bits
     }
@@ -142,6 +214,72 @@ struct BookDetailView: View {
         RoundedRectangle(cornerRadius: 5)
             .fill(Color.secondary.opacity(0.15))
             .overlay(Image(systemName: "book.closed").font(.system(size: 24)).foregroundStyle(.tertiary))
+    }
+
+    // MARK: - Notes
+
+    /// Notes are filed under the Goodreads id, so they're found again from
+    /// any shelf or search result. A book Goodreads doesn't know falls back
+    /// to its own id.
+    private var noteKey: String? {
+        goodreadsID ?? (resolveError != nil ? book.id : nil)
+    }
+
+    private var notesSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("My Notes")
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Text("Only on this Mac")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+            }
+
+            TextEditor(text: $note.text)
+                .font(.system(size: 12))
+                .frame(minHeight: 54, maxHeight: 110)
+                .scrollContentBackground(.hidden)
+                .padding(4)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.08)))
+                .disabled(!noteLoaded)
+                .accessibilityLabel(Text("My notes"))
+
+            ForEach(Array(note.quotes.enumerated()), id: \.offset) { index, quote in
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "quote.opening")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    Text(quote)
+                        .font(.system(size: 12).italic())
+                        .textSelection(.enabled)
+                    Spacer()
+                    Button {
+                        note.quotes.remove(at: index)
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(Text("Remove quote"))
+                }
+            }
+
+            HStack {
+                TextField("Add a quote", text: $newQuote, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...3)
+                    .onSubmit(addQuote)
+                Button("Add", action: addQuote)
+                    .disabled(newQuote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !noteLoaded)
+            }
+        }
+    }
+
+    private func addQuote() {
+        let quote = newQuote.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !quote.isEmpty, noteLoaded else { return }
+        note.quotes.append(quote)
+        newQuote = ""
     }
 
     // MARK: - Compose
@@ -234,6 +372,7 @@ struct BookDetailView: View {
                 reviews = detail.reviews
                 pageLanguage = detail.language
                 authorURL = detail.authorURL
+                series = detail.series
                 reviewsError = nil
             }
         } catch {

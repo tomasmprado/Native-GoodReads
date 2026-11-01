@@ -17,6 +17,7 @@ enum GoodreadsBookPage {
         // Absent from book pages cached before 2.3.
         var pageCount: Int? = nil
         var genres: [String]? = nil
+        var series: GoodreadsSeries.Ref? = nil
     }
 
     struct Review: Identifiable, Codable {
@@ -61,7 +62,8 @@ enum GoodreadsBookPage {
             authorURL: authorURL(from: html),
             reviews: reviews(from: apollo),
             pageCount: (details?["numPages"] as? Int).flatMap { $0 > 0 ? $0 : nil },
-            genres: genres(of: book)
+            genres: genres(of: book),
+            series: series(of: book, in: apollo)
         )
     }
 
@@ -108,6 +110,19 @@ enum GoodreadsBookPage {
             return entry
         }
         return nil
+    }
+
+    /// The book's main series — `bookSeries` lists it first — with its
+    /// position, resolved through the Apollo reference to the series' title
+    /// and page.
+    private static func series(of book: [String: Any]?, in apollo: [String: Any]) -> GoodreadsSeries.Ref? {
+        guard let first = (book?["bookSeries"] as? [[String: Any]])?.first,
+              let ref = (first["series"] as? [String: Any])?["__ref"] as? String,
+              let entry = apollo[ref] as? [String: Any],
+              let title = entry["title"] as? String, !title.isEmpty,
+              let url = (entry["webUrl"] as? String).flatMap(URL.init(string:)) else { return nil }
+        let position = (first["userPosition"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        return GoodreadsSeries.Ref(title: title, position: position, url: url)
     }
 
     /// Goodreads' genre list for the book, most-voted first.

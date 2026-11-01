@@ -124,6 +124,8 @@ enum ShelfSortOrder: String, CaseIterable, Identifiable {
     case rating     = "Rating"
     case dateRead   = "Date Read"
     case dateAdded  = "Date Added"
+    /// Want to Read only: your own order, see `QueueOrder`.
+    case myOrder    = "My Order"
 
     var id: String { rawValue }
 
@@ -135,6 +137,7 @@ enum ShelfSortOrder: String, CaseIterable, Identifiable {
         case .rating:    return String(localized: "Rating")
         case .dateRead:  return String(localized: "Date Read")
         case .dateAdded: return String(localized: "Date Added")
+        case .myOrder:   return String(localized: "My Order")
         }
     }
 
@@ -142,6 +145,8 @@ enum ShelfSortOrder: String, CaseIterable, Identifiable {
         switch self {
         case .asShelved:
             return entries
+        case .myOrder:
+            return QueueOrder.apply(entries)
         case .title:
             return entries.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
         case .author:

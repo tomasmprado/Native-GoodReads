@@ -86,6 +86,27 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(notifyFriendActivity, forKey: Keys.notify) }
     }
 
+    /// A notification when an author you've read twice or more has a new book.
+    @Published var notifyNewReleases: Bool {
+        didSet { defaults.set(notifyNewReleases, forKey: Keys.newReleases) }
+    }
+
+    /// A daily notification asking how far you've got.
+    @Published var readingReminder: Bool {
+        didSet {
+            defaults.set(readingReminder, forKey: Keys.reminder)
+            ReadingReminder.reschedule()
+        }
+    }
+
+    /// When the reminder fires, in minutes after midnight.
+    @Published var reminderMinutes: Int {
+        didSet {
+            defaults.set(reminderMinutes, forKey: Keys.reminderTime)
+            ReadingReminder.reschedule()
+        }
+    }
+
     /// Books on your shelves show up in Spotlight.
     @Published var indexInSpotlight: Bool {
         didSet {
@@ -107,6 +128,9 @@ final class Preferences: ObservableObject {
         static let apiKey   = "googleBooksAPIKey"
         static let goal     = "yearlyGoal"
         static let notify   = "notifyFriendActivity"
+        static let reminder = "readingReminder"
+        static let newReleases = "notifyNewReleases"
+        static let reminderTime = "reminderMinutes"
     }
 
     private init() {
@@ -122,6 +146,9 @@ final class Preferences: ObservableObject {
         yearlyGoal = goal > 0 ? goal : 24
         notifyFriendActivity = defaults.bool(forKey: Keys.notify)
         indexInSpotlight = SpotlightIndex.isEnabled
+        readingReminder = defaults.bool(forKey: Keys.reminder)
+        notifyNewReleases = defaults.bool(forKey: Keys.newReleases)
+        reminderMinutes = defaults.object(forKey: Keys.reminderTime) as? Int ?? 21 * 60
 
         // One-time migration: earlier builds kept the key in UserDefaults.
         if let legacy = defaults.string(forKey: Keys.apiKey), !legacy.isEmpty,
@@ -185,10 +212,44 @@ struct PreferencesView: View {
                         Task { prefs.notifyFriendActivity = await FriendNotifier.requestPermission() }
                     }
                 ))
+                Toggle("Notify me about new books from authors I read", isOn: Binding(
+                    get: { prefs.notifyNewReleases },
+                    set: { wanted in
+                        guard wanted else { prefs.notifyNewReleases = false; return }
+                        Task { prefs.notifyNewReleases = await FriendNotifier.requestPermission() }
+                    }
+                ))
             } header: {
-                Text("Friends")
+                Text("Notifications")
             } footer: {
-                Text("Checked every hour while the app is open (it keeps running in the menu bar).")
+                Text("Friends are checked every hour and new books once a day, while the app is open (it keeps running in the menu bar).")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Toggle("Remind me to read every day", isOn: Binding(
+                    get: { prefs.readingReminder },
+                    set: { wanted in
+                        guard wanted else { prefs.readingReminder = false; return }
+                        Task { prefs.readingReminder = await FriendNotifier.requestPermission() }
+                    }
+                ))
+                DatePicker("At", selection: Binding(
+                    get: {
+                        Calendar.current.date(bySettingHour: prefs.reminderMinutes / 60,
+                                              minute: prefs.reminderMinutes % 60, second: 0, of: Date()) ?? Date()
+                    },
+                    set: { date in
+                        let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+                        prefs.reminderMinutes = (parts.hour ?? 21) * 60 + (parts.minute ?? 0)
+                    }
+                ), displayedComponents: .hourAndMinute)
+                .disabled(!prefs.readingReminder)
+            } header: {
+                Text("Reading Reminder")
+            } footer: {
+                Text("About the first book on Currently Reading. Type a percentage right in the notification to update it.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -226,7 +287,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 660)
+        .frame(width: 460, height: 720)
         .task { cacheBytes = DataCache.diskUsage() }
     }
 }
