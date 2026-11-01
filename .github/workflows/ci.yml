@@ -25,3 +25,21 @@ jobs:
 
       - name: Test
         run: swift test
+
+  ios-build:
+    # The iOS app compiles the same sources through GoodreadsiOS.xcodeproj
+    # (generated from project.yml by XcodeGen). Built for the simulator, so
+    # no signing is needed.
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Build for iOS Simulator
+        run: >
+          xcodebuild -project GoodreadsiOS.xcodeproj -scheme GoodreadsiOS
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO build
