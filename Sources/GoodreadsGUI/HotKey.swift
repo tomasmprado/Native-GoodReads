@@ -6,6 +6,7 @@ import Carbon.HIToolbox
 /// Carbon's RegisterEventHotKey is ancient but it's the only route that doesn't
 /// require Accessibility permission — NSEvent's global monitor does, and asking
 /// for that on first launch to run a search box is a bad trade.
+@MainActor
 final class HotKeyCenter {
 
     static let shared = HotKeyCenter()
@@ -50,7 +51,7 @@ final class HotKeyCenter {
             { _, _, userData -> OSStatus in
                 guard let userData else { return noErr }
                 let center = Unmanaged<HotKeyCenter>.fromOpaque(userData).takeUnretainedValue()
-                DispatchQueue.main.async { center.onTrigger?() }
+                DispatchQueue.main.async { MainActor.assumeIsolated { center.onTrigger?() } }
                 return noErr
             },
             1,

@@ -26,7 +26,7 @@ actor DataCache {
         return base.appendingPathComponent("GoodreadsGUI/cache", isDirectory: true)
     }()
 
-    func read<T: Codable>(_ type: T.Type, _ namespace: String, _ key: String,
+    func read<T: Codable & Sendable>(_ type: T.Type, _ namespace: String, _ key: String,
                           ttl: TimeInterval) -> Hit<T>? {
         let id = "\(namespace)/\(key)"
         if let hit = memory[id], let value = hit.value as? T {
@@ -38,7 +38,7 @@ actor DataCache {
         return Hit(value: stored.value, fetched: stored.fetched, isStale: Self.isStale(stored.fetched, ttl))
     }
 
-    func write<T: Codable>(_ value: T, _ namespace: String, _ key: String) {
+    func write<T: Codable & Sendable>(_ value: T, _ namespace: String, _ key: String) {
         let now = Date()
         memory["\(namespace)/\(key)"] = (value, now)
         let file = Self.file(namespace, key)
@@ -77,9 +77,16 @@ actor DataCache {
     /// fetches when there's no copy, it's past `ttl`, or `force` is set, and
     /// hands `show` the fresh value. A failed refresh keeps the cached copy on
     /// screen and only throws when there was nothing cached to show.
-    nonisolated static func load<T: Codable>(
+    ///
+    /// `accept` guards against a refresh that "succeeds" with junk — a
+    /// scraper that stopped matching Goodreads' markup returns an empty list
+    /// rather than throwing, and that must not replace a good cached copy.
+    /// A rejected result is still shown when there was nothing cached, but
+    /// it's never written, so the next visit tries again.
+    nonisolated static func load<T: Codable & Sendable>(
         _ namespace: String, _ key: String,
         ttl: TimeInterval, force: Bool = false,
+        accept: @escaping @Sendable (T) -> Bool = { _ in true },
         fetch: @escaping () async throws -> T,
         show: @MainActor @escaping (T, _ fromCache: Bool) -> Void
     ) async throws {
@@ -88,6 +95,10 @@ actor DataCache {
         guard force || hit == nil || hit!.isStale else { return }
         do {
             let fresh = try await fetch()
+            guard accept(fresh) else {
+                if hit == nil { await show(fresh, false) }
+                return
+            }
             await shared.write(fresh, namespace, key)
             await show(fresh, false)
         } catch {
@@ -123,7 +134,9 @@ final class ImageMemoryCache {
         cache.countLimit = 600
         return cache
     }()
-    private var inFlight: [URL: Task<NSImage?, Never>] = [:]
+    // Bytes, not NSImage — NSImage only became Sendable in macOS 14, and the
+    // download runs off the main actor. Decoding happens back on main.
+    private var inFlight: [URL: Task<Data?, Never>] = [:]
 
     nonisolated private init() { }
 
@@ -133,15 +146,20 @@ final class ImageMemoryCache {
 
     func load(_ url: URL) async -> NSImage? {
         if let image = cached(url) { return image }
-        if let task = inFlight[url] { return await task.value }
-        let task = Task<NSImage?, Never> {
-            guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
-            return NSImage(data: data)
+        let task: Task<Data?, Never>
+        if let running = inFlight[url] {
+            task = running
+        } else {
+            task = Task.detached(priority: .utility) {
+                try? await URLSession.shared.data(from: url).0
+            }
+            inFlight[url] = task
         }
-        inFlight[url] = task
-        let image = await task.value
+        let data = await task.value
         inFlight[url] = nil
-        if let image { images.setObject(image, forKey: url as NSURL) }
+        if let image = cached(url) { return image }   // another waiter decoded it
+        guard let data, let image = NSImage(data: data) else { return nil }
+        images.setObject(image, forKey: url as NSURL)
         return image
     }
 }

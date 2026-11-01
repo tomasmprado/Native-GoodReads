@@ -476,7 +476,8 @@ final class LibraryModel: ObservableObject {
 
         // Last session's list shows instantly; the page load runs behind it.
         do {
-            try await DataCache.load("friends", "list", ttl: DataCache.TTL.friends, force: force) {
+            try await DataCache.load("friends", "list", ttl: DataCache.TTL.friends, force: force,
+                                     accept: { !$0.isEmpty }) {
                 try await GoodreadsFriends.fetchFriends()
             } show: { [weak self] list, _ in
                 self?.friends = list
@@ -489,7 +490,8 @@ final class LibraryModel: ObservableObject {
         }
         isLoadingFriends = false
 
-        try? await DataCache.load("friends", "activity", ttl: DataCache.TTL.friends, force: force) {
+        try? await DataCache.load("friends", "activity", ttl: DataCache.TTL.friends, force: force,
+                                  accept: { !$0.isEmpty }) {
             try await GoodreadsFriends.fetchActivity()
         } show: { [weak self] activity, _ in
             self?.friendActivity = activity
@@ -518,7 +520,8 @@ final class LibraryModel: ObservableObject {
         defer { isLoadingFriendProfile = false }
 
         do {
-            try await DataCache.load("profile", url.absoluteString, ttl: DataCache.TTL.profile) {
+            try await DataCache.load("profile", url.absoluteString, ttl: DataCache.TTL.profile,
+                                     accept: { !$0.name.isEmpty }) {
                 try await GoodreadsFriends.fetchProfile(url: url)
             } show: { [weak self] profile, _ in
                 guard let self, self.friendProfileURL == url else { return }

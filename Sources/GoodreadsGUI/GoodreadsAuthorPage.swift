@@ -25,7 +25,7 @@ enum GoodreadsAuthorPage {
         let ratingLine: String?     // "3.98 avg rating — 771,179 ratings", shown as-is
     }
 
-    static func fetch(url: URL) async throws -> Detail {
+    @MainActor static func fetch(url: URL) async throws -> Detail {
         let session = WebSession.shared
 
         // Reads the live document, so the load and the evaluate that depends
