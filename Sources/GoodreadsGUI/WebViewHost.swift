@@ -3,6 +3,7 @@ import WebKit
 
 /// Hosts the shared WKWebView. Used for the sign-in sheet, and for the
 /// debug window — the equivalent of the CLI's `--no-headless`.
+#if os(macOS)
 struct WebViewHost: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         WebSession.shared.webView
@@ -10,6 +11,15 @@ struct WebViewHost: NSViewRepresentable {
 
     func updateNSView(_ nsView: WKWebView, context: Context) { }
 }
+#else
+struct WebViewHost: UIViewRepresentable {
+    func makeUIView(context: Context) -> WKWebView {
+        WebSession.shared.webView
+    }
+
+    func updateUIView(_ uiView: WKWebView, context: Context) { }
+}
+#endif
 
 struct SignInSheet: View {
     @ObservedObject private var session = WebSession.shared
@@ -34,7 +44,7 @@ struct SignInSheet: View {
             Divider()
 
             WebViewHost()
-                .frame(minWidth: 700, minHeight: 620)
+                .macMinFrame(width: 700, height: 620)
 
             Divider()
 
@@ -61,7 +71,7 @@ struct BrowserSheet: View {
             }
             .padding(10)
             Divider()
-            WebViewHost().frame(minWidth: 800, minHeight: 600)
+            WebViewHost().macMinFrame(width: 800, height: 600)
         }
     }
 }

@@ -1,3 +1,5 @@
+// macOS only: the iOS app has its own entry point and no menu bar, panel or self-updater.
+#if os(macOS)
 import SwiftUI
 
 /// A release's notes, as written in CHANGELOG.md: `###` headings and `-`
@@ -129,3 +131,4 @@ struct UpdateNotesView: View {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
     }
 }
+#endif

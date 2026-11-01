@@ -1,3 +1,5 @@
+// macOS only: the iOS app has its own entry point and no menu bar, panel or self-updater.
+#if os(macOS)
 import AppKit
 import Carbon.HIToolbox
 import SwiftUI
@@ -268,3 +270,4 @@ private struct QuickRow: View {
             .overlay(Image(systemName: "book.closed").font(.system(size: 11)).foregroundStyle(.tertiary))
     }
 }
+#endif

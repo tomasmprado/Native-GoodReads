@@ -3,6 +3,22 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject private var model = LibraryModel.shared
     @ObservedObject private var session = WebSession.shared
+    #if os(iOS)
+    /// On iPhone the sidebar is the first screen; this is the pane pushed
+    /// over it, nil while the sidebar itself shows.
+    @State private var pushedPane: LibraryModel.Pane?
+    #endif
+
+    private var sidebarSelection: Binding<LibraryModel.Pane?> {
+        #if os(macOS)
+        Binding(get: { model.selection }, set: { if let pane = $0 { model.selection = pane } })
+        #else
+        Binding(get: { pushedPane }, set: { pane in
+            pushedPane = pane
+            if let pane { model.selection = pane }
+        })
+        #endif
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -91,7 +107,7 @@ struct ContentView: View {
     }
 
     private var sidebar: some View {
-        List(selection: $model.selection) {
+        List(selection: sidebarSelection) {
             Label("Home", systemImage: "house")
                 .tag(LibraryModel.Pane.home)
 
@@ -247,10 +263,17 @@ private struct TypewriterText: View {
 }
 
 private struct AppLogoImage: View {
+    private static var icon: PlatformImage? {
+        #if os(macOS)
+        Bundle.main.url(forResource: "AppIcon", withExtension: "icns").flatMap(NSImage.init(contentsOf:))
+        #else
+        UIImage(named: "AppIcon")
+        #endif
+    }
+
     var body: some View {
-        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-           let nsImage = NSImage(contentsOf: url) {
-            Image(nsImage: nsImage)
+        if let image = Self.icon {
+            Image(platformImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 72, height: 72)
@@ -406,7 +429,7 @@ private struct SuggestionsPane: View {
             }
         }
         .navigationTitle("Suggestions")
-        .navigationSubtitle(subtitle)
+        .navSubtitle(subtitle)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if model.isBuildingSuggestions {
@@ -719,9 +742,9 @@ private struct FriendProfileSheet: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 if let url = model.friendProfileURL {
-                                    Button("Open on Goodreads") { NSWorkspace.shared.open(url) }
+                                    Button("Open on Goodreads") { Platform.open(url) }
                                         .font(.system(size: 11))
-                                        .buttonStyle(.link)
+                                        .linkButtonStyle()
                                 }
                             }
                         }
@@ -818,7 +841,7 @@ private struct FriendShelfContent: View {
                 Spacer()
                 Button("Close") { model.closeFriendShelf() }
                     .font(.system(size: 11))
-                    .buttonStyle(.link)
+                    .linkButtonStyle()
             }
 
             if let error = model.friendShelfError {
@@ -905,9 +928,9 @@ private struct AuthorPageSheet: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 if let website = author.website {
-                                    Button("Website") { NSWorkspace.shared.open(website) }
+                                    Button("Website") { Platform.open(website) }
                                         .font(.system(size: 11))
-                                        .buttonStyle(.link)
+                                        .linkButtonStyle()
                                 }
                             }
                         }
@@ -1173,7 +1196,7 @@ private struct ShelfPane: View {
             }
         }
         .navigationTitle(model.currentShelf?.title ?? "")
-        .navigationSubtitle(subtitle)
+        .navSubtitle(subtitle)
         .searchable(text: $model.filter, placement: .toolbar, prompt: "Filter")
         .task(id: model.shelfEntries.count) {
             ImageMemoryCache.shared.prefetch(model.visibleEntries.prefix(40).compactMap(\.coverURL))
@@ -1484,7 +1507,7 @@ private struct CurrentlyReadingCard: View {
             } else {
                 Button("Update Progress…", action: onUpdateProgress)
                     .font(.system(size: 10))
-                    .buttonStyle(.link)
+                    .linkButtonStyle()
             }
         }
         .frame(width: 96)
@@ -1642,9 +1665,11 @@ private struct StatusBar: View {
                     .help(pending.label)
             }
 
+            #if os(macOS)
             if let update = model.updateAvailable {
                 UpdateButton(update: update)
             }
+            #endif
 
             if session.isBusy { ProgressView().controlSize(.small) }
 
@@ -1673,6 +1698,7 @@ private struct StatusBar: View {
     }
 }
 
+#if os(macOS)
 /// "Update to x.y.z…" in the status bar — shows what's new first, then
 /// installs and relaunches when it can, otherwise opens the release page.
 private struct UpdateButton: View {
@@ -1719,3 +1745,4 @@ private struct UpdateButton: View {
         return String(localized: "See what's new in \(update.version)")
     }
 }
+#endif

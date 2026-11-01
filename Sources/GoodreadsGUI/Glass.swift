@@ -15,7 +15,7 @@ extension View {
     func glassCard(cornerRadius: CGFloat = 14) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         #if compiler(>=6.2)
-        if #available(macOS 26, *) {
+        if #available(macOS 26, iOS 26, *) {
             glassEffect(.regular, in: shape)
         } else {
             background(.regularMaterial, in: shape).shadow(radius: 4)
@@ -29,7 +29,7 @@ extension View {
     @ViewBuilder
     func glassCapsule(interactive: Bool = false) -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26, *) {
+        if #available(macOS 26, iOS 26, *) {
             glassEffect(interactive ? .regular.interactive() : .regular, in: Capsule())
         } else {
             background(Color.secondary.opacity(0.1), in: Capsule())
@@ -43,7 +43,7 @@ extension View {
     @ViewBuilder
     func glassIconButton() -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26, *) {
+        if #available(macOS 26, iOS 26, *) {
             buttonStyle(.glass)
                 .buttonBorderShape(.circle)
                 .controlSize(.small)
@@ -59,7 +59,7 @@ extension View {
     @ViewBuilder
     func glassButton() -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26, *) {
+        if #available(macOS 26, iOS 26, *) {
             buttonStyle(.glass)
         } else {
             buttonStyle(.automatic)
@@ -73,7 +73,7 @@ extension View {
     @ViewBuilder
     func glassProminentButton() -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26, *) {
+        if #available(macOS 26, iOS 26, *) {
             buttonStyle(.glassProminent)
         } else {
             buttonStyle(.borderedProminent)
@@ -88,7 +88,7 @@ extension View {
     @ViewBuilder
     func glassGroup(spacing: CGFloat = 8) -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26, *) {
+        if #available(macOS 26, iOS 26, *) {
             GlassEffectContainer(spacing: spacing) { self }
         } else {
             self
@@ -102,7 +102,7 @@ extension View {
     @ViewBuilder
     func glassPanel(cornerRadius: CGFloat = 22) -> some View {
         #if compiler(>=6.2)
-        if #available(macOS 26, *) {
+        if #available(macOS 26, iOS 26, *) {
             glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         } else {
             background(.regularMaterial)
@@ -116,7 +116,7 @@ extension View {
 /// True when this build has Liquid Glass and the Mac it runs on supports it.
 var hasLiquidGlass: Bool {
     #if compiler(>=6.2)
-    if #available(macOS 26, *) { return true }
+    if #available(macOS 26, iOS 26, *) { return true }
     #endif
     return false
 }

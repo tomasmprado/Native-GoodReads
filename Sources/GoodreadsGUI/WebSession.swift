@@ -30,7 +30,7 @@ final class WebSession: NSObject, ObservableObject {
         config.websiteDataStore = .default()
 
         webView = WKWebView(
-            frame: NSRect(x: 0, y: 0, width: 1100, height: 800),
+            frame: CGRect(x: 0, y: 0, width: 1100, height: 800),
             configuration: config
         )
         super.init()

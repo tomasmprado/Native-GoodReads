@@ -1,3 +1,5 @@
+// macOS only: the iOS app has its own entry point and no menu bar, panel or self-updater.
+#if os(macOS)
 import AppKit
 
 /// Installs a newer release in place: downloads its `.dmg`, copies the app
@@ -216,3 +218,4 @@ private final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked
 extension SelfUpdater.State {
     var isFailure: Bool { if case .failed = self { return true } else { return false } }
 }
+#endif

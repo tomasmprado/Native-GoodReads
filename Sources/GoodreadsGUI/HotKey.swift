@@ -1,3 +1,5 @@
+// macOS only: the iOS app has its own entry point and no menu bar, panel or self-updater.
+#if os(macOS)
 import AppKit
 import Carbon.HIToolbox
 
@@ -68,3 +70,4 @@ final class HotKeyCenter {
         handlerRef = nil
     }
 }
+#endif

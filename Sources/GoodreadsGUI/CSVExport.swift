@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import UniformTypeIdentifiers
 
 /// The whole app rests on undocumented endpoints Goodreads could retire.
@@ -56,6 +58,7 @@ enum CSVExport {
         case failed(String)
     }
 
+    #if os(macOS)
     @MainActor
     static func save(_ text: String, suggestedName: String) -> SaveResult {
         let panel = NSSavePanel()
@@ -72,4 +75,19 @@ enum CSVExport {
             return .failed(error.localizedDescription)
         }
     }
+    #else
+    /// iOS: into the app's Documents folder, which the Files app shows under
+    /// On My iPhone → Goodreads.
+    @MainActor
+    static func save(_ text: String, suggestedName: String) -> SaveResult {
+        let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let url = folder.appendingPathComponent(suggestedName)
+        do {
+            try text.write(to: url, atomically: true, encoding: .utf8)
+            return .saved(String(localized: "\(suggestedName) in Files"))
+        } catch {
+            return .failed(error.localizedDescription)
+        }
+    }
+    #endif
 }

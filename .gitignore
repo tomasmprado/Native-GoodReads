@@ -13,3 +13,7 @@ make-icns.sh
 AppIcon.icns
 icon-source.png
 assets/
+
+# Xcode per-user state
+xcuserdata/
+*.xcuserstate

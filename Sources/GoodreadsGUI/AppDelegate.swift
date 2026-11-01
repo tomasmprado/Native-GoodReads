@@ -1,3 +1,5 @@
+// macOS only: the iOS app has its own entry point and no menu bar, panel or self-updater.
+#if os(macOS)
 import AppKit
 import CoreSpotlight
 import UserNotifications
@@ -176,3 +178,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUser
         panel?.toggle()
     }
 }
+#endif

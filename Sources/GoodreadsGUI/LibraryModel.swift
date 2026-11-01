@@ -1275,7 +1275,7 @@ final class LibraryModel: ObservableObject {
 
     func openOnGoodreads(bookID: String) {
         guard let url = Self.goodreadsURL(bookID: bookID) else { return }
-        NSWorkspace.shared.open(url)
+        Platform.open(url)
     }
 
     nonisolated static func goodreadsURL(bookID: String) -> URL? {

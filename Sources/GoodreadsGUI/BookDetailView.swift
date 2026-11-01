@@ -118,7 +118,7 @@ struct BookDetailView: View {
                 if let authorURL {
                     Button(book.author) { model.showAuthorPage(authorURL) }
                         .font(.system(size: 13))
-                        .buttonStyle(.link)
+                        .linkButtonStyle()
                 } else {
                     Text(book.author)
                         .font(.system(size: 13))
@@ -166,12 +166,12 @@ struct BookDetailView: View {
     private func seriesLine(_ series: GoodreadsSeries.Ref) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Button {
-                NSWorkspace.shared.open(series.url)
+                Platform.open(series.url)
             } label: {
                 Label(series.position.map { String(localized: "\(series.title) #\($0)") } ?? series.title,
                       systemImage: "books.vertical")
             }
-            .buttonStyle(.link)
+            .linkButtonStyle()
             .font(.system(size: 12))
             .help("Open the series on Goodreads")
 

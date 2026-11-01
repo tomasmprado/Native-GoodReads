@@ -55,10 +55,7 @@ struct DiagnosticsSheet: View {
 
                 Spacer()
 
-                Button("Copy") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(log.plainText, forType: .string)
-                }
+                Button("Copy") { Platform.copy(log.plainText) }
                 Button("Clear") { log.clear() }
                 Button("Close") { isPresented = false }
                     .keyboardShortcut(.defaultAction)

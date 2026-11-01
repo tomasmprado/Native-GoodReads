@@ -1,3 +1,5 @@
+// macOS only: the iOS app has its own entry point and no menu bar, panel or self-updater.
+#if os(macOS)
 import SwiftUI
 
 /// Lets `AppDelegate` (not a `View`, so it has no `@Environment`) reopen the
@@ -44,3 +46,4 @@ struct GoodreadsGUIApp: App {
         }
     }
 }
+#endif

@@ -1,6 +1,8 @@
-import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(macOS)
+import AppKit
+#endif
 
 /// One year of reading, summed up — for the "Your Year in Books" card.
 struct YearSummary: Equatable {
@@ -78,7 +80,9 @@ struct YearInReviewSheet: View {
     @State private var read: [ShelfEntry] = []
     @State private var extras: [String: BookExtras] = [:]
     @State private var year = Calendar.current.component(.year, from: Date())
-    @State private var covers: [URL: NSImage] = [:]
+    @State private var covers: [URL: PlatformImage] = [:]
+    /// The card as a PNG, made once the covers are in.
+    @State private var png: Data?
     @State private var savedMessage: String?
 
     private var summary: YearSummary {
@@ -114,14 +118,24 @@ struct YearInReviewSheet: View {
                     Text(savedMessage).font(.system(size: 11)).foregroundStyle(.secondary)
                 }
                 Spacer()
+                #if os(macOS)
                 Button("Save Image…", action: saveImage)
                     .keyboardShortcut(.defaultAction)
                     .glassProminentButton()
-                    .disabled(summary.books == 0)
+                    .disabled(png == nil || summary.books == 0)
+                #else
+                if let png, summary.books > 0 {
+                    ShareLink(item: SharedPNG(data: png, name: fileName),
+                              preview: SharePreview(fileName)) {
+                        Label("Share Image…", systemImage: "square.and.arrow.up")
+                    }
+                    .glassProminentButton()
+                }
+                #endif
             }
             .padding(12)
         }
-        .frame(width: 600, height: 720)
+        .sheetFrame(width: 600, height: 720)
         .task {
             read = ShelfCache.read(.read)?.entries ?? []
             extras = await BookExtras.all()
@@ -135,20 +149,31 @@ struct YearInReviewSheet: View {
                 guard let url = entry.coverURL, covers[url] == nil else { continue }
                 if let image = await ImageMemoryCache.shared.load(url) { covers[url] = image }
             }
+            png = renderPNG()
         }
     }
 
-    private func saveImage() {
+    private var fileName: String { "my-\(summary.year)-in-books.png" }
+
+    private func renderPNG() -> Data? {
         let renderer = ImageRenderer(content: YearCard(summary: summary, covers: covers).frame(width: 560))
         renderer.scale = 2
-        guard let image = renderer.nsImage,
-              let tiff = image.tiffRepresentation,
-              let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else {
+        #if os(macOS)
+        guard let tiff = renderer.nsImage?.tiffRepresentation else { return nil }
+        return NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
+        #else
+        return renderer.uiImage?.pngData()
+        #endif
+    }
+
+    #if os(macOS)
+    private func saveImage() {
+        guard let png = png ?? renderPNG() else {
             savedMessage = String(localized: "Couldn’t make the image.")
             return
         }
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "my-\(summary.year)-in-books.png"
+        panel.nameFieldStringValue = fileName
         panel.allowedContentTypes = [.png]
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
@@ -158,13 +183,27 @@ struct YearInReviewSheet: View {
             savedMessage = error.localizedDescription
         }
     }
+    #endif
 }
+
+#if os(iOS)
+/// The card as a PNG file for the share sheet.
+struct SharedPNG: Transferable {
+    let data: Data
+    let name: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { $0.data }
+            .suggestedFileName { $0.name }
+    }
+}
+#endif
 
 /// The card itself — fixed colours, so the saved image looks the same in
 /// light and dark mode.
 struct YearCard: View {
     let summary: YearSummary
-    let covers: [URL: NSImage]
+    let covers: [URL: PlatformImage]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -248,7 +287,7 @@ struct YearCard: View {
         VStack(alignment: .leading, spacing: 3) {
             Group {
                 if let url = entry.coverURL, let image = covers[url] {
-                    Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+                    Image(platformImage: image).resizable().aspectRatio(contentMode: .fill)
                 } else {
                     RoundedRectangle(cornerRadius: 4).fill(.white.opacity(0.15))
                         .overlay(Image(systemName: "book.closed").opacity(0.6))

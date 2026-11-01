@@ -28,7 +28,7 @@ struct FinishSheet: View {
             StarPicker(rating: $rating)
 
             Toggle("Finished on", isOn: $setDate)
-                .toggleStyle(.checkbox)
+                .checkboxToggleStyle()
 
             DatePicker("", selection: $dateRead, displayedComponents: .date)
                 .datePickerStyle(.compact)

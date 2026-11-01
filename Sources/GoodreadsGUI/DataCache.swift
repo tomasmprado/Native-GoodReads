@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 
 /// Everything the app fetches besides shelves (which have `ShelfCache`) —
@@ -172,18 +171,18 @@ final class ImageMemoryCache {
 
     // NSCache is thread-safe, so lookups don't need the main actor — a view's
     // init (which reads it) isn't main-actor-isolated on older toolchains.
-    nonisolated(unsafe) private let images: NSCache<NSURL, NSImage> = {
-        let cache = NSCache<NSURL, NSImage>()
+    nonisolated(unsafe) private let images: NSCache<NSURL, PlatformImage> = {
+        let cache = NSCache<NSURL, PlatformImage>()
         cache.countLimit = 600
         return cache
     }()
-    // Bytes, not NSImage — NSImage only became Sendable in macOS 14, and the
+    // Bytes, not images — NSImage only became Sendable in macOS 14, and the
     // download runs off the main actor. Decoding happens back on main.
     private var inFlight: [URL: Task<Data?, Never>] = [:]
 
     nonisolated private init() { }
 
-    nonisolated func cached(_ url: URL) -> NSImage? { images.object(forKey: url as NSURL) }
+    nonisolated func cached(_ url: URL) -> PlatformImage? { images.object(forKey: url as NSURL) }
 
     nonisolated func removeAll() { images.removeAllObjects() }
 
@@ -204,7 +203,7 @@ final class ImageMemoryCache {
         }
     }
 
-    func load(_ url: URL) async -> NSImage? {
+    func load(_ url: URL) async -> PlatformImage? {
         if let image = cached(url) { return image }
         let task: Task<Data?, Never>
         if let running = inFlight[url] {
@@ -218,7 +217,7 @@ final class ImageMemoryCache {
         let data = await task.value
         inFlight[url] = nil
         if let image = cached(url) { return image }   // another waiter decoded it
-        guard let data, let image = NSImage(data: data) else { return nil }
+        guard let data, let image = Platform.image(from: data) else { return nil }
         images.setObject(image, forKey: url as NSURL)
         return image
     }
@@ -236,7 +235,7 @@ struct CachedAsyncImage<Content: View>: View {
         self.url = url
         self.content = content
         if let url, let image = ImageMemoryCache.shared.cached(url) {
-            _phase = State(initialValue: .success(Image(nsImage: image)))
+            _phase = State(initialValue: .success(Image(platformImage: image)))
         }
     }
 
@@ -246,11 +245,11 @@ struct CachedAsyncImage<Content: View>: View {
             .task(id: url) {
                 guard let url else { phase = .empty; return }
                 if let image = ImageMemoryCache.shared.cached(url) {
-                    phase = .success(Image(nsImage: image))
+                    phase = .success(Image(platformImage: image))
                     return
                 }
                 if let image = await ImageMemoryCache.shared.load(url) {
-                    phase = .success(Image(nsImage: image))
+                    phase = .success(Image(platformImage: image))
                 } else {
                     phase = .failure(URLError(.cannotDecodeContentData))
                 }
