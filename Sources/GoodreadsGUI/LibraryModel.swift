@@ -87,6 +87,8 @@ final class LibraryModel: ObservableObject {
     @Published var suggestionNote: String?
 
     @Published var currentlyReading: [ShelfEntry] = []
+    /// Progress over time per book id, for finish-date estimates.
+    @Published var progressHistory: [String: [ProgressPoint]] = [:]
     @Published var isLoadingCurrentlyReading = false
 
     // Search filters
@@ -499,6 +501,7 @@ final class LibraryModel: ObservableObject {
     /// (if any) happens to be selected.
     func loadCurrentlyReading(force: Bool = false) async {
         guard !isLoadingCurrentlyReading else { return }
+        if progressHistory.isEmpty { progressHistory = await ReadingPace.all() }
         let cached = ShelfCache.read(.currentlyReading)
         if let cached { currentlyReading = cached.entries }
         let stale = cached.map { ShelfCache.isStale($0.fetched) } ?? true
@@ -523,8 +526,21 @@ final class LibraryModel: ObservableObject {
         for i in entries.indices {
             if let percent = progress[entries[i].bookID] {
                 entries[i].progress = percent
+                await ReadingPace.record(percent, for: entries[i].bookID)
             }
         }
+        progressHistory = await ReadingPace.all()
+    }
+
+    /// "14 Nov" — for finish estimates.
+    nonisolated static func shortDate(_ date: Date) -> String {
+        date.formatted(.dateTime.day().month(.abbreviated))
+    }
+
+    /// Roughly when `entry` will be finished at the pace so far.
+    func finishEstimate(for entry: ShelfEntry) -> Date? {
+        guard let history = progressHistory[entry.bookID] else { return nil }
+        return ReadingPace.estimate(history, startedOn: entry.dateAdded.flatMap(Suggestions.parseDate))
     }
 
     // MARK: - Stats
@@ -962,6 +978,10 @@ final class LibraryModel: ObservableObject {
             // Prefer what Goodreads actually recorded — a page-mode entry
             // has no percent from the caller otherwise.
             let resolvedPercent = result.percent ?? percent
+            if let resolvedPercent {
+                await ReadingPace.record(resolvedPercent, for: entry.bookID)
+                progressHistory = await ReadingPace.all()
+            }
 
             if let index = shelfEntries.firstIndex(where: { $0.id == entry.id }) {
                 shelfEntries[index].progress = resolvedPercent

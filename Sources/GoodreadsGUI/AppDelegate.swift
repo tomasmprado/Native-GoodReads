@@ -86,7 +86,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             items.append(none)
         }
         for entry in reading.prefix(8) {
-            let item = NSMenuItem(title: Self.menuTitle(for: entry),
+            var title = Self.menuTitle(for: entry)
+            if let done = model.finishEstimate(for: entry) {
+                title += "  · " + String(localized: "done ~\(LibraryModel.shortDate(done))")
+            }
+            let item = NSMenuItem(title: title,
                                   action: #selector(updateProgress(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = entry.id

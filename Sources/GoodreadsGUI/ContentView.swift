@@ -1195,7 +1195,8 @@ private struct CurrentlyReadingCarousel: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(model.currentlyReading) { entry in
-                        CurrentlyReadingCard(entry: entry, isBusy: model.busyBookID == entry.bookID) {
+                        CurrentlyReadingCard(entry: entry, isBusy: model.busyBookID == entry.bookID,
+                                             finishEstimate: model.finishEstimate(for: entry)) {
                             model.activeSheet = .progress(entry)
                         } onOpenDetail: {
                             model.showBookDetail(entry.asBook)
@@ -1214,6 +1215,7 @@ private struct CurrentlyReadingCarousel: View {
 private struct CurrentlyReadingCard: View {
     let entry: ShelfEntry
     let isBusy: Bool
+    let finishEstimate: Date?
     let onUpdateProgress: () -> Void
     let onOpenDetail: () -> Void
 
@@ -1252,6 +1254,12 @@ private struct CurrentlyReadingCard: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
+                if let finishEstimate {
+                    Text("Done around \(LibraryModel.shortDate(finishEstimate))")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .help("At your pace so far")
+                }
             } else {
                 Text("No progress yet")
                     .font(.system(size: 10))
