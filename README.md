@@ -122,8 +122,21 @@ Empty until you've marked something read inside the look-back window.
 ### Settings (⌘,)
 
 **Book language** filters suggestions by edition language, read from each book
-page's JSON-LD. This is about the books, not the interface — the app itself is
-English only. Books whose language can't be determined can be included or hidden.
+page's JSON-LD. This is about the books, not the interface. Books whose
+language can't be determined can be included or hidden.
+
+**Interface language** follows macOS: the app is in English and European
+Portuguese, picked from System Settings → General → Language & Region (or per
+app, under Applications there). Translations live in
+`Sources/GoodreadsGUI/Resources/pt.lproj/Localizable.strings`.
+
+**Friends** — optionally, a notification when a friend starts or finishes a
+book. Checked whenever the friend list refreshes and every hour while the app
+is open; the first check only records what's there, so turning it on is quiet.
+
+**Cache** shows how much the app keeps on disk (shelves, book and author pages,
+friends, covers) and clears it. Clearing is safe — everything is fetched again
+the next time it's opened.
 
 **Look back** sets how far "recently read" reaches: 30, 90, 180 days or a year.
 
@@ -145,9 +158,20 @@ The sidebar lists every shelf you have, custom ones included, with counts.
 
 **Shelves** — click one to load it. Cached copies appear instantly while the
 refresh runs behind them, and refresh again on their own after six hours even
-if you never touch them. The filter box narrows what's on screen without
-touching the network; the sort menu next to it reorders by title, author,
-rating, date read or date added, or leaves Goodreads' own shelf order alone.
+if you never touch them. The filter field in the toolbar narrows what's on
+screen without touching the network; the sort menu next to it reorders by
+title, author, rating, date read or date added, or leaves Goodreads' own shelf
+order alone.
+
+**Stats** — this year's reading goal (set it right there; it shows whether
+you're ahead or behind schedule, with a per-month chart), books read, average
+rating, books per year, your rating distribution and most-read authors. All
+worked out from the Read shelf; Goodreads' shelf pages carry no page counts,
+so everything is counted in books.
+
+On macOS 26 the app uses Liquid Glass: the sidebar floats, pane buttons sit in
+the glass toolbar, and cards and the ⌥Space panel are glass. Older macOS keeps
+the previous look.
 
 Each row's ••• menu:
 
@@ -201,11 +225,14 @@ it should:
   (shelf loads, writes, verification checks), including ones that failed
   silently. Paste it when something breaks.
 
-An **Update to X.Y…** button appears in the same status bar when a newer
+An **Update to X.Y** button appears in the same status bar when a newer
 version is out on [Releases](../../releases) — a quiet, best-effort check
 against the GitHub API on launch, silent on any failure (offline, rate
-limited). Clicking it opens the release page; nothing downloads or installs
-itself.
+limited). Clicking it downloads the release's `.dmg`, checks the app inside is
+Goodreads at that version, swaps it for the running copy and reopens. The old
+copy is put back if anything goes wrong. When the app can't replace itself —
+run straight from the disk image, or from Downloads before being moved — the
+button opens the release page instead.
 
 ### Export
 
@@ -228,9 +255,12 @@ local copy is cheap insurance.
   your profile. Deleting the review outright is a different endpoint.
 - **Paging stops at 2500 books** (25 pages of 100) as a safety stop. Raise
   `maxPages` in `ShelfLibrary.swift` if your library is bigger.
-- **The cache refreshes itself after six hours**, in the background, the next
-  time you look at Home or a shelf pane — sooner with the reload button. It
-  shows you the last fetch immediately either way. Sign Out clears it outright.
+- **Everything is cached and refreshes in the background**: shelves after six
+  hours, friends after one, book pages after a day, author pages after three.
+  The last copy shows immediately either way; a failed refresh keeps it on
+  screen. A few seconds after launch the app also fills in any shelf or
+  friends list it has never fetched. Sign Out (or Settings → Clear Cache)
+  clears it all.
 - **Custom shelves aren't exclusive**, so "Move to" a custom shelf adds without
   removing. That's Goodreads' behaviour, not a bug here.
 

@@ -7,7 +7,48 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
-## [Unreleased] — 2026-09-10
+## [Unreleased]
+
+### Added
+
+- **Stats** — a new pane with this year's reading goal (adjustable, with
+  ahead/behind schedule and a per-month chart), books read, average rating,
+  books per year, rating distribution and most-read authors.
+- **Friend notifications** — optional (Settings): a macOS notification when a
+  friend starts or finishes a book, checked hourly while the app is open.
+- **One-click updates** — "Update to x.y.z" downloads the release, replaces
+  the app and reopens it, falling back to the release page when the app
+  can't replace itself.
+- **European Portuguese** — the whole interface, chosen from the system
+  language.
+- **Settings → Cache** — shows the space used and clears it.
+
+### Changed
+
+- Pane buttons and the shelf filter moved into the window toolbar (glass on
+  macOS 26); Book Details, Author and Profile sheets use glass headers, and
+  Book Details shows a blurred cover behind its top.
+- Faster: a few seconds after launch, never-cached shelves and the friend
+  list are filled in; covers are fetched ahead of scrolling; recent searches
+  are reused for ten minutes.
+- No compiler warnings left, and the code builds cleanly in Swift 6 mode.
+- `build-app.sh` stops with a clear message when no SDK it can use is
+  installed.
+
+### Fixed
+
+- A friends refresh that came back empty (Goodreads changing its markup)
+  replaced the good cached list; it no longer does.
+
+## [2.1.0] — 2026-11-01
+
+### Added
+
+- **Liquid Glass** on macOS 26 and later, with the previous look on older
+  systems.
+- **Caching** of book pages, author pages, friends, profiles, friends'
+  shelves, suggestions and author searches — shown instantly, refreshed in
+  the background — and of decoded covers, which no longer blink on scroll.
 
 ### Added
 
