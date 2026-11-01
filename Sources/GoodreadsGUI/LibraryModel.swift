@@ -71,9 +71,12 @@ final class LibraryModel: ObservableObject {
         case detail(Book)
         case friendProfile
         case authorPage
+        /// iOS has no Settings window; there it's a sheet.
+        case settings
 
         var id: String {
             switch self {
+            case .settings:             return "settings"
             case .signIn:               return "signIn"
             case .browser:              return "browser"
             case .diagnostics:          return "diagnostics"

@@ -75,6 +75,6 @@ struct ProgressSheet: View {
             }
         }
         .padding(16)
-        .frame(width: 340)
+        .sheetWidth(340)
     }
 }

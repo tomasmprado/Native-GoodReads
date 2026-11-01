@@ -287,7 +287,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 720)
+        .sheetFrame(width: 460, height: 720)
         .task { cacheBytes = DataCache.diskUsage() }
     }
 }

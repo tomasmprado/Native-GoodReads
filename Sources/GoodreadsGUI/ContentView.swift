@@ -36,7 +36,7 @@ struct ContentView: View {
                 Divider()
                 StatusBar(model: model, session: session)
             }
-            .frame(minWidth: 480, minHeight: 420)
+            .macMinFrame(width: 480, height: 420)
         }
         .task {
             model.refreshUpNext()
@@ -102,6 +102,16 @@ struct ContentView: View {
                 FriendProfileSheet(model: model)
             case .authorPage:
                 AuthorPageSheet(model: model)
+            case .settings:
+                NavigationStack {
+                    PreferencesView()
+                        .navigationTitle("Settings")
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { model.activeSheet = nil }
+                            }
+                        }
+                }
             }
         }
     }
@@ -131,6 +141,34 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 190)
+        #if os(iOS)
+        .navigationTitle("Goodreads")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button(model.loggedIn ? String(localized: "Sign Out") : String(localized: "Log In")) {
+                        if model.loggedIn {
+                            Task { await model.signOut() }
+                        } else {
+                            model.startSignIn()
+                        }
+                    }
+                    Button { model.activeSheet = .settings } label: {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                    Divider()
+                    Button { model.activeSheet = .diagnostics } label: {
+                        Label("Log", systemImage: "list.bullet.rectangle")
+                    }
+                    Button { model.startBrowser() } label: {
+                        Label("Browser", systemImage: "safari")
+                    }
+                } label: {
+                    Label("Account", systemImage: model.loggedIn ? "person.crop.circle.fill" : "person.crop.circle")
+                }
+            }
+        }
+        #endif
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 4) {
                 if model.isExporting, let note = model.exportProgress {
@@ -791,7 +829,7 @@ private struct FriendProfileSheet: View {
                 }
             }
         }
-        .frame(width: 480, height: 620)
+        .sheetFrame(width: 480, height: 620)
     }
 }
 
@@ -993,7 +1031,7 @@ private struct AuthorPageSheet: View {
                 }
             }
         }
-        .frame(width: 480, height: 560)
+        .sheetFrame(width: 480, height: 560)
     }
 }
 
@@ -1673,6 +1711,7 @@ private struct StatusBar: View {
 
             if session.isBusy { ProgressView().controlSize(.small) }
 
+            #if os(macOS)
             Button("Log") { model.activeSheet = .diagnostics }
                 .controlSize(.small)
                 .glassButton()
@@ -1692,6 +1731,7 @@ private struct StatusBar: View {
             }
             .controlSize(.small)
             .glassProminentButton()
+            #endif
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

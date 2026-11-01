@@ -106,6 +106,6 @@ struct DiagnosticsSheet: View {
                 }
             }
         }
-        .frame(width: 640, height: 480)
+        .sheetFrame(width: 640, height: 480)
     }
 }

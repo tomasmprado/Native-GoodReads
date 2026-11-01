@@ -52,7 +52,7 @@ struct FinishSheet: View {
             }
         }
         .padding(16)
-        .frame(width: 360)
+        .sheetWidth(360)
     }
 }
 

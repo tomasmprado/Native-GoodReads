@@ -99,6 +99,16 @@ extension View {
         #endif
     }
 
+    /// A fixed width for a small sheet on the Mac.
+    @ViewBuilder
+    func sheetWidth(_ width: CGFloat) -> some View {
+        #if os(macOS)
+        frame(width: width)
+        #else
+        self
+        #endif
+    }
+
     /// `minWidth`/`minHeight` on the Mac only.
     @ViewBuilder
     func macMinFrame(width: CGFloat, height: CGFloat) -> some View {

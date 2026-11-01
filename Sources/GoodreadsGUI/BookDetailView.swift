@@ -66,7 +66,7 @@ struct BookDetailView: View {
                 .padding(16)
             }
         }
-        .frame(width: 700, height: 680)
+        .sheetFrame(width: 700, height: 680)
         .background(alignment: .top) { CoverBackdrop(url: book.coverURL) }
         .task { await resolveAndLoad() }
         .task(id: series) { await loadNextInSeries() }
