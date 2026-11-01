@@ -72,6 +72,34 @@ Dock icon, no Info.plist, no code signing. Bundling, icon generation, and
 part of this repo — grab a Release if you want that experience without
 assembling it yourself.
 
+### iPhone and iPad
+
+The same sources also build an iOS app (iOS 17 and later), through
+`GoodreadsiOS.xcodeproj`. Open it in Xcode, pick a simulator and Run. The
+project is generated from `project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+(`xcodegen generate`); the generated project is committed, so you only need
+XcodeGen when changing `project.yml`.
+
+To run it on your own iPhone, add your Apple ID in Xcode → Settings →
+Accounts, turn on Developer Mode on the phone (Settings → Privacy & Security),
+and create `Local.xcconfig` next to `Signing.xcconfig` with your team and a
+bundle id of your own (the file is gitignored):
+
+```
+DEVELOPMENT_TEAM = ABCDE12345
+PRODUCT_BUNDLE_IDENTIFIER = com.yourname.goodreads
+```
+
+The first time, trust yourself as the developer on the phone (Settings →
+General → VPN & Device Management). With a free Apple ID, apps installed this
+way stop opening after seven days and need installing again from Xcode.
+
+On iOS the sidebar is the first screen, the account menu (top right) holds
+Log In, Settings, Log and Browser, CSV exports go to the Files app (On My
+iPhone → Goodreads), and Your Year in Books is shared through the share sheet.
+The ⌥Space panel, the menu bar item and one-click updates are Mac-only, and
+friend and new-release notifications only arrive while the app is open.
+
 ### Tests
 
 ```sh
@@ -433,6 +461,8 @@ Sources/GoodreadsGUI/
   NewReleases.swift       new books by authors you read
   YearInReview.swift      the Year in Books card
   Glass.swift             Liquid Glass helpers, with fallbacks
+  Platform.swift          the few things that differ between macOS and iOS
+  iOSApp.swift            the iOS app's entry point
   Resources/              translations (Localizable.strings, plurals in .stringsdict)
 Tests/GoodreadsGUITests/  unit tests for the pure logic above (`swift test`)
 ```
