@@ -375,6 +375,19 @@ final class LibraryModel: ObservableObject {
         }
     }
 
+    /// Back online: refresh what's on screen, keeping the filter and the
+    /// rows already shown (each loader shows its cache first anyway).
+    func refreshAfterReconnect() async {
+        guard loggedIn else { await checkSession(); return }
+        switch selection {
+        case .shelf:       await loadShelf(force: true)
+        case .home:        await loadCurrentlyReading(force: true)
+        case .friends:     await loadFriends(force: true)
+        case .stats:       await loadStats(force: true)
+        case .suggestions, .search: break
+        }
+    }
+
     // MARK: - Home
 
     /// Suggestions come from the Read shelf, so make sure we have it. The cache

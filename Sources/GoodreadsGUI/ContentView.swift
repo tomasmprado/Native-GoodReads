@@ -32,6 +32,11 @@ struct ContentView: View {
         }
         .task { await model.checkForUpdate() }
         .task { FriendNotifier.startPolling(model) }
+        .task {
+            Connectivity.shared.onReconnect = { [model] in
+                Task { await model.refreshAfterReconnect() }
+            }
+        }
         .onChange(of: model.selection) { _ in Task { await model.paneChanged() } }
         // One item drives every sheet in the app — a book's detail sheet
         // opening an author page, or an author page opening another book's
@@ -1338,9 +1343,19 @@ private struct BookRow<Actions: View>: View {
 private struct StatusBar: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject var session: WebSession
+    @ObservedObject private var connectivity = Connectivity.shared
 
     var body: some View {
         HStack(spacing: 8) {
+            if !connectivity.isOnline {
+                Label("Offline — showing saved data", systemImage: "wifi.slash")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .glassCapsule()
+                    .help("No internet connection. What you see is from the cache, and refreshes once you're back online.")
+            }
             if let status = model.status {
                 Image(systemName: status.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                     .foregroundStyle(status.isError ? .orange : .green)
