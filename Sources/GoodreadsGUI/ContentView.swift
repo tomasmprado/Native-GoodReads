@@ -14,6 +14,7 @@ struct ContentView: View {
                 case .search:      SearchPane(model: model)
                 case .suggestions: SuggestionsPane(model: model)
                 case .friends:     FriendsPane(model: model)
+                case .stats:       StatsPane(model: model)
                 case .shelf:       ShelfPane(model: model)
                 }
                 Divider()
@@ -27,8 +28,10 @@ struct ContentView: View {
                 await model.buildSuggestions()
                 await model.loadCurrentlyReading()
             }
+            await model.warmUp()
         }
         .task { await model.checkForUpdate() }
+        .task { FriendNotifier.startPolling(model) }
         .onChange(of: model.selection) { _ in Task { await model.paneChanged() } }
         // One item drives every sheet in the app — a book's detail sheet
         // opening an author page, or an author page opening another book's
@@ -95,10 +98,13 @@ struct ContentView: View {
             Label("Friends", systemImage: "person.2")
                 .tag(LibraryModel.Pane.friends)
 
+            Label("Stats", systemImage: "chart.bar")
+                .tag(LibraryModel.Pane.stats)
+
             Section("Shelves") {
                 ForEach(model.shelves) { shelf in
                     HStack {
-                        Label(shelf.label, systemImage: shelf.symbol)
+                        Label(shelf.title, systemImage: shelf.symbol)
                         Spacer()
                         if let count = shelf.count {
                             Text("\(count)")
@@ -150,7 +156,7 @@ private struct HomePane: View {
         VStack(spacing: 22) {
             Spacer(minLength: 10)
 
-            TypewriterText(text: "Welcome to Goodreads", font: .system(size: 22, weight: .semibold))
+            TypewriterText(text: String(localized: "Welcome to Goodreads"), font: .system(size: 22, weight: .semibold))
 
             AppLogoImage()
 
@@ -285,43 +291,20 @@ private struct SuggestionsPane: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject private var prefs = Preferences.shared
 
+    private var subtitle: String {
+        var bits: [String] = []
+        if !model.suggestionBasis.isEmpty {
+            bits.append(String(localized: "from \(model.suggestionBasis.count) finished in \(prefs.suggestionWindowDays) days"))
+        }
+        if prefs.bookLanguage != .any { bits.append(prefs.bookLanguage.label) }
+        return bits.joined(separator: " · ")
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            GlassHeader {
-                Text("Suggestions")
-                    .font(.system(size: 13, weight: .semibold))
-
-                if !model.suggestionBasis.isEmpty {
-                    Text("from \(model.suggestionBasis.count) finished in \(prefs.suggestionWindowDays) days")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                if prefs.bookLanguage != .any {
-                    Text(prefs.bookLanguage.label)
-                        .font(.system(size: 10))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .glassCapsule()
-                }
-
-                if model.isBuildingSuggestions {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button { Task { await model.buildSuggestions(force: true) } } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .glassIconButton()
-                    .help("Rebuild suggestions")
-                    .accessibilityLabel("Rebuild suggestions")
-                }
-            }
-
             if model.suggestions.isEmpty {
                 EmptyPane(symbol: model.isBuildingSuggestions ? "hourglass" : "sparkles",
-                          text: model.suggestionNote ?? "Nothing to suggest yet.")
+                          text: model.suggestionNote ?? String(localized: "Nothing to suggest yet."))
             } else {
                 List(model.suggestions) { suggestion in
                     BookRow(
@@ -336,7 +319,7 @@ private struct SuggestionsPane: View {
                             Button {
                                 Task { await model.shelve(suggestion.book, to: shelf) }
                             } label: {
-                                Label(shelf.label, systemImage: shelf.symbol)
+                                Label(shelf.title, systemImage: shelf.symbol)
                             }
                         }
                         Divider()
@@ -354,6 +337,20 @@ private struct SuggestionsPane: View {
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
+            }
+        }
+        .navigationTitle("Suggestions")
+        .navigationSubtitle(subtitle)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if model.isBuildingSuggestions {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button { Task { await model.buildSuggestions(force: true) } } label: {
+                        Label("Rebuild suggestions", systemImage: "arrow.clockwise")
+                    }
+                    .help("Rebuild suggestions")
+                }
             }
         }
     }
@@ -399,22 +396,6 @@ private struct FriendsPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            GlassHeader {
-                Text("Friends")
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
-                if model.isLoadingFriends {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button { Task { await model.loadFriends(force: true) } } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .glassIconButton()
-                    .help("Refresh")
-                    .accessibilityLabel("Refresh friends")
-                }
-            }
-
             let groups = groups
             if !groups.isEmpty {
                 ScrollView {
@@ -440,7 +421,20 @@ private struct FriendsPane: View {
                 }
             } else {
                 EmptyPane(symbol: model.isLoadingFriends ? "hourglass" : "person.2",
-                          text: model.friendsNote ?? "No friends found yet.")
+                          text: model.friendsNote ?? String(localized: "No friends found yet."))
+            }
+        }
+        .navigationTitle("Friends")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if model.isLoadingFriends {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button { Task { await model.loadFriends(force: true) } } label: {
+                        Label("Refresh friends", systemImage: "arrow.clockwise")
+                    }
+                    .help("Refresh")
+                }
             }
         }
     }
@@ -511,7 +505,7 @@ private struct FriendStatusRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(friend.profileURL == nil ? "" : "See \(friend.name)’s profile")
+        .help(friend.profileURL == nil ? "" : String(localized: "See \(friend.name)’s profile"))
     }
 }
 
@@ -617,7 +611,7 @@ private struct FriendProfileSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            GlassHeader {
                 Text("Profile")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
@@ -625,12 +619,9 @@ private struct FriendProfileSheet: View {
                     .keyboardShortcut(.defaultAction)
                     .glassButton()
             }
-            .padding(10)
-
-            Divider()
 
             if model.isLoadingFriendProfile {
-                EmptyPane(symbol: "hourglass", text: "Loading…")
+                EmptyPane(symbol: "hourglass", text: String(localized: "Loading…"))
             } else if let error = model.friendProfileError {
                 EmptyPane(symbol: "exclamationmark.triangle", text: error)
             } else if let profile = model.friendProfile {
@@ -705,7 +696,7 @@ private struct FriendCollectionsPicker: View {
                     Button {
                         Task { await model.openFriendShelf(shelf) }
                     } label: {
-                        Label(shelf.label, systemImage: shelf.symbol)
+                        Label(shelf.title, systemImage: shelf.symbol)
                             .font(.system(size: 11))
                     }
                     .buttonStyle(.bordered)
@@ -725,7 +716,7 @@ private struct FriendShelfContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text(model.friendShelf?.label ?? "")
+                Text(model.friendShelf?.title ?? "")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
                 if model.isLoadingFriendShelf {
@@ -742,7 +733,7 @@ private struct FriendShelfContent: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             } else if model.friendShelfEntries.isEmpty {
-                Text(model.isLoadingFriendShelf ? "Loading…" : "Nothing on this shelf.")
+                Text(model.isLoadingFriendShelf ? String(localized: "Loading…") : String(localized: "Nothing on this shelf."))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             } else {
@@ -752,7 +743,7 @@ private struct FriendShelfContent: View {
                             title: entry.title,
                             author: entry.author,
                             cover: entry.coverURL,
-                            detail: entry.dateRead.map { "read \($0)" },
+                            detail: entry.dateRead.map { String(localized: "read \($0)") },
                             stars: entry.rating,
                             isBusy: false
                         ) {
@@ -775,7 +766,7 @@ private struct AuthorPageSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            GlassHeader {
                 Text("Author")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
@@ -783,12 +774,9 @@ private struct AuthorPageSheet: View {
                     .keyboardShortcut(.defaultAction)
                     .glassButton()
             }
-            .padding(10)
-
-            Divider()
 
             if model.isLoadingAuthorPage {
-                EmptyPane(symbol: "hourglass", text: "Loading…")
+                EmptyPane(symbol: "hourglass", text: String(localized: "Loading…"))
             } else if let error = model.authorPageError {
                 EmptyPane(symbol: "exclamationmark.triangle", text: error)
             } else if let author = model.authorPage {
@@ -973,7 +961,7 @@ private struct SearchPane: View {
 
             if model.results.isEmpty {
                 EmptyPane(symbol: "books.vertical",
-                          text: "Search for a book, then add it to a shelf.")
+                          text: String(localized: "Search for a book, then add it to a shelf."))
             } else {
                 List(model.results) { book in
                     BookRow(
@@ -988,7 +976,7 @@ private struct SearchPane: View {
                             Button {
                                 Task { await model.shelve(book, to: shelf) }
                             } label: {
-                                Label(shelf.label, systemImage: shelf.symbol)
+                                Label(shelf.title, systemImage: shelf.symbol)
                             }
                         }
                         Divider()
@@ -1004,6 +992,7 @@ private struct SearchPane: View {
                 .listStyle(.inset)
             }
         }
+        .navigationTitle("Search")
         .onAppear { focused = true }
     }
 }
@@ -1015,8 +1004,6 @@ private struct ShelfPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-
             if model.visibleEntries.isEmpty {
                 EmptyPane(
                     symbol: model.isLoadingShelf ? "hourglass" : "tray",
@@ -1038,85 +1025,62 @@ private struct ShelfPane: View {
                 .listStyle(.inset)
             }
         }
+        .navigationTitle(model.currentShelf?.title ?? "")
+        .navigationSubtitle(subtitle)
+        .searchable(text: $model.filter, placement: .toolbar, prompt: "Filter")
+        .task(id: model.shelfEntries.count) {
+            ImageMemoryCache.shared.prefetch(model.visibleEntries.prefix(40).compactMap(\.coverURL))
+        }
+        .toolbar { toolbarContent }
     }
 
-    private var header: some View {
-        GlassHeader {
-            Text(model.currentShelf?.label ?? "")
-                .font(.system(size: 13, weight: .semibold))
+    private var subtitle: String {
+        var bits: [String] = []
+        if !model.shelfEntries.isEmpty { bits.append(String(localized: "\(model.visibleEntries.count) books")) }
+        if let note = model.loadProgress ?? model.cacheNote { bits.append(note) }
+        return bits.joined(separator: " · ")
+    }
 
-            if !model.shelfEntries.isEmpty {
-                Text("\(model.visibleEntries.count)")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-
-            if let note = model.loadProgress ?? model.cacheNote {
-                Text(note)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-            }
-
-            Spacer()
-
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
             Menu {
                 Picker("Sort", selection: $model.sortOrder) {
                     ForEach(ShelfSortOrder.allCases) { order in
-                        Text(order.rawValue).tag(order)
+                        Text(order.title).tag(order)
                     }
                 }
             } label: {
-                Image(systemName: "arrow.up.arrow.down")
+                Label("Sort shelf", systemImage: "arrow.up.arrow.down")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .help("Sort: \(model.sortOrder.rawValue)")
-            .accessibilityLabel("Sort shelf")
-
-            HStack(spacing: 5) {
-                Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                TextField("Filter", text: $model.filter)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .frame(width: 130)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .glassCapsule(interactive: true)
+            .help("Sort: \(model.sortOrder.title)")
 
             Button { model.exportCurrentShelf() } label: {
-                Image(systemName: "square.and.arrow.down")
+                Label("Export shelf as CSV", systemImage: "square.and.arrow.down")
             }
-            .glassIconButton()
             .help("Export this shelf as CSV")
-            .accessibilityLabel("Export shelf as CSV")
 
             if model.isLoadingShelf {
                 ProgressView().controlSize(.small)
             } else {
                 Button { Task { await model.loadShelf(force: true) } } label: {
-                    Image(systemName: "arrow.clockwise")
+                    Label("Reload shelf", systemImage: "arrow.clockwise")
                 }
-                .glassIconButton()
                 .help("Reload this shelf")
-                .accessibilityLabel("Reload shelf")
             }
         }
     }
 
     private var emptyText: String {
-        if model.isLoadingShelf { return model.loadProgress ?? "Loading your shelf…" }
-        if !model.filter.isEmpty { return "Nothing matches “\(model.filter)”." }
-        return "Nothing here yet."
+        if model.isLoadingShelf { return model.loadProgress ?? String(localized: "Loading your shelf…") }
+        if !model.filter.isEmpty { return String(localized: "Nothing matches “\(model.filter)”.") }
+        return String(localized: "Nothing here yet.")
     }
 
     private func detailLine(_ entry: ShelfEntry) -> String? {
         var bits: [String] = []
         if let progress = entry.progress { bits.append("\(progress)%") }
-        if let date = entry.dateRead, !date.isEmpty { bits.append("read \(date)") }
+        if let date = entry.dateRead, !date.isEmpty { bits.append(String(localized: "read \(date)")) }
         return bits.isEmpty ? nil : bits.joined(separator: " · ")
     }
 
@@ -1151,7 +1115,7 @@ private struct ShelfPane: View {
                 Button {
                     Task { await model.move(entry, to: shelf) }
                 } label: {
-                    Label(shelf.label, systemImage: shelf.symbol)
+                    Label(shelf.title, systemImage: shelf.symbol)
                 }
             }
         }
@@ -1388,7 +1352,7 @@ private struct StatusBar: View {
                 Circle()
                     .fill(model.loggedIn ? Color.green : Color.secondary)
                     .frame(width: 7, height: 7)
-                Text(model.loggedIn ? "Signed in" : "Not signed in")
+                Text(model.loggedIn ? String(localized: "Signed in") : String(localized: "Not signed in"))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -1403,10 +1367,7 @@ private struct StatusBar: View {
             }
 
             if let update = model.updateAvailable {
-                Button("Update to \(update.version)…") { NSWorkspace.shared.open(update.url) }
-                    .controlSize(.small)
-                    .glassButton()
-                    .help("A newer build is on GitHub Releases.")
+                UpdateButton(update: update)
             }
 
             if session.isBusy { ProgressView().controlSize(.small) }
@@ -1421,7 +1382,7 @@ private struct StatusBar: View {
                 .glassButton()
                 .help("Watch what the app is doing in the page — for troubleshooting.")
 
-            Button(model.loggedIn ? "Sign Out" : "Log In") {
+            Button(model.loggedIn ? String(localized: "Sign Out") : String(localized: "Log In")) {
                 if model.loggedIn {
                     Task { await model.signOut() }
                 } else {
@@ -1433,5 +1394,41 @@ private struct StatusBar: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+}
+
+/// "Update to x.y.z" in the status bar — installs and relaunches when it
+/// can, otherwise opens the release page.
+private struct UpdateButton: View {
+    let update: UpdateChecker.Available
+    @ObservedObject private var updater = SelfUpdater.shared
+
+    var body: some View {
+        switch updater.state {
+        case .downloading:
+            Label("Downloading \(update.version)…", systemImage: "arrow.down.circle")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+        case .installing:
+            Label("Installing…", systemImage: "gearshape")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+        case .idle, .failed:
+            Button(updater.canInstallInPlace && update.dmgURL != nil
+                   ? String(localized: "Update to \(update.version)")
+                   : String(localized: "Update to \(update.version)…")) {
+                updater.install(update)
+            }
+            .controlSize(.small)
+            .glassProminentButton()
+            .help(helpText)
+        }
+    }
+
+    private var helpText: String {
+        if case .failed(let message) = updater.state {
+            return String(localized: "The last attempt failed: \(message). Click to try again.")
+        }
+        return updater.canInstallInPlace
+            ? String(localized: "Downloads the new version, replaces this one and reopens the app.")
+            : String(localized: "Opens the release page. Move the app to Applications to update it in one click.")
     }
 }

@@ -42,7 +42,7 @@ enum ShelfLibrary {
     /// own (`/review/list/<id>` rather than the implicit `/review/list`) —
     /// same template, same rating column, so a friend's shelf reuses this
     /// unchanged.
-    static func load(_ shelf: Shelf,
+    @MainActor static func load(_ shelf: Shelf,
                      ofUser userID: String? = nil,
                      onPage: @MainActor (Int, Int) -> Void = { _, _ in }) async throws -> [ShelfEntry] {
         let session = WebSession.shared
@@ -62,7 +62,7 @@ enum ShelfLibrary {
 
         let firstEnvelope = try decodeEnvelope(firstRaw)
         guard firstEnvelope.ok, var rows = firstEnvelope.rows else {
-            throw AppError(firstEnvelope.error ?? "The shelf page couldn't be read.")
+            throw AppError(verbatim: firstEnvelope.error ?? String(localized: "The shelf page couldn't be read."))
         }
         // Zero rows is either a genuinely empty shelf or a page whose markup
         // no longer matches what this app scrapes for it — the second one
@@ -71,7 +71,7 @@ enum ShelfLibrary {
             throw AppError("Goodreads' page layout may have changed — this didn't look like a normal shelf page. Open Browser to check.")
         }
         let pages = firstEnvelope.pages ?? 1
-        await onPage(rows.count, pages)
+        onPage(rows.count, pages)
 
         if pages > 1 {
             var completed = rows.count
@@ -92,7 +92,7 @@ enum ShelfLibrary {
                         )
                         let envelope = try decodeEnvelope(raw)
                         guard envelope.ok, let pageRows = envelope.rows else {
-                            throw AppError(envelope.error ?? "Page \(page) of the shelf couldn't be read.")
+                            throw AppError(verbatim: envelope.error ?? String(localized: "Page \(page) of the shelf couldn't be read."))
                         }
                         return pageRows
                     }
@@ -101,7 +101,7 @@ enum ShelfLibrary {
                 while let pageRows = try await group.next() {
                     rows.append(contentsOf: pageRows)
                     completed += pageRows.count
-                    await onPage(completed, pages)
+                    onPage(completed, pages)
                     addNext()
                 }
             }
@@ -136,7 +136,7 @@ enum ShelfLibrary {
 
     /// Scrapes the shelf list out of the My Books sidebar, so custom shelves
     /// show up without being hardcoded.
-    static func discoverShelves() async throws -> [Shelf] {
+    @MainActor static func discoverShelves() async throws -> [Shelf] {
         let session = WebSession.shared
 
         let raw = try await session.exclusive { () -> String in
@@ -150,7 +150,7 @@ enum ShelfLibrary {
 
         let envelope = try JSONDecoder().decode(ShelfListEnvelope.self, from: data)
         guard envelope.ok, let found = envelope.rows else {
-            throw AppError(envelope.error ?? "The shelf list couldn't be read.")
+            throw AppError(verbatim: envelope.error ?? String(localized: "The shelf list couldn't be read."))
         }
 
         // Drop pseudo-shelves, then collapse to-read/want-to-read duplicates,

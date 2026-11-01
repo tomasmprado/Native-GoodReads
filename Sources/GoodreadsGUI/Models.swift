@@ -26,7 +26,17 @@ struct Book: Identifiable, Hashable, Codable {
 /// The three built-ins are special only in being mutually exclusive.
 struct Shelf: Identifiable, Hashable, Codable {
     let name: String        // url slug, e.g. "currently-reading"
-    let label: String       // display name
+    let label: String       // Goodreads' own name — also what page automation looks for, so stays English
+
+    /// The name shown in the app: built-in shelves translated, custom ones as named on Goodreads.
+    var title: String {
+        switch name {
+        case "to-read":           return String(localized: "Want to Read")
+        case "currently-reading": return String(localized: "Currently Reading")
+        case "read":              return String(localized: "Read")
+        default:                  return label
+        }
+    }
     var count: Int?
 
     var id: String { name }
@@ -116,6 +126,17 @@ enum ShelfSortOrder: String, CaseIterable, Identifiable {
     case dateAdded  = "Date Added"
 
     var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .asShelved: return String(localized: "As Shelved")
+        case .title:     return String(localized: "Title")
+        case .author:    return String(localized: "Author")
+        case .rating:    return String(localized: "Rating")
+        case .dateRead:  return String(localized: "Date Read")
+        case .dateAdded: return String(localized: "Date Added")
+        }
+    }
 
     func sorted(_ entries: [ShelfEntry]) -> [ShelfEntry] {
         switch self {

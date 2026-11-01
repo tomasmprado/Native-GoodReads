@@ -68,10 +68,10 @@ enum ShelfCache {
     static func age(_ date: Date) -> String {
         let seconds = Int(Date().timeIntervalSince(date))
         switch seconds {
-        case ..<60:     return "just now"
-        case ..<3600:   return "\(seconds / 60)m ago"
-        case ..<86400:  return "\(seconds / 3600)h ago"
-        default:        return "\(seconds / 86400)d ago"
+        case ..<60:     return String(localized: "just now")
+        case ..<3600:   return String(localized: "\(seconds / 60)m ago")
+        case ..<86400:  return String(localized: "\(seconds / 3600)h ago")
+        default:        return String(localized: "\(seconds / 86400)d ago")
         }
     }
 }

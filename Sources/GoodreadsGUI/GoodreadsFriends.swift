@@ -52,7 +52,7 @@ enum GoodreadsFriends {
     /// `/friend/user/<id>` (used elsewhere in this file, and what a friend's
     /// own profile page links to) shows *that person's* friends — it isn't
     /// your own friends management page. That's plain `/friend`.
-    static func fetchFriends() async throws -> [Friend] {
+    @MainActor static func fetchFriends() async throws -> [Friend] {
         let session = WebSession.shared
 
         // Reads the live document — load and evaluate share one lock.
@@ -73,7 +73,7 @@ enum GoodreadsFriends {
     }
 
     /// The mixed, all-friends activity feed on the home page.
-    static func fetchActivity() async throws -> [Activity] {
+    @MainActor static func fetchActivity() async throws -> [Activity] {
         let session = WebSession.shared
 
         let raw = try await session.exclusive { () -> String in
@@ -89,7 +89,7 @@ enum GoodreadsFriends {
 
     /// A deeper look at one friend — their header info and their own recent
     /// updates, reachable by tapping their name or avatar.
-    static func fetchProfile(url: URL) async throws -> Profile {
+    @MainActor static func fetchProfile(url: URL) async throws -> Profile {
         let session = WebSession.shared
 
         // The load and both evaluates read the same live document, so they
@@ -111,7 +111,7 @@ enum GoodreadsFriends {
         }
 
         return Profile(
-            name: result.name ?? "Goodreads member",
+            name: result.name ?? String(localized: "Goodreads member"),
             avatarURL: result.avatar.flatMap(URL.init(string:)),
             stats: result.stats,
             activity: decodeActivity(activityRaw)

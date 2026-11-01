@@ -83,8 +83,8 @@ enum GoogleBooksClient {
 
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             let message = (try? JSONDecoder().decode(ErrorEnvelope.self, from: data))?.error.message
-                ?? "Google Books returned HTTP \(http.statusCode)."
-            let hint = apiKey.isEmpty ? " Add a free API key in Settings — the shared tier is out of quota." : ""
+                ?? String(localized: "Google Books returned HTTP \(http.statusCode).")
+            let hint = apiKey.isEmpty ? String(localized: " Add a free API key in Settings — the shared tier is out of quota.") : ""
             throw GoogleBooksHTTPError(message: message + hint, apiKeyWasEmpty: apiKey.isEmpty)
         }
 
@@ -114,7 +114,7 @@ enum GoogleBooksClient {
         return Book(
             id: id,
             title: title,
-            author: (info.authors ?? []).joined(separator: ", ").ifEmpty("Unknown author"),
+            author: (info.authors ?? []).joined(separator: ", ").ifEmpty(String(localized: "Unknown author")),
             coverURL: cover.flatMap(URL.init(string:)),
             rating: info.averageRating.map { String(format: "%.1f", $0) },
             publisher: info.publisher,

@@ -18,7 +18,7 @@ enum ShelfService {
     enum WriteVerification { case confirmed, unknown }
 
     @discardableResult
-    static func add(bookID: String, to shelf: Shelf) async throws -> WriteVerification {
+    @MainActor static func add(bookID: String, to shelf: Shelf) async throws -> WriteVerification {
         let session = WebSession.shared
         try await session.ensureResident()
 
@@ -36,10 +36,10 @@ enum ShelfService {
             case .present:
                 return .confirmed
             case .unknown:
-                await Diagnostics.shared.log("verify add", "endpoint claimed success but verification was inconclusive on \(shelf.name)", ok: false)
+                Diagnostics.shared.log("verify add", "endpoint claimed success but verification was inconclusive on \(shelf.name)", ok: false)
                 return .unknown
             case .absent:
-                await Diagnostics.shared.log("verify add", "endpoint claimed success but book isn't on \(shelf.name)", ok: false)
+                Diagnostics.shared.log("verify add", "endpoint claimed success but book isn't on \(shelf.name)", ok: false)
             }
         }
         let endpointError = decode(endpointRaw)?.error ?? "endpoint reported success but nothing changed"
@@ -71,7 +71,7 @@ enum ShelfService {
             case .present:
                 return .confirmed
             case .unknown:
-                await Diagnostics.shared.log("verify add", "page automation claimed success but verification was inconclusive on \(shelf.name)", ok: false)
+                Diagnostics.shared.log("verify add", "page automation claimed success but verification was inconclusive on \(shelf.name)", ok: false)
                 return .unknown
             case .absent:
                 break   // falls through to the combined error below
@@ -120,7 +120,7 @@ enum ShelfService {
     /// failure; an inconclusive check shouldn't turn a successful remove into
     /// a reported error.
     @discardableResult
-    static func remove(bookID: String, from shelf: Shelf) async throws -> WriteVerification {
+    @MainActor static func remove(bookID: String, from shelf: Shelf) async throws -> WriteVerification {
         let session = WebSession.shared
 
         let raw = try await session.exclusive { () -> String in
@@ -136,10 +136,10 @@ enum ShelfService {
         case .absent:
             return .confirmed
         case .unknown:
-            await Diagnostics.shared.log("verify remove", "endpoint claimed success but verification was inconclusive on \(shelf.name)", ok: false)
+            Diagnostics.shared.log("verify remove", "endpoint claimed success but verification was inconclusive on \(shelf.name)", ok: false)
             return .unknown
         case .present:
-            await Diagnostics.shared.log("verify remove", "endpoint claimed success but book is still on \(shelf.name)", ok: false)
+            Diagnostics.shared.log("verify remove", "endpoint claimed success but book is still on \(shelf.name)", ok: false)
             throw AppError("Goodreads accepted the request but the book is still on \(shelf.label).")
         }
     }
@@ -148,7 +148,7 @@ enum ShelfService {
 
     /// Rating, date read and the Read shelf all go through `/review/create`,
     /// which is the same form the website posts when you finish something.
-    static func finish(bookID: String,
+    @MainActor static func finish(bookID: String,
                        rating: Int?,
                        dateRead: Date?,
                        note: String) async throws {
@@ -182,7 +182,7 @@ enum ShelfService {
     /// already existing for the book (true for anything already shelved,
     /// since shelving creates one) rather than creating one on the Read
     /// shelf the way `finish` deliberately does.
-    static func rate(bookID: String, stars: Int) async throws {
+    @MainActor static func rate(bookID: String, stars: Int) async throws {
         let session = WebSession.shared
 
         let raw = try await session.exclusive { () -> String in
@@ -214,7 +214,7 @@ enum ShelfService {
     /// costs nothing to keep trying in case Goodreads brings the endpoint
     /// back; phase 2 drives that home-feed widget instead.
     @discardableResult
-    static func updateProgress(bookID: String,
+    @MainActor static func updateProgress(bookID: String,
                                percent: Int?,
                                page: Int?,
                                note: String) async throws -> ProgressResult {
@@ -267,7 +267,7 @@ enum ShelfService {
     /// it before you've touched a book's progress from inside the app.
     ///
     /// Reads the live DOM, so load and evaluate share one lock.
-    static func currentProgress() async throws -> [String: Int] {
+    @MainActor static func currentProgress() async throws -> [String: Int] {
         let session = WebSession.shared
 
         let raw = try await session.exclusive { () -> String in
@@ -317,7 +317,7 @@ enum ShelfService {
               let result = try? JSONDecoder().decode(ScriptResult.self, from: data) else {
             throw AppError("The page didn't respond as expected.")
         }
-        if !result.ok { throw AppError(result.error ?? "Request failed.") }
+        if !result.ok { throw AppError(verbatim: result.error ?? String(localized: "Request failed.")) }
     }
 
     /// React book pages don't carry a csrf-token meta tag, so an unsigned POST

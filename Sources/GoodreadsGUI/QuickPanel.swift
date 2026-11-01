@@ -234,8 +234,8 @@ private struct QuickRow: View {
                         Image(systemName: shelf.symbol)
                     }
                     .buttonStyle(.borderless)
-                    .help(shelf.label)
-                    .accessibilityLabel(shelf.label)
+                    .help(shelf.title)
+                    .accessibilityLabel(shelf.title)
                 }
             }
         }

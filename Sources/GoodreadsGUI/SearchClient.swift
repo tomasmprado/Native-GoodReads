@@ -34,11 +34,11 @@ enum SearchClient {
 
         return results.compactMap { raw in
             guard let id = raw.bookId?.string, !id.isEmpty else { return nil }
-            let title = raw.bookTitleBare ?? raw.title ?? "Untitled"
+            let title = raw.bookTitleBare ?? raw.title ?? String(localized: "Untitled")
             return Book(
                 id: id,
                 title: title,
-                author: raw.author?.name ?? "Unknown author",
+                author: raw.author?.name ?? String(localized: "Unknown author"),
                 coverURL: raw.imageUrl.flatMap(URL.init(string:)),
                 rating: raw.avgRating?.string,
                 // This *is* a Goodreads book id already — setting it here
@@ -86,6 +86,9 @@ private struct Loose: Decodable {
 
 struct AppError: LocalizedError {
     let message: String
-    init(_ message: String) { self.message = message }
+    /// Messages shown to the user — translated.
+    init(_ message: String.LocalizationValue) { self.message = String(localized: message) }
+    /// Text that's already final (Goodreads' own error text, a system error).
+    init(verbatim message: String) { self.message = message }
     var errorDescription: String? { message }
 }

@@ -10,9 +10,11 @@ import Foundation
 enum UpdateChecker {
     private static let repo = "tomasmprado/Native-GoodReads"
 
-    struct Available {
+    struct Available: Equatable {
         let version: String
         let url: URL
+        /// The release's `.dmg`, when it has one — what `SelfUpdater` installs.
+        var dmgURL: URL?
     }
 
     static func checkForUpdate() async -> Available? {
@@ -34,7 +36,10 @@ enum UpdateChecker {
 
         let latest = release.tagName.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
         guard isNewer(latest, than: current), let url = URL(string: release.htmlURL) else { return nil }
-        return Available(version: latest, url: url)
+        let dmg = release.assets?
+            .first { $0.name.lowercased().hasSuffix(".dmg") }
+            .flatMap { URL(string: $0.browserDownloadURL) }
+        return Available(version: latest, url: url, dmgURL: dmg)
     }
 
     /// Plain dot-separated numeric comparison — string comparison alone
@@ -56,10 +61,22 @@ enum UpdateChecker {
     private struct Release: Decodable {
         let tagName: String
         let htmlURL: String
+        let assets: [Asset]?
 
         enum CodingKeys: String, CodingKey {
             case tagName = "tag_name"
             case htmlURL = "html_url"
+            case assets
+        }
+    }
+
+    private struct Asset: Decodable {
+        let name: String
+        let browserDownloadURL: String
+
+        enum CodingKeys: String, CodingKey {
+            case name
+            case browserDownloadURL = "browser_download_url"
         }
     }
 }

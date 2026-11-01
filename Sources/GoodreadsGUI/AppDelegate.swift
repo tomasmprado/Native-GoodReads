@@ -32,16 +32,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // No key equivalent here — ⌥Space is already handled system-wide by
         // the Carbon hotkey in HotKeyCenter, and having both meant the menu
         // item's own equivalent raced it whenever the app was frontmost.
-        let quick = NSMenuItem(title: "Quick Add", action: #selector(togglePanel), keyEquivalent: "")
+        let quick = NSMenuItem(title: String(localized: "Quick Add"), action: #selector(togglePanel), keyEquivalent: "")
         quick.target = self
         menu.addItem(quick)
 
-        let library = NSMenuItem(title: "Library Window", action: #selector(showLibrary), keyEquivalent: "")
+        let library = NSMenuItem(title: String(localized: "Library Window"), action: #selector(showLibrary), keyEquivalent: "")
         library.target = self
         menu.addItem(library)
 
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: String(localized: "Quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
         item.menu = menu
         statusItem = item

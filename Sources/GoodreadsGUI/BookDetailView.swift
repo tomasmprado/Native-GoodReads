@@ -24,16 +24,14 @@ struct BookDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            GlassHeader {
                 Text("Book Details")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.defaultAction)
+                    .glassButton()
             }
-            .padding(10)
-
-            Divider()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -52,6 +50,7 @@ struct BookDetailView: View {
             }
         }
         .frame(width: 700, height: 680)
+        .background(alignment: .top) { CoverBackdrop(url: book.coverURL) }
         .task { await resolveAndLoad() }
     }
 
@@ -210,7 +209,7 @@ struct BookDetailView: View {
             goodreadsID = id
             await loadReviews(bookID: id)
         } catch {
-            resolveError = "Couldn't find this book on Goodreads."
+            resolveError = String(localized: "Couldn't find this book on Goodreads.")
         }
     }
 
@@ -229,7 +228,7 @@ struct BookDetailView: View {
                 reviewsError = nil
             }
         } catch {
-            reviewsError = "Couldn't load reviews: \(error.localizedDescription)"
+            reviewsError = String(localized: "Couldn't load reviews: \(error.localizedDescription)")
         }
     }
 
@@ -274,6 +273,32 @@ private struct ReviewRow: View {
                         .foregroundStyle(.tertiary)
                 }
             }
+        }
+    }
+}
+
+/// The book's cover, blurred and faded behind the top of the sheet — gives
+/// the glass header something to refract, the way Apple's own apps do.
+private struct CoverBackdrop: View {
+    let url: URL?
+
+    var body: some View {
+        if hasLiquidGlass, let url {
+            CachedAsyncImage(url: url) { phase in
+                if case .success(let image) = phase {
+                    image.resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(height: 260)
+            .frame(maxWidth: .infinity)
+            .clipped()
+            .blur(radius: 40)
+            .opacity(0.55)
+            .mask(LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom))
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
         }
     }
 }

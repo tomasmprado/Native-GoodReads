@@ -37,7 +37,7 @@ struct ProgressSheet: View {
             }
 
             Picker("", selection: $mode) {
-                ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
+                ForEach(Mode.allCases) { Text($0 == .percent ? "Percent" : "Page").tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()

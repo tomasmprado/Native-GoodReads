@@ -47,7 +47,7 @@ enum Suggestions {
                 guard looksLikeSameAuthor(book.author, author) else { continue }
                 guard language.matches(book.language) || (book.language == nil && includeUnknown) else { continue }
 
-                var suggestion = Suggestion(book: book, reason: "More from \(author)")
+                var suggestion = Suggestion(book: book, reason: String(localized: "More from \(author)"))
                 suggestion.language = book.language
                 candidates.append(suggestion)
                 if candidates.count >= 40 { break }
