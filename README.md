@@ -82,9 +82,15 @@ Needs the same full Xcode install as `swift build` (Command Line Tools alone
 can't resolve `XCTest`). CI runs this for real on every push and PR, on a
 GitHub-hosted runner that does have full Xcode. The suite only covers pure
 logic — date parsing, CSV escaping, shelf sorting, the author-matching
-heuristic — not the WebKit-driven scraping and shelving, which has no
+heuristic, stats — plus the parsers for what Goodreads sends back: a cut-down
+book page with the same structure as a real one, and the JSON the shelf and
+friends scripts return. When Goodreads changes a page, those are the tests to
+update first. The in-page scripts themselves (WebKit DOM scraping) have no
 practical way to run headless against Goodreads' real markup; that's still
 what **Browser** and **Log** are for.
+
+The package builds in the Swift 6 language mode, so data races are compile
+errors.
 
 ## Using it
 
@@ -96,7 +102,8 @@ is a nicer version of something the website already does; this is the part the
 website can't do.
 
 There's also a menu bar item with the same thing, plus a way back to the main
-window.
+window. Its menu also lists what you're currently reading, with a progress bar
+for each; choosing a book opens its progress update.
 
 The hotkey uses Carbon's `RegisterEventHotKey`, which is ancient but is the only
 route that doesn't demand Accessibility permission. If another app already owns
@@ -134,6 +141,10 @@ app, under Applications there). Translations live in
 book. Checked whenever the friend list refreshes and every hour while the app
 is open; the first check only records what's there, so turning it on is quiet.
 
+**Spotlight** — on by default: the books on your shelves show up when you
+search from ⌘Space, and choosing one opens its details here. Each shelf is
+re-indexed whenever it loads; turning this off removes them.
+
 **Cache** shows how much the app keeps on disk (shelves, book and author pages,
 friends, covers) and clears it. Clearing is safe — everything is fetched again
 the next time it's opened.
@@ -166,8 +177,13 @@ order alone.
 **Stats** — this year's reading goal (set it right there; it shows whether
 you're ahead or behind schedule, with a per-month chart), books read, average
 rating, books per year, your rating distribution and most-read authors. All
-worked out from the Read shelf; Goodreads' shelf pages carry no page counts,
-so everything is counted in books.
+worked out from the Read shelf. Goodreads' shelf pages carry no page counts
+or genres, so **Pages and Genres** (pages per year, top genres) uses each
+book's own page: whatever you've opened in the app is already known, and
+*Fill In* fetches the rest, a few at a time.
+
+When the Mac is offline the status bar says so: what's on screen is the saved
+copy, and the pane refreshes on its own once the connection is back.
 
 On macOS 26 the app uses Liquid Glass: the sidebar floats, pane buttons sit in
 the glass toolbar, and cards and the ⌥Space panel are glass. Older macOS keeps
@@ -182,7 +198,10 @@ Each row's ••• menu:
 - *Rate* — stars on their own, for books already shelved.
 - *Move to* — any shelf. The three built-ins are exclusive, so moving between
   them changes reading status. Custom shelves stack instead.
-- *Remove from Shelf*, *Open on Goodreads*
+- *Remove from Shelf*, *Open on Goodreads*, *Share…*
+
+You can also drag a row onto a shelf in the sidebar to move it there, the
+same as *Move to*.
 
 Removing and moving both offer an **Undo** button in the status bar for a few
 seconds afterward — the same shelf calls run in reverse, not a local-only
@@ -228,8 +247,10 @@ it should:
 An **Update to X.Y** button appears in the same status bar when a newer
 version is out on [Releases](../../releases) — a quiet, best-effort check
 against the GitHub API on launch, silent on any failure (offline, rate
-limited). Clicking it downloads the release's `.dmg`, checks the app inside is
-Goodreads at that version, swaps it for the running copy and reopens. The old
+limited). Clicking it shows what's new in that release first; *Install and
+Relaunch* then downloads the release's `.dmg` (with a progress bar), checks the
+app inside is Goodreads at that version, swaps it for the running copy and
+reopens. The old
 copy is put back if anything goes wrong. When the app can't replace itself —
 run straight from the disk image, or from Downloads before being moved — the
 button opens the release page instead.
@@ -363,6 +384,15 @@ Sources/GoodreadsGUI/
   AppDelegate.swift       menu bar item, hotkey wiring
   SelectorOverrides.swift user-editable extra CSS selectors (selectors.json)
   UpdateChecker.swift     checks GitHub Releases for a newer build
+  SelfUpdater.swift       downloads, verifies and installs an update
+  ReleaseNotes.swift      what's-new popover shown before updating
+  DataCache.swift         cache for pages, friends and covers
+  ReadingStats.swift      Stats pane and its numbers
+  FriendNotifier.swift    notifications for friends' reading
+  SpotlightIndex.swift    puts shelved books into Spotlight
+  Connectivity.swift      online/offline status
+  Glass.swift             Liquid Glass helpers, with fallbacks
+  Resources/              translations (Localizable.strings, plurals in .stringsdict)
 Tests/GoodreadsGUITests/  unit tests for the pure logic above (`swift test`)
 ```
 
