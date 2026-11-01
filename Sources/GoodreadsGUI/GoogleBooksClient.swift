@@ -52,6 +52,21 @@ enum GoogleBooksClient {
         return books
     }
 
+    /// An author's most recently published books, for "New from your
+    /// authors". Cached for a day.
+    static func newestByAuthor(_ author: String) async throws -> [Book] {
+        let trimmed = author.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        let key = trimmed.lowercased()
+        if let hit = await DataCache.shared.read([Book].self, "author-newest", key,
+                                                 ttl: DataCache.TTL.newReleases), !hit.isStale {
+            return hit.value
+        }
+        let books = try await volumes(q: "inauthor:\"\(trimmed)\"", sortNewest: true)
+        await DataCache.shared.write(books, "author-newest", key)
+        return books
+    }
+
     private static func volumes(q: String,
                                 langRestrict: String? = nil,
                                 sortNewest: Bool = false,

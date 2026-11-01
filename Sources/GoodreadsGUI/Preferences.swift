@@ -86,6 +86,11 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(notifyFriendActivity, forKey: Keys.notify) }
     }
 
+    /// A notification when an author you've read twice or more has a new book.
+    @Published var notifyNewReleases: Bool {
+        didSet { defaults.set(notifyNewReleases, forKey: Keys.newReleases) }
+    }
+
     /// A daily notification asking how far you've got.
     @Published var readingReminder: Bool {
         didSet {
@@ -124,6 +129,7 @@ final class Preferences: ObservableObject {
         static let goal     = "yearlyGoal"
         static let notify   = "notifyFriendActivity"
         static let reminder = "readingReminder"
+        static let newReleases = "notifyNewReleases"
         static let reminderTime = "reminderMinutes"
     }
 
@@ -141,6 +147,7 @@ final class Preferences: ObservableObject {
         notifyFriendActivity = defaults.bool(forKey: Keys.notify)
         indexInSpotlight = SpotlightIndex.isEnabled
         readingReminder = defaults.bool(forKey: Keys.reminder)
+        notifyNewReleases = defaults.bool(forKey: Keys.newReleases)
         reminderMinutes = defaults.object(forKey: Keys.reminderTime) as? Int ?? 21 * 60
 
         // One-time migration: earlier builds kept the key in UserDefaults.
@@ -205,10 +212,17 @@ struct PreferencesView: View {
                         Task { prefs.notifyFriendActivity = await FriendNotifier.requestPermission() }
                     }
                 ))
+                Toggle("Notify me about new books from authors I read", isOn: Binding(
+                    get: { prefs.notifyNewReleases },
+                    set: { wanted in
+                        guard wanted else { prefs.notifyNewReleases = false; return }
+                        Task { prefs.notifyNewReleases = await FriendNotifier.requestPermission() }
+                    }
+                ))
             } header: {
-                Text("Friends")
+                Text("Notifications")
             } footer: {
-                Text("Checked every hour while the app is open (it keeps running in the menu bar).")
+                Text("Friends are checked every hour and new books once a day, while the app is open (it keeps running in the menu bar).")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }

@@ -93,6 +93,8 @@ final class LibraryModel: ObservableObject {
     @Published var suggestionBasis: [ShelfEntry] = []
     @Published var isBuildingSuggestions = false
     @Published var suggestionNote: String?
+    /// Recent books by authors you've read more than once.
+    @Published var newReleases: [Suggestion] = []
 
     @Published var currentlyReading: [ShelfEntry] = []
     /// Progress over time per book id, for finish-date estimates.
@@ -331,6 +333,32 @@ final class LibraryModel: ObservableObject {
         if friends.isEmpty {
             await loadFriends()
         }
+        await loadNewReleases()
+    }
+
+    /// "New from your authors" — refreshed at most daily, since each author
+    /// costs a Google Books query.
+    func loadNewReleases(force: Bool = false) async {
+        if let hit = await DataCache.shared.read([Suggestion].self, "new-releases", "all",
+                                                 ttl: DataCache.TTL.newReleases) {
+            newReleases = hit.value
+            if !hit.isStale && !force { return }
+        }
+        guard let read = ShelfCache.read(.read)?.entries, !read.isEmpty else { return }
+
+        var shelved = Set<String>()
+        for shelf in shelves {
+            for entry in ShelfCache.read(shelf)?.entries ?? [] {
+                shelved.insert(Suggestions.normalizedTitle(entry.title))
+            }
+        }
+        let prefs = Preferences.shared
+        let found = await NewReleases.find(read: read, shelvedTitles: shelved,
+                                           language: prefs.bookLanguage,
+                                           includeUnknown: prefs.includeUnknownLanguage)
+        newReleases = found
+        await DataCache.shared.write(found, "new-releases", "all")
+        if prefs.notifyNewReleases { await NewReleases.notify(about: found) }
     }
 
     /// Puts every shelf already on disk into Spotlight — for books cached
@@ -423,6 +451,7 @@ final class LibraryModel: ObservableObject {
             await loadCurrentlyReading()
         case .suggestions:
             await buildSuggestions()
+            await loadNewReleases()
         case .friends:
             await loadFriends()
         case .stats:

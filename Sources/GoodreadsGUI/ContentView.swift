@@ -347,31 +347,50 @@ private struct SuggestionsPane: View {
         return bits.joined(separator: " · ")
     }
 
+    private func suggestionRow(_ suggestion: Suggestion, detail: String?) -> some View {
+        BookRow(
+            title: suggestion.book.title,
+            author: suggestion.book.author,
+            cover: suggestion.book.coverURL,
+            detail: detail,
+            stars: nil,
+            isBusy: model.busyBookID == suggestion.book.id
+        ) {
+            ForEach(model.shelves) { shelf in
+                Button {
+                    Task { await model.shelve(suggestion.book, to: shelf) }
+                } label: {
+                    Label(shelf.title, systemImage: shelf.symbol)
+                }
+            }
+            Divider()
+            Button("View Details…") { model.showBookDetail(suggestion.book) }
+            Button("Open on Goodreads") { Task { await model.openOnGoodreads(suggestion.book) } }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            if model.suggestions.isEmpty {
+            if model.suggestions.isEmpty && model.newReleases.isEmpty {
                 EmptyPane(symbol: model.isBuildingSuggestions ? "hourglass" : "sparkles",
                           text: model.suggestionNote ?? String(localized: "Nothing to suggest yet."))
             } else {
-                List(model.suggestions) { suggestion in
-                    BookRow(
-                        title: suggestion.book.title,
-                        author: suggestion.book.author,
-                        cover: suggestion.book.coverURL,
-                        detail: detailLine(suggestion.reason, publisher: suggestion.book.publisher),
-                        stars: nil,
-                        isBusy: model.busyBookID == suggestion.book.id
-                    ) {
-                        ForEach(model.shelves) { shelf in
-                            Button {
-                                Task { await model.shelve(suggestion.book, to: shelf) }
-                            } label: {
-                                Label(shelf.title, systemImage: shelf.symbol)
+                List {
+                    if !model.newReleases.isEmpty {
+                        Section("New from Your Authors") {
+                            ForEach(model.newReleases) { suggestion in
+                                suggestionRow(suggestion, detail: [suggestion.reason, suggestion.book.publishedDate]
+                                    .compactMap { $0 }.joined(separator: " · "))
                             }
                         }
-                        Divider()
-                        Button("View Details…") { model.showBookDetail(suggestion.book) }
-                        Button("Open on Goodreads") { Task { await model.openOnGoodreads(suggestion.book) } }
+                    }
+                    if !model.suggestions.isEmpty {
+                        Section("More by Authors You’ve Read") {
+                            ForEach(model.suggestions) { suggestion in
+                                suggestionRow(suggestion,
+                                              detail: detailLine(suggestion.reason, publisher: suggestion.book.publisher))
+                            }
+                        }
                     }
                 }
                 .listStyle(.inset)
@@ -393,7 +412,12 @@ private struct SuggestionsPane: View {
                 if model.isBuildingSuggestions {
                     ProgressView().controlSize(.small)
                 } else {
-                    Button { Task { await model.buildSuggestions(force: true) } } label: {
+                    Button {
+                        Task {
+                            await model.buildSuggestions(force: true)
+                            await model.loadNewReleases(force: true)
+                        }
+                    } label: {
                         Label("Rebuild suggestions", systemImage: "arrow.clockwise")
                     }
                     .help("Rebuild suggestions")
