@@ -269,6 +269,7 @@ private struct ReviewRow: View {
                         Text(String(repeating: "★", count: rating))
                             .font(.system(size: 11))
                             .foregroundStyle(.yellow)
+                            .accessibilityLabel(Text("\(rating) stars"))
                     }
                 }
                 Text(review.text)
@@ -277,7 +278,7 @@ private struct ReviewRow: View {
                     .lineLimit(6)
                     .textSelection(.enabled)
                 if let likes = review.likeCount, likes > 0 {
-                    Text("\(likes) like\(likes == 1 ? "" : "s")")
+                    Text("\(likes) likes")
                         .font(.system(size: 10))
                         .foregroundStyle(.tertiary)
                 }

@@ -72,7 +72,7 @@ struct StarPicker: View {
                         .foregroundStyle(star <= rating ? Color.yellow : Color.secondary.opacity(0.5))
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("\(star) star\(star == 1 ? "" : "s")")
+                .accessibilityLabel("\(star) stars")
             }
 
             if rating > 0 {

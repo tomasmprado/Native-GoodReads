@@ -15,9 +15,7 @@
 "%lld behind schedule" = "%lld atrás do previsto";
 "%lld books" = "%lld livros";
 "%lld entries" = "%lld entradas";
-"%lld like%@" = "%lld gosto%@";
 "%lld of ~%lld so far…" = "%lld de ~%lld até agora…";
-"%lld star%@" = "%lld estrela%@";
 "%lld ★ — %@" = "%lld ★ — %@";
 "%lld%%" = "%lld%%";
 "%lldd ago" = "há %lld d";
@@ -86,7 +84,6 @@
 "Done" = "Concluído";
 "Download failed (HTTP %lld)." = "A transferência falhou (HTTP %lld).";
 "Downloading %@…" = "A transferir %@…";
-"Downloads the new version, replaces this one and reopens the app." = "Transfere a nova versão, substitui esta e volta a abrir a app.";
 "English" = "Inglês";
 "Every request this app has made — copyable when something breaks." = "Todos os pedidos que a app fez — para copiar quando algo falha.";
 "Export Library…" = "Exportar biblioteca…";
@@ -167,7 +164,6 @@
 "Notify me when friends start or finish a book" = "Avisar-me quando amigos começam ou terminam um livro";
 "of %lld books" = "de %lld livros";
 "Open on Goodreads" = "Abrir no Goodreads";
-"Opens the release page. Move the app to Applications to update it in one click." = "Abre a página da versão. Move a app para Aplicações para atualizar com um clique.";
 "Page" = "Página";
 "page %lld" = "página %lld";
 "Page %lld of the shelf couldn't be read." = "Não foi possível ler a página %lld da estante.";
@@ -243,7 +239,6 @@
 "Untitled" = "Sem título";
 "Update" = "Atualizar";
 "Update Progress…" = "Atualizar progresso…";
-"Update to %@" = "Atualizar para %@";
 "Update to %@…" = "Atualizar para %@…";
 "updated just now" = "atualizado agora mesmo";
 "Updated “%@” to %@." = "“%@” atualizado para %@.";
@@ -260,3 +255,43 @@
 "“%@” → %@%@" = "“%@” → %@%@";
 "↑↓ to pick · ⌘1 Want to Read · ⌘2 Currently Reading · ⌘3 Read" = "↑↓ para escolher · ⌘1 Quero Ler · ⌘2 A Ler · ⌘3 Lidos";
 "⌥Space closes this too" = "⌥Espaço também fecha isto";
+
+/* 2.3 */
+"%@ — %@" = "%@ — %@";
+"%lld of %lld" = "%lld de %lld";
+"Books per year" = "Livros por ano";
+"Books read each month this year" = "Livros lidos em cada mês deste ano";
+"Details for %@" = "Detalhes de %@";
+"Download progress" = "Progresso do download";
+"Download…" = "Descarregar…";
+"Drop books here to move them to this shelf" = "Larga aqui livros para os mudar para esta prateleira";
+"Fetch the Goodreads page of each read book for its page count and genres" = "Vai buscar a página do Goodreads de cada livro lido para saber o número de páginas e os géneros";
+"Fill In" = "Preencher";
+"Goodreads %@" = "Goodreads %@";
+"How many books got each rating" = "Quantos livros receberam cada classificação";
+"Install and Relaunch" = "Instalar e reabrir";
+"Move the app to Applications to update it in one click." = "Move a app para a pasta Aplicações para a atualizares com um clique.";
+"No internet connection. What you see is from the cache, and refreshes once you're back online." = "Sem ligação à internet. O que vês vem da cache e é atualizado quando voltares a estar online.";
+"No release notes." = "Sem notas da versão.";
+"Nothing yet" = "Nada por agora";
+"Offline — showing saved data" = "Sem ligação — a mostrar dados guardados";
+"Pages" = "Páginas";
+"Pages and Genres" = "Páginas e géneros";
+"Pages per Year" = "Páginas por ano";
+"Pages per year" = "Páginas por ano";
+"Pages this year" = "Páginas este ano";
+"Progress" = "Progresso";
+"Release Page" = "Página da versão";
+"Search your shelves from ⌘Space. Choosing a book opens its details here." = "Pesquisa as tuas prateleiras com ⌘Espaço. Escolher um livro abre os detalhes aqui.";
+"See what's new in %@" = "Ver as novidades da %@";
+"Share" = "Partilhar";
+"Share this book" = "Partilhar este livro";
+"Share…" = "Partilhar…";
+"Show my books in Spotlight" = "Mostrar os meus livros no Spotlight";
+"Spotlight" = "Spotlight";
+"Top Genres" = "Géneros mais lidos";
+"Update progress…" = "Atualizar progresso…";
+"You have %@" = "Tens a %@";
+"%lld likes" = "%lld gostos";
+"%lld stars" = "%lld estrelas";
+"Known for %lld of %lld books read." = "Dados de %lld de %lld livros lidos.";
