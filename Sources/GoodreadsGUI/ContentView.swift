@@ -1252,12 +1252,24 @@ private struct ShelfPane: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            #if os(macOS)
             Picker("Layout", selection: $layout) {
                 Label("List", systemImage: "list.bullet").tag("list")
                 Label("Covers", systemImage: "square.grid.2x2").tag("grid")
             }
             .pickerStyle(.segmented)
             .help("Show as a list or as covers")
+            #else
+            // A segmented picker doesn't fit in the iOS toolbar: one button
+            // that shows the other layout instead.
+            Button { layout = layout == "grid" ? "list" : "grid" } label: {
+                if layout == "grid" {
+                    Label("List", systemImage: "list.bullet")
+                } else {
+                    Label("Covers", systemImage: "square.grid.2x2")
+                }
+            }
+            #endif
 
             filterMenu
 
