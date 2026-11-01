@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>%lld books</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld book</string>
+			<key>other</key>
+			<string>%lld books</string>
+		</dict>
+	</dict>
+	<key>%lld entries</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld entry</string>
+			<key>other</key>
+			<string>%lld entries</string>
+		</dict>
+	</dict>
+	<key>%lld likes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld like</string>
+			<key>other</key>
+			<string>%lld likes</string>
+		</dict>
+	</dict>
+	<key>%lld stars</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld star</string>
+			<key>other</key>
+			<string>%lld stars</string>
+		</dict>
+	</dict>
+	<key>Exported %lld books to %@.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Exported %1$#@n@ to %2$@.</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld book</string>
+			<key>other</key>
+			<string>%1$lld books</string>
+		</dict>
+	</dict>
+	<key>Exported %lld books to %@. Couldn’t read: %@.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Exported %1$#@n@ to %2$@. Couldn’t read: %3$@.</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld book</string>
+			<key>other</key>
+			<string>%1$lld books</string>
+		</dict>
+	</dict>
+	<key>Known for %lld of %lld books read.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Known for %1$lld of %2$#@b@.</string>
+		<key>b</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$lld book read</string>
+			<key>other</key>
+			<string>%2$lld books read</string>
+		</dict>
+	</dict>
+	<key>Nothing finished in the last %lld days — mark a book read and this fills in.</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>Nothing finished %#@d@ — mark a book read and this fills in.</string>
+		<key>d</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>in the last day</string>
+			<key>other</key>
+			<string>in the last %lld days</string>
+		</dict>
+	</dict>
+	<key>from %lld finished in %lld days</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>from %1$lld finished in %2$#@d@</string>
+		<key>d</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$lld day</string>
+			<key>other</key>
+			<string>%2$lld days</string>
+		</dict>
+	</dict>
+	<key>of %lld books</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>of %#@n@</string>
+		<key>n</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld book</string>
+			<key>other</key>
+			<string>%lld books</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

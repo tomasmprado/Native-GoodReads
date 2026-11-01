@@ -32,6 +32,11 @@ struct ContentView: View {
         }
         .task { await model.checkForUpdate() }
         .task { FriendNotifier.startPolling(model) }
+        .task {
+            Connectivity.shared.onReconnect = { [model] in
+                Task { await model.refreshAfterReconnect() }
+            }
+        }
         .onChange(of: model.selection) { _ in Task { await model.paneChanged() } }
         // One item drives every sheet in the app — a book's detail sheet
         // opening an author page, or an author page opening another book's
@@ -103,17 +108,8 @@ struct ContentView: View {
 
             Section("Shelves") {
                 ForEach(model.shelves) { shelf in
-                    HStack {
-                        Label(shelf.title, systemImage: shelf.symbol)
-                        Spacer()
-                        if let count = shelf.count {
-                            Text("\(count)")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .contentShape(Rectangle())
-                    .tag(LibraryModel.Pane.shelf(shelf.name))
+                    ShelfSidebarRow(model: model, shelf: shelf)
+                        .tag(LibraryModel.Pane.shelf(shelf.name))
                 }
             }
         }
@@ -141,6 +137,38 @@ struct ContentView: View {
             }
             .padding(.bottom, 8)
         }
+    }
+}
+
+/// A shelf in the sidebar — also a drop target for books dragged out of
+/// the shelf on screen.
+private struct ShelfSidebarRow: View {
+    @ObservedObject var model: LibraryModel
+    let shelf: Shelf
+    @State private var isTargeted = false
+
+    var body: some View {
+        HStack {
+            Label(shelf.title, systemImage: shelf.symbol)
+            Spacer()
+            if let count = shelf.count {
+                Text("\(count)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .contentShape(Rectangle())
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.accentColor.opacity(isTargeted ? 0.25 : 0))
+        )
+        .dropDestination(for: String.self) { payloads, _ in
+            model.drop(payloads, on: shelf)
+        } isTargeted: { targeted in
+            isTargeted = targeted && model.currentShelf?.name != shelf.name
+        }
+        .accessibilityHint(Text("Drop books here to move them to this shelf"))
     }
 }
 
@@ -588,6 +616,7 @@ private struct FriendActivityRow: View {
                         Text(String(repeating: "★", count: rating))
                             .font(.system(size: 10))
                             .foregroundStyle(.yellow)
+                            .accessibilityLabel(Text("\(rating) stars"))
                     }
                 }
 
@@ -1021,6 +1050,10 @@ private struct ShelfPane: View {
                     ) {
                         rowActions(entry)
                     }
+                    .draggable(LibraryModel.dragPrefix + entry.id) {
+                        Label(entry.title, systemImage: "book.closed")
+                            .padding(6)
+                    }
                 }
                 .listStyle(.inset)
             }
@@ -1124,6 +1157,12 @@ private struct ShelfPane: View {
 
         Button("View Details…") { model.showBookDetail(entry.asBook) }
         Button("Open on Goodreads") { model.openOnGoodreads(bookID: entry.bookID) }
+        if let url = LibraryModel.goodreadsURL(bookID: entry.bookID) {
+            ShareLink(item: url, subject: Text(entry.title),
+                      message: Text("\(entry.title) — \(entry.author)")) {
+                Label("Share…", systemImage: "square.and.arrow.up")
+            }
+        }
         Button("Remove from Shelf", role: .destructive) {
             Task { await model.remove(entry) }
         }
@@ -1198,6 +1237,7 @@ private struct CurrentlyReadingCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 5))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(Text("Details for \(entry.title)"))
 
             Text(entry.title)
                 .font(.system(size: 12, weight: .medium))
@@ -1207,9 +1247,11 @@ private struct CurrentlyReadingCard: View {
             if let progress = entry.progress {
                 ProgressView(value: Double(progress), total: 100)
                     .frame(width: 96)
+                    .accessibilityLabel(Text("Progress"))
                 Text("\(progress)%")
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
             } else {
                 Text("No progress yet")
                     .font(.system(size: 10))
@@ -1282,6 +1324,7 @@ private struct BookRow<Actions: View>: View {
                         Text(String(repeating: "★", count: stars))
                             .font(.system(size: 11))
                             .foregroundStyle(.yellow)
+                            .accessibilityLabel(Text("\(stars) stars"))
                     }
                     if let detail, !detail.isEmpty {
                         Text(detail)
@@ -1290,6 +1333,7 @@ private struct BookRow<Actions: View>: View {
                     }
                 }
             }
+            .accessibilityElement(children: .combine)
 
             Spacer(minLength: 8)
 
@@ -1332,15 +1376,26 @@ private struct BookRow<Actions: View>: View {
                     .font(.system(size: 14))
                     .foregroundStyle(.tertiary)
             )
+            .accessibilityHidden(true)
     }
 }
 
 private struct StatusBar: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject var session: WebSession
+    @ObservedObject private var connectivity = Connectivity.shared
 
     var body: some View {
         HStack(spacing: 8) {
+            if !connectivity.isOnline {
+                Label("Offline — showing saved data", systemImage: "wifi.slash")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .glassCapsule()
+                    .help("No internet connection. What you see is from the cache, and refreshes once you're back online.")
+            }
             if let status = model.status {
                 Image(systemName: status.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                     .foregroundStyle(status.isError ? .orange : .green)
@@ -1397,29 +1452,42 @@ private struct StatusBar: View {
     }
 }
 
-/// "Update to x.y.z" in the status bar — installs and relaunches when it
-/// can, otherwise opens the release page.
+/// "Update to x.y.z…" in the status bar — shows what's new first, then
+/// installs and relaunches when it can, otherwise opens the release page.
 private struct UpdateButton: View {
     let update: UpdateChecker.Available
     @ObservedObject private var updater = SelfUpdater.shared
+    @State private var showingNotes = false
 
     var body: some View {
         switch updater.state {
-        case .downloading:
-            Label("Downloading \(update.version)…", systemImage: "arrow.down.circle")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+        case .downloading(let fraction):
+            HStack(spacing: 6) {
+                Text("Downloading \(update.version)…")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                if let fraction {
+                    ProgressView(value: fraction)
+                        .frame(width: 80)
+                        .accessibilityLabel(Text("Download progress"))
+                } else {
+                    ProgressView().controlSize(.small)
+                }
+            }
         case .installing:
             Label("Installing…", systemImage: "gearshape")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
         case .idle, .failed:
-            Button(updater.canInstallInPlace && update.dmgURL != nil
-                   ? String(localized: "Update to \(update.version)")
-                   : String(localized: "Update to \(update.version)…")) {
-                updater.install(update)
-            }
-            .controlSize(.small)
-            .glassProminentButton()
-            .help(helpText)
+            Button(String(localized: "Update to \(update.version)…")) { showingNotes = true }
+                .controlSize(.small)
+                .glassProminentButton()
+                .help(helpText)
+                .popover(isPresented: $showingNotes, arrowEdge: .top) {
+                    UpdateNotesView(update: update,
+                                    canInstallInPlace: updater.canInstallInPlace && update.dmgURL != nil) {
+                        showingNotes = false
+                        updater.install(update)
+                    }
+                }
         }
     }
 
@@ -1427,8 +1495,6 @@ private struct UpdateButton: View {
         if case .failed(let message) = updater.state {
             return String(localized: "The last attempt failed: \(message). Click to try again.")
         }
-        return updater.canInstallInPlace
-            ? String(localized: "Downloads the new version, replaces this one and reopens the app.")
-            : String(localized: "Opens the release page. Move the app to Applications to update it in one click.")
+        return String(localized: "See what's new in \(update.version)")
     }
 }

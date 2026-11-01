@@ -15,6 +15,8 @@ enum UpdateChecker {
         let url: URL
         /// The release's `.dmg`, when it has one — what `SelfUpdater` installs.
         var dmgURL: URL?
+        /// The release description (Markdown), shown before installing.
+        var notes: String? = nil
     }
 
     static func checkForUpdate() async -> Available? {
@@ -39,7 +41,9 @@ enum UpdateChecker {
         let dmg = release.assets?
             .first { $0.name.lowercased().hasSuffix(".dmg") }
             .flatMap { URL(string: $0.browserDownloadURL) }
-        return Available(version: latest, url: url, dmgURL: dmg)
+        let notes = release.body?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Available(version: latest, url: url, dmgURL: dmg,
+                         notes: notes?.isEmpty == false ? notes : nil)
     }
 
     /// Plain dot-separated numeric comparison — string comparison alone
@@ -62,11 +66,12 @@ enum UpdateChecker {
         let tagName: String
         let htmlURL: String
         let assets: [Asset]?
+        let body: String?
 
         enum CodingKeys: String, CodingKey {
             case tagName = "tag_name"
             case htmlURL = "html_url"
-            case assets
+            case assets, body
         }
     }
 

@@ -8,7 +8,7 @@ import SwiftUI
 actor DataCache {
     static let shared = DataCache()
 
-    struct Hit<T> {
+    struct Hit<T: Sendable>: Sendable {
         let value: T
         let fetched: Date
         let isStale: Bool
@@ -49,6 +49,15 @@ actor DataCache {
     }
 
     /// Bytes on disk across this cache, the shelf cache and the URL cache.
+    /// Read, change and write back in one step, so two callers changing
+    /// the same value at once don't overwrite each other.
+    func modify<T: Codable & Sendable>(_ type: T.Type, _ namespace: String, _ key: String,
+                                       default initial: T, _ change: (inout T) -> Void) {
+        var value = read(type, namespace, key, ttl: .infinity)?.value ?? initial
+        change(&value)
+        write(value, namespace, key)
+    }
+
     nonisolated static func diskUsage() -> Int {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("GoodreadsGUI", isDirectory: true)
@@ -108,7 +117,7 @@ actor DataCache {
         _ namespace: String, _ key: String,
         ttl: TimeInterval, force: Bool = false,
         accept: @escaping @Sendable (T) -> Bool = { _ in true },
-        fetch: @escaping () async throws -> T,
+        fetch: @escaping @Sendable () async throws -> T,
         show: @MainActor @escaping (T, _ fromCache: Bool) -> Void
     ) async throws {
         let hit = await shared.read(T.self, namespace, key, ttl: ttl)
@@ -220,6 +229,7 @@ struct CachedAsyncImage<Content: View>: View {
 
     var body: some View {
         content(phase)
+            .accessibilityHidden(true)
             .task(id: url) {
                 guard let url else { phase = .empty; return }
                 if let image = ImageMemoryCache.shared.cached(url) {

@@ -48,10 +48,25 @@ enum ShelfCache {
         let payload = Cached(entries: entries, fetched: Date())
         guard let data = try? JSONEncoder().encode(payload) else { return }
         try? data.write(to: file(for: shelf), options: .atomic)
+        SpotlightIndex.update(entries, shelf: shelf)
     }
 
     static func clear() {
         try? FileManager.default.removeItem(at: folder)
+        SpotlightIndex.removeAll()
+    }
+
+    /// Every cached own-shelf entry for this book, from any shelf on disk.
+    static func entry(bookID: String) -> ShelfEntry? {
+        guard let files = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+        else { return nil }
+        for file in files where file.pathExtension == "json" {
+            guard let data = try? Data(contentsOf: file),
+                  let cached = try? JSONDecoder().decode(Cached.self, from: data),
+                  let hit = cached.entries.first(where: { $0.bookID == bookID }) else { continue }
+            return hit
+        }
+        return nil
     }
 
     /// How long a cached copy is trusted without a background refresh — the

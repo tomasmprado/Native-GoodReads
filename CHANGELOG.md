@@ -7,6 +7,37 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
+## [2.3.0] — 2026-11-01
+
+### Added
+
+- **Menu bar** — the menu lists what you're currently reading, with a progress
+  bar for each; choosing one opens its progress update.
+- **Spotlight** — books on your shelves show up in ⌘Space search, and open in
+  the app (Settings → Spotlight turns it off).
+- **Drag and drop** — drag a book onto a sidebar shelf to move it there.
+- **Share** — share a book's Goodreads link from its row menu or its details.
+- **What's new before updating** — the update button shows the release notes
+  first, and the download has a progress bar.
+- **Stats: pages and genres** — pages per year, pages this year and top
+  genres, from each book's Goodreads page; *Fill In* fetches the missing ones.
+- **Offline notice** — the status bar says when you're seeing saved data, and
+  the pane refreshes once you're back online.
+
+### Changed
+
+- Proper plurals in English and Portuguese ("1 book", "1 livro").
+- VoiceOver reads star ratings, book rows, the reading-progress cards and the
+  charts sensibly; covers and avatars are skipped as decoration.
+- Builds in the Swift 6 language mode. That turned up two possible data races
+  in the cache, now fixed.
+- Tests for the Goodreads page parsers, so markup changes show up in CI.
+
+### Fixed
+
+- The local build script could silently skip code signing when the project
+  sat in an iCloud-synced folder.
+
 ## [2.2.0] — 2026-11-01
 
 ### Added

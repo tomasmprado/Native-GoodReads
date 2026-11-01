@@ -97,6 +97,10 @@ final class LibraryModel: ObservableObject {
     // Stats
     @Published var readingStats: ReadingStats?
     @Published var isLoadingStats = false
+    /// "Fill In" on the Stats pane: book pages fetched so far, of how many.
+    @Published var extrasDone = 0
+    @Published var extrasTotal = 0
+    @Published var isFillingExtras = false
 
     // Friends
     @Published var friends: [GoodreadsFriends.Friend] = []
@@ -277,6 +281,7 @@ final class LibraryModel: ObservableObject {
         )
 
         try? await Task.sleep(for: .seconds(3))
+        indexCachedShelves()
         for shelf in Shelf.builtIn where ShelfCache.read(shelf) == nil {
             guard !Task.isCancelled else { return }
             if let entries = try? await ShelfLibrary.load(shelf) {
@@ -286,6 +291,16 @@ final class LibraryModel: ObservableObject {
         }
         if friends.isEmpty {
             await loadFriends()
+        }
+    }
+
+    /// Puts every shelf already on disk into Spotlight — for books cached
+    /// before indexing existed, or after turning it back on.
+    func indexCachedShelves() {
+        for shelf in shelves {
+            if let cached = ShelfCache.read(shelf) {
+                SpotlightIndex.update(cached.entries, shelf: shelf)
+            }
         }
     }
 
@@ -372,6 +387,19 @@ final class LibraryModel: ObservableObject {
             await loadStats()
         case .search:
             break
+        }
+    }
+
+    /// Back online: refresh what's on screen, keeping the filter and the
+    /// rows already shown (each loader shows its cache first anyway).
+    func refreshAfterReconnect() async {
+        guard loggedIn else { await checkSession(); return }
+        switch selection {
+        case .shelf:       await loadShelf(force: true)
+        case .home:        await loadCurrentlyReading(force: true)
+        case .friends:     await loadFriends(force: true)
+        case .stats:       await loadStats(force: true)
+        case .suggestions, .search: break
         }
     }
 
@@ -505,8 +533,9 @@ final class LibraryModel: ObservableObject {
     /// otherwise a reload (which also refreshes that cache for everyone else).
     func loadStats(force: Bool = false) async {
         guard !isLoadingStats else { return }
+        let extras = await BookExtras.all()
         let cached = ShelfCache.read(.read)
-        if let cached { readingStats = ReadingStats.compute(from: cached.entries) }
+        if let cached { readingStats = ReadingStats.compute(from: cached.entries, extras: extras) }
         let stale = cached.map { ShelfCache.isStale($0.fetched) } ?? true
         guard force || stale else { return }
 
@@ -515,9 +544,43 @@ final class LibraryModel: ObservableObject {
         if let entries = try? await ShelfLibrary.load(.read) {
             ShelfCache.write(entries, for: .read)
             setCount(entries.count, for: .read)
-            readingStats = ReadingStats.compute(from: entries)
+            readingStats = ReadingStats.compute(from: entries, extras: extras)
         }
         if currentlyReading.isEmpty { await loadCurrentlyReading() }
+    }
+
+    /// Fetches the Goodreads page of every read book whose page count and
+    /// genres aren't known yet, a few at a time, refreshing the stats as it
+    /// goes. Book pages are public, so this doesn't touch the web session.
+    func fillBookExtras() async {
+        guard !isFillingExtras, let entries = ShelfCache.read(.read)?.entries else { return }
+        isFillingExtras = true
+        defer {
+            isFillingExtras = false
+            extrasTotal = 0
+        }
+
+        let known = await BookExtras.all()
+        let missing = entries.map(\.bookID).filter { known[$0] == nil }
+        extrasDone = 0
+        extrasTotal = missing.count
+
+        await withTaskGroup(of: Void.self) { group in
+            var queue = missing.makeIterator()
+            func addNext() {
+                guard let bookID = queue.next() else { return }
+                group.addTask { _ = try? await GoodreadsBookPage.fetch(bookID: bookID) }
+            }
+            for _ in 0..<3 { addNext() }
+            while await group.next() != nil {
+                extrasDone += 1
+                if extrasDone % 15 == 0 {
+                    readingStats = ReadingStats.compute(from: entries, extras: await BookExtras.all())
+                }
+                addNext()
+            }
+        }
+        readingStats = ReadingStats.compute(from: entries, extras: await BookExtras.all())
     }
 
     // MARK: - Friends
@@ -1080,8 +1143,33 @@ final class LibraryModel: ObservableObject {
     }
 
     func openOnGoodreads(bookID: String) {
-        guard let url = URL(string: "https://www.goodreads.com/book/show/\(bookID)") else { return }
+        guard let url = Self.goodreadsURL(bookID: bookID) else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    nonisolated static func goodreadsURL(bookID: String) -> URL? {
+        URL(string: "https://www.goodreads.com/book/show/\(bookID)")
+    }
+
+    // MARK: - Drag and drop
+
+    /// What a shelf row carries when dragged: its entry id, tagged so text
+    /// dragged in from elsewhere isn't mistaken for a book.
+    nonisolated static let dragPrefix = "goodreads-entry:"
+
+    /// Books dropped on a sidebar shelf. Only rows of the shelf on screen can
+    /// be dragged, so they're looked up there.
+    func drop(_ payloads: [String], on shelf: Shelf) -> Bool {
+        let ids = payloads.compactMap { payload -> String? in
+            guard payload.hasPrefix(Self.dragPrefix) else { return nil }
+            return String(payload.dropFirst(Self.dragPrefix.count))
+        }
+        let entries = ids.compactMap { id in shelfEntries.first { $0.id == id } }
+        guard !entries.isEmpty, currentShelf?.name != shelf.name else { return false }
+        Task {
+            for entry in entries { await move(entry, to: shelf) }
+        }
+        return true
     }
 }
 

@@ -13,7 +13,8 @@ final class SelfUpdater: ObservableObject {
 
     enum State: Equatable {
         case idle
-        case downloading
+        /// Fraction done, when the server says how big the file is.
+        case downloading(Double?)
         case installing
         case failed(String)
     }
@@ -49,7 +50,7 @@ final class SelfUpdater: ObservableObject {
         do {
             try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
 
-            state = .downloading
+            state = .downloading(nil)
             let dmg = try await download(dmgURL, to: work.appendingPathComponent("update.dmg"))
 
             state = .installing
@@ -63,12 +64,15 @@ final class SelfUpdater: ObservableObject {
     }
 
     private func download(_ url: URL, to destination: URL) async throws -> URL {
-        let (file, response) = try await URLSession.shared.download(from: url)
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw AppError("Download failed (HTTP \(http.statusCode)).")
+        let downloader = Downloader(destination: destination) { [weak self] fraction in
+            Task { @MainActor in
+                // A redraw per percent is plenty.
+                guard let self, case .downloading(let shown) = self.state,
+                      fraction - (shown ?? -1) >= 0.01 || fraction >= 1 else { return }
+                self.state = .downloading(fraction)
+            }
         }
-        try FileManager.default.moveItem(at: file, to: destination)
-        return destination
+        return try await downloader.run(url)
     }
 
     /// Mounts the image, copies the app out, unmounts.
@@ -152,6 +156,60 @@ final class SelfUpdater: ObservableObject {
             }
             do { try process.run() } catch { continuation.resume(throwing: error) }
         }
+    }
+}
+
+/// A download that reports how far along it is — `URLSession.download(from:)`
+/// doesn't. Calls arrive on the session's own serial queue.
+private final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let destination: URL
+    private let onProgress: @Sendable (Double) -> Void
+    private var continuation: CheckedContinuation<URL, Error>?
+
+    init(destination: URL, onProgress: @escaping @Sendable (Double) -> Void) {
+        self.destination = destination
+        self.onProgress = onProgress
+    }
+
+    func run(_ url: URL) async throws -> URL {
+        try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+            let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+            session.downloadTask(with: url).resume()
+        }
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didWriteData bytesWritten: Int64, totalBytesWritten: Int64,
+                    totalBytesExpectedToWrite: Int64) {
+        guard totalBytesExpectedToWrite > 0 else { return }
+        onProgress(Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                    didFinishDownloadingTo location: URL) {
+        // The temporary file is gone once this returns, so move it now.
+        if let http = downloadTask.response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            finish(.failure(AppError("Download failed (HTTP \(http.statusCode)).")))
+            return
+        }
+        do {
+            try FileManager.default.moveItem(at: location, to: destination)
+            finish(.success(destination))
+        } catch {
+            finish(.failure(error))
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error { finish(.failure(error)) }
+        session.finishTasksAndInvalidate()
+    }
+
+    private func finish(_ result: Result<URL, Error>) {
+        guard let continuation else { return }
+        self.continuation = nil
+        continuation.resume(with: result)
     }
 }
 

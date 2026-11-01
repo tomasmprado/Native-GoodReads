@@ -14,6 +14,9 @@ enum GoodreadsBookPage {
         let language: String?
         let authorURL: URL?
         let reviews: [Review]
+        // Absent from book pages cached before 2.3.
+        var pageCount: Int? = nil
+        var genres: [String]? = nil
     }
 
     struct Review: Identifiable, Codable {
@@ -39,14 +42,26 @@ enum GoodreadsBookPage {
             throw AppError("Couldn't read the book page.")
         }
 
+        let detail = try parse(html: html, bookID: bookID)
+        await BookExtras.save(BookExtras(pages: detail.pageCount, genres: detail.genres ?? []), for: bookID)
+        return detail
+    }
+
+    /// Everything the app reads from a book page's HTML — no network, so
+    /// tests can run it against a saved page.
+    static func parse(html: String, bookID: String) throws -> Detail {
         guard let apollo = apolloState(from: html) else {
             throw AppError("Couldn't find this book's data on the page.")
         }
+        let book = bookEntity(bookID: bookID, in: apollo)
+        let details = book?["details"] as? [String: Any]
 
         return Detail(
-            language: language(bookID: bookID, in: apollo),
+            language: ((details?["language"] as? [String: Any])?["name"] as? String)?.lowercased(),
             authorURL: authorURL(from: html),
-            reviews: reviews(from: apollo)
+            reviews: reviews(from: apollo),
+            pageCount: (details?["numPages"] as? Int).flatMap { $0 > 0 ? $0 : nil },
+            genres: genres(of: book)
         )
     }
 
@@ -81,19 +96,24 @@ enum GoodreadsBookPage {
         return apollo
     }
 
-    private static func language(bookID: String, in apollo: [String: Any]) -> String? {
+    /// The page's own book — the apolloState also holds other books
+    /// (series, "readers also enjoyed"), told apart by `legacyId`.
+    private static func bookEntity(bookID: String, in apollo: [String: Any]) -> [String: Any]? {
         for (_, value) in apollo {
             guard let entry = value as? [String: Any],
                   entry["__typename"] as? String == "Book",
                   let legacyId = entry["legacyId"],
                   String(describing: legacyId) == bookID
             else { continue }
-
-            let details = entry["details"] as? [String: Any]
-            let language = details?["language"] as? [String: Any]
-            return (language?["name"] as? String)?.lowercased()
+            return entry
         }
         return nil
+    }
+
+    /// Goodreads' genre list for the book, most-voted first.
+    private static func genres(of book: [String: Any]?) -> [String] {
+        let list = book?["bookGenres"] as? [[String: Any]] ?? []
+        return list.compactMap { ($0["genre"] as? [String: Any])?["name"] as? String }
     }
 
     private static func reviews(from apollo: [String: Any]) -> [Review] {
