@@ -205,7 +205,7 @@ struct BookDetailView: View {
         var bits: [String] = []
         if let publisher = book.publisher { bits.append(publisher) }
         if let date = book.publishedDate { bits.append(date) }
-        if let pages = book.pageCount { bits.append("\(pages) pages") }
+        if let pages = book.pageCount { bits.append(String(localized: "\(pages) pages")) }
         if let language = pageLanguage ?? book.language { bits.append(language.capitalized) }
         return bits
     }
