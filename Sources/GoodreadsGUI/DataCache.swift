@@ -48,6 +48,27 @@ actor DataCache {
         try? data.write(to: file, options: .atomic)
     }
 
+    /// Bytes on disk across this cache, the shelf cache and the URL cache.
+    nonisolated static func diskUsage() -> Int {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("GoodreadsGUI", isDirectory: true)
+        var total = URLCache.shared.currentDiskUsage
+        if let files = FileManager.default.enumerator(at: base, includingPropertiesForKeys: [.fileSizeKey]) {
+            for case let url as URL in files {
+                total += (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            }
+        }
+        return total
+    }
+
+    /// Everything the app keeps to be fast: data, shelves, images.
+    nonisolated static func clearEverything() async {
+        await shared.clear()
+        ShelfCache.clear()
+        URLCache.shared.removeAllCachedResponses()
+        ImageMemoryCache.shared.removeAll()
+    }
+
     /// Signing out drops everything — it all belongs to the old account.
     func clear() {
         memory.removeAll()
@@ -143,6 +164,23 @@ final class ImageMemoryCache {
     nonisolated func cached(_ url: URL) -> NSImage? { images.object(forKey: url as NSURL) }
 
     nonisolated func removeAll() { images.removeAllObjects() }
+
+    /// Warms covers that are about to scroll into view, a few at a time so
+    /// it never competes with what's on screen.
+    func prefetch(_ urls: [URL]) {
+        let todo = urls.filter { cached($0) == nil && inFlight[$0] == nil }
+        guard !todo.isEmpty else { return }
+        Task {
+            var index = 0
+            while index < todo.count {
+                let batch = todo[index..<min(index + 4, todo.count)]
+                await withTaskGroup(of: Void.self) { group in
+                    for url in batch { group.addTask { _ = await self.load(url) } }
+                }
+                index += 4
+            }
+        }
+    }
 
     func load(_ url: URL) async -> NSImage? {
         if let image = cached(url) { return image }

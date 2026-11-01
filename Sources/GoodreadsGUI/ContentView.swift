@@ -27,6 +27,7 @@ struct ContentView: View {
                 await model.buildSuggestions()
                 await model.loadCurrentlyReading()
             }
+            await model.warmUp()
         }
         .task { await model.checkForUpdate() }
         .onChange(of: model.selection) { _ in Task { await model.paneChanged() } }
@@ -1022,6 +1023,9 @@ private struct ShelfPane: View {
         .navigationTitle(model.currentShelf?.label ?? "")
         .navigationSubtitle(subtitle)
         .searchable(text: $model.filter, placement: .toolbar, prompt: "Filter")
+        .task(id: model.shelfEntries.count) {
+            ImageMemoryCache.shared.prefetch(model.visibleEntries.prefix(40).compactMap(\.coverURL))
+        }
         .toolbar { toolbarContent }
     }
 

@@ -107,6 +107,8 @@ final class Preferences: ObservableObject {
 
 struct PreferencesView: View {
     @ObservedObject private var prefs = Preferences.shared
+    @State private var cacheBytes: Int?
+    @State private var isClearing = false
 
     var body: some View {
         Form {
@@ -147,8 +149,32 @@ struct PreferencesView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                LabeledContent("Saved data") {
+                    Text(cacheBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…")
+                        .foregroundStyle(.secondary)
+                }
+                Button(isClearing ? "Clearing…" : "Clear Cache") {
+                    isClearing = true
+                    Task {
+                        await DataCache.clearEverything()
+                        cacheBytes = DataCache.diskUsage()
+                        isClearing = false
+                    }
+                }
+                .disabled(isClearing)
+            } header: {
+                Text("Cache")
+            } footer: {
+                Text("Shelves, book pages, friends and covers are saved so the app opens instantly. "
+                    + "Clearing it is safe: everything is fetched again the next time you open it.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 440, height: 360)
+        .frame(width: 440, height: 520)
+        .task { cacheBytes = DataCache.diskUsage() }
     }
 }

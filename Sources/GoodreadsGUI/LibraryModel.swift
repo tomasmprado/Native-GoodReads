@@ -137,6 +137,8 @@ final class LibraryModel: ObservableObject {
 
     private var searchTask: Task<Void, Never>?
     private var shelfTask: Task<Void, Never>?
+    private var searchCache: [String: (date: Date, books: [Book])] = [:]
+    private var didWarmUp = false
     private let debounce = Duration.milliseconds(250)
 
     var isHome: Bool { selection == .home }
@@ -199,9 +201,19 @@ final class LibraryModel: ObservableObject {
 
     private func performSearch(_ term: String) async {
         do {
-            let found = try await GoogleBooksClient.search(
-                term, language: searchLanguage, sortNewest: searchSortNewest, subject: searchSubject
-            )
+            // Going back to a recent search (or a filter you just undid) is
+            // instant — results are kept for the session for a few minutes.
+            let key = "\(term.lowercased())|\(searchLanguage.rawValue)|\(searchSortNewest)|\(searchSubject)"
+            let found: [Book]
+            if let hit = searchCache[key], Date().timeIntervalSince(hit.date) < 600 {
+                found = hit.books
+            } else {
+                found = try await GoogleBooksClient.search(
+                    term, language: searchLanguage, sortNewest: searchSortNewest, subject: searchSubject
+                )
+                searchCache[key] = (Date(), found)
+            }
+            ImageMemoryCache.shared.prefetch(found.prefix(20).compactMap(\.coverURL))
 
             // A newer keystroke may have superseded this request while it was
             // in flight — drop the stale response rather than flashing it.
@@ -244,6 +256,32 @@ final class LibraryModel: ObservableObject {
     func checkSession() async {
         loggedIn = await WebSession.shared.refreshSignInState()
         if loggedIn { await refreshShelfList() }
+    }
+
+    /// Runs once, a few seconds after launch: fills in whatever has never
+    /// been cached (built-in shelves, friends) so the first visit to those
+    /// panes is instant too, and warms the covers Home is about to show.
+    /// Only fills gaps — anything already cached refreshes on its own when
+    /// opened — so it costs nothing on later launches.
+    func warmUp() async {
+        guard loggedIn, !didWarmUp else { return }
+        didWarmUp = true
+
+        ImageMemoryCache.shared.prefetch(
+            (currentlyReading.map(\.coverURL) + suggestions.prefix(10).map(\.book.coverURL)).compactMap { $0 }
+        )
+
+        try? await Task.sleep(for: .seconds(3))
+        for shelf in Shelf.builtIn where ShelfCache.read(shelf) == nil {
+            guard !Task.isCancelled else { return }
+            if let entries = try? await ShelfLibrary.load(shelf) {
+                ShelfCache.write(entries, for: shelf)
+                setCount(entries.count, for: shelf)
+            }
+        }
+        if friends.isEmpty {
+            await loadFriends()
+        }
     }
 
     /// Once per launch is plenty — this is a nicety, not something worth
