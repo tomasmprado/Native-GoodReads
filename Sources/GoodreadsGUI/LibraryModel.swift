@@ -133,6 +133,11 @@ final class LibraryModel: ObservableObject {
     @Published var isLoadingFriendShelf = false
     @Published var friendShelfError: String?
 
+    // Comparing your Read shelf with the open friend's
+    @Published var tasteComparison: TasteComparison?
+    @Published var isComparingTastes = false
+    @Published var tasteError: String?
+
     // Author page
     @Published var authorPageURL: URL?
     @Published var authorPage: GoodreadsAuthorPage.Detail?
@@ -699,6 +704,8 @@ final class LibraryModel: ObservableObject {
         friendProfileError = nil
         isLoadingFriendProfile = true
         closeFriendShelf()
+        tasteComparison = nil
+        tasteError = nil
         defer { isLoadingFriendProfile = false }
 
         do {
@@ -740,6 +747,39 @@ final class LibraryModel: ObservableObject {
             }
         } catch {
             friendShelfError = error.localizedDescription
+        }
+    }
+
+    /// Loads the friend's Read shelf (cached like any friend shelf) and
+    /// your own, and compares them.
+    func compareTastes() async {
+        guard let userID = GoodreadsFriends.userID(from: friendProfileURL), !isComparingTastes else { return }
+        closeFriendShelf()
+        isComparingTastes = true
+        tasteError = nil
+        defer { isComparingTastes = false }
+
+        do {
+            let key = "\(userID)/\(Shelf.read.name)"
+            let theirs: [ShelfEntry]
+            if let hit = await DataCache.shared.read([ShelfEntry].self, "friend-shelf", key,
+                                                     ttl: DataCache.TTL.friendShelf), !hit.isStale {
+                theirs = hit.value
+            } else {
+                theirs = try await ShelfLibrary.load(.read, ofUser: userID)
+                await DataCache.shared.write(theirs, "friend-shelf", key)
+            }
+
+            var mine = ShelfCache.read(.read)?.entries ?? []
+            if mine.isEmpty {
+                mine = try await ShelfLibrary.load(.read)
+                ShelfCache.write(mine, for: .read)
+            }
+            let others = shelves.filter { $0.name != Shelf.read.name }
+                .flatMap { ShelfCache.read($0)?.entries ?? [] }
+            tasteComparison = TasteComparison.compute(myRead: mine, myOtherShelves: others, theirRead: theirs)
+        } catch {
+            tasteError = error.localizedDescription
         }
     }
 

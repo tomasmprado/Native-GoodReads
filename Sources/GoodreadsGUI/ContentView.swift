@@ -704,8 +704,29 @@ private struct FriendProfileSheet: View {
 
                         FriendCollectionsPicker(model: model)
 
+                        HStack(spacing: 8) {
+                            Button {
+                                Task { await model.compareTastes() }
+                            } label: {
+                                Label("Compare Tastes", systemImage: "person.2.wave.2")
+                                    .font(.system(size: 11))
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(model.tasteComparison != nil && model.friendShelf == nil ? .accentColor : .secondary)
+                            .disabled(model.isComparingTastes)
+                            if model.isComparingTastes { ProgressView().controlSize(.small) }
+                            if let error = model.tasteError {
+                                Text(error).font(.system(size: 11)).foregroundStyle(.orange).lineLimit(2)
+                            }
+                        }
+
                         if model.friendShelf != nil {
                             FriendShelfContent(model: model)
+                        } else if let comparison = model.tasteComparison {
+                            TasteComparisonView(comparison: comparison,
+                                                friendName: profile.name.split(separator: " ").first.map(String.init) ?? profile.name) { entry in
+                                model.showBookDetail(entry.asBook)
+                            }
                         } else if !profile.activity.isEmpty {
                             Text("Recent Activity")
                                 .font(.system(size: 12, weight: .semibold))
