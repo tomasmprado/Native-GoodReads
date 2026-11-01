@@ -21,10 +21,9 @@ enum SpotlightIndex {
     static func update(_ entries: [ShelfEntry], shelf: Shelf) {
         guard isEnabled else { return }
         let domain = "shelf:\(shelf.name)"
-        let items = entries.map { item(for: $0, shelf: shelf, domain: domain) }
-        let index = CSSearchableIndex.default()
-        index.deleteSearchableItems(withDomainIdentifiers: [domain]) { _ in
-            index.indexSearchableItems(items) { _ in }
+        CSSearchableIndex.default().deleteSearchableItems(withDomainIdentifiers: [domain]) { _ in
+            let items = entries.map { item(for: $0, shelf: shelf, domain: domain) }
+            CSSearchableIndex.default().indexSearchableItems(items) { _ in }
         }
     }
 
