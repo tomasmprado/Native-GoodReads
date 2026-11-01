@@ -109,6 +109,16 @@ extension View {
         #endif
     }
 
+    /// A fixed width on the Mac; on iOS the natural width, on one line.
+    @ViewBuilder
+    func macWidth(_ width: CGFloat) -> some View {
+        #if os(macOS)
+        frame(width: width)
+        #else
+        fixedSize()
+        #endif
+    }
+
     /// `minWidth`/`minHeight` on the Mac only.
     @ViewBuilder
     func macMinFrame(width: CGFloat, height: CGFloat) -> some View {

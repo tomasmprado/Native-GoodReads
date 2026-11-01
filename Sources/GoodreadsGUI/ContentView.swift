@@ -1048,7 +1048,7 @@ private struct SearchFilterRow: View {
                 }
             }
             .labelsHidden()
-            .frame(width: 130)
+            .macWidth(130)
             .onChange(of: model.searchLanguage) { _ in model.filtersChanged() }
 
             Picker("", selection: $model.searchSortNewest) {
@@ -1056,7 +1056,7 @@ private struct SearchFilterRow: View {
                 Text("Newest").tag(true)
             }
             .labelsHidden()
-            .frame(width: 110)
+            .macWidth(110)
             .onChange(of: model.searchSortNewest) { _ in model.filtersChanged() }
 
             HStack(spacing: 5) {
@@ -1068,7 +1068,7 @@ private struct SearchFilterRow: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
-            .frame(width: 140)
+            .macWidth(140)
             .glassCapsule(interactive: true)
 
             Spacer()
