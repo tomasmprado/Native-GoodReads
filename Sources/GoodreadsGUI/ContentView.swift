@@ -1445,29 +1445,42 @@ private struct StatusBar: View {
     }
 }
 
-/// "Update to x.y.z" in the status bar — installs and relaunches when it
-/// can, otherwise opens the release page.
+/// "Update to x.y.z…" in the status bar — shows what's new first, then
+/// installs and relaunches when it can, otherwise opens the release page.
 private struct UpdateButton: View {
     let update: UpdateChecker.Available
     @ObservedObject private var updater = SelfUpdater.shared
+    @State private var showingNotes = false
 
     var body: some View {
         switch updater.state {
-        case .downloading:
-            Label("Downloading \(update.version)…", systemImage: "arrow.down.circle")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+        case .downloading(let fraction):
+            HStack(spacing: 6) {
+                Text("Downloading \(update.version)…")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                if let fraction {
+                    ProgressView(value: fraction)
+                        .frame(width: 80)
+                        .accessibilityLabel(Text("Download progress"))
+                } else {
+                    ProgressView().controlSize(.small)
+                }
+            }
         case .installing:
             Label("Installing…", systemImage: "gearshape")
                 .font(.system(size: 11)).foregroundStyle(.secondary)
         case .idle, .failed:
-            Button(updater.canInstallInPlace && update.dmgURL != nil
-                   ? String(localized: "Update to \(update.version)")
-                   : String(localized: "Update to \(update.version)…")) {
-                updater.install(update)
-            }
-            .controlSize(.small)
-            .glassProminentButton()
-            .help(helpText)
+            Button(String(localized: "Update to \(update.version)…")) { showingNotes = true }
+                .controlSize(.small)
+                .glassProminentButton()
+                .help(helpText)
+                .popover(isPresented: $showingNotes, arrowEdge: .top) {
+                    UpdateNotesView(update: update,
+                                    canInstallInPlace: updater.canInstallInPlace && update.dmgURL != nil) {
+                        showingNotes = false
+                        updater.install(update)
+                    }
+                }
         }
     }
 
@@ -1475,8 +1488,6 @@ private struct UpdateButton: View {
         if case .failed(let message) = updater.state {
             return String(localized: "The last attempt failed: \(message). Click to try again.")
         }
-        return updater.canInstallInPlace
-            ? String(localized: "Downloads the new version, replaces this one and reopens the app.")
-            : String(localized: "Opens the release page. Move the app to Applications to update it in one click.")
+        return String(localized: "See what's new in \(update.version)")
     }
 }
