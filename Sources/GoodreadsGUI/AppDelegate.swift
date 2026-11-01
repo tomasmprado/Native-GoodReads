@@ -1,9 +1,10 @@
 import AppKit
 import CoreSpotlight
+import UserNotifications
 import SwiftUI
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNotificationCenterDelegate {
 
     private var statusItem: NSStatusItem?
     private var panel: QuickPanel?
@@ -13,6 +14,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         HotKeyCenter.shared.onTrigger = { [weak self] in self?.togglePanel() }
         HotKeyCenter.shared.register()
+
+        UNUserNotificationCenter.current().delegate = self
+        ReadingReminder.registerCategory()
+        ReadingReminder.reschedule()
+    }
+
+    // MARK: - Notifications
+
+    /// Show notifications even while the app is in front.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            willPresent notification: UNNotification) async
+        -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                            didReceive response: UNNotificationResponse) async {
+        let content = response.notification.request.content
+        guard content.categoryIdentifier == ReadingReminder.category,
+              let entryID = content.userInfo["entryID"] as? String else { return }
+        let typed = (response as? UNTextInputNotificationResponse)?.userText
+        let opened = response.actionIdentifier == UNNotificationDefaultActionIdentifier
+        await MainActor.run {
+            if opened { self.showLibrary() }
+            ReadingReminder.handle(entryID: entryID, typed: typed)
+        }
     }
 
     /// A book picked from Spotlight.

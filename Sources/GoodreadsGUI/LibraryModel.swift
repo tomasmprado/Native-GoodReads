@@ -515,6 +515,7 @@ final class LibraryModel: ObservableObject {
             currentlyReading = fetched
             ShelfCache.write(fetched, for: .currentlyReading)
             setCount(fetched.count, for: .currentlyReading)
+            ReadingReminder.reschedule()
         }
     }
 
@@ -989,6 +990,7 @@ final class LibraryModel: ObservableObject {
             if let index = currentlyReading.firstIndex(where: { $0.id == entry.id }) {
                 currentlyReading[index].progress = resolvedPercent
                 ShelfCache.write(currentlyReading, for: .currentlyReading)
+                ReadingReminder.reschedule()
             }
             let amount = resolvedPercent.map { "\($0)%" } ?? page.map { String(localized: "page \($0)") } ?? String(localized: "progress")
             status = Status(text: String(localized: "Updated “\(entry.title)” to \(amount)."), isError: false)
