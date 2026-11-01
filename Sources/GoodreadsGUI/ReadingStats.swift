@@ -154,6 +154,7 @@ struct ReadingStats: Equatable {
 struct StatsPane: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject private var prefs = Preferences.shared
+    @State private var showingYear = false
 
     var body: some View {
         Group {
@@ -197,7 +198,15 @@ struct StatsPane: View {
             }
         }
         .navigationTitle("Stats")
+        .sheet(isPresented: $showingYear) { YearInReviewSheet() }
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { showingYear = true } label: {
+                    Label("Your Year in Books", systemImage: "gift")
+                }
+                .help("Your year in books, as an image to save or share")
+                .disabled(model.readingStats == nil)
+            }
             ToolbarItem(placement: .primaryAction) {
                 if model.isLoadingStats {
                     ProgressView().controlSize(.small)
