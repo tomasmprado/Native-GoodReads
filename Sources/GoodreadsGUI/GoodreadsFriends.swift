@@ -64,6 +64,10 @@ enum GoodreadsFriends {
                 label: "friends list"
             )
         }
+        return decodeFriends(raw)
+    }
+
+    static func decodeFriends(_ raw: String) -> [Friend] {
         guard let data = raw.data(using: .utf8),
               let result = try? JSONDecoder().decode(FriendsResult.self, from: data),
               result.ok, let rows = result.friends else {
@@ -120,7 +124,7 @@ enum GoodreadsFriends {
 
     // MARK: - Shared decoding
 
-    private static func decodeActivity(_ raw: String) -> [Activity] {
+    static func decodeActivity(_ raw: String) -> [Activity] {
         guard let data = raw.data(using: .utf8),
               let result = try? JSONDecoder().decode(ActivityResult.self, from: data),
               result.ok, let rows = result.activity else {

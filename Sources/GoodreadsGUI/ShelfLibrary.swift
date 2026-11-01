@@ -107,6 +107,13 @@ enum ShelfLibrary {
             }
         }
 
+        return entries(from: rows)
+    }
+
+    /// Rows as the page script returns them → shelf entries, dropping
+    /// duplicates (a book can show up on two pages while the shelf changes)
+    /// and empty fields.
+    static func entries(from rows: [Row]) -> [ShelfEntry] {
         var seen = Set<String>()
         return rows.compactMap { row in
             guard !row.bookId.isEmpty, seen.insert(row.bookId).inserted else { return nil }
@@ -127,7 +134,7 @@ enum ShelfLibrary {
         }
     }
 
-    private static func decodeEnvelope(_ raw: String) throws -> ShelfEntryEnvelope {
+    static func decodeEnvelope(_ raw: String) throws -> ShelfEntryEnvelope {
         guard let data = raw.data(using: .utf8) else {
             throw AppError("Couldn't read the shelf page.")
         }
