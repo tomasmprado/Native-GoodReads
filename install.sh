@@ -157,7 +157,7 @@ if [ -d "$WIDGET" ]; then
 fi
 codesign --force --sign "$IDENTITY" "$TARGET" 2>/dev/null || die "couldn't sign the app"
 codesign --verify --deep "$TARGET" || die "the signature doesn't check out"
-info "signed with $(codesign -dv "$TARGET" 2>&1 | awk -F= '/^Authority/ {print $2; exit}')"
+info "signed with $(codesign -dvv "$TARGET" 2>&1 | awk -F= '/^Authority/ {print $2; exit}')"
 
 bold "==> Done. Opening $APP_NAME"
 info "The first time, macOS may ask for your login password to let it use the Keychain: choose Always Allow."
