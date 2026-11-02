@@ -107,7 +107,7 @@ enum ShelfLibrary {
             }
         }
 
-        return entries(from: rows)
+        return ShelfTitles.apply(entries(from: rows))
     }
 
     /// Rows as the page script returns them → shelf entries, dropping

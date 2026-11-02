@@ -396,6 +396,7 @@ final class LibraryModel: ObservableObject {
             await loadFriends()
         }
         await loadNewReleases()
+        Task { await fetchCleanTitles() }
         friendsBooks = await FriendsBooks.index()
         if FriendsBooks.isStale(friendsBooks) { await syncFriendsBooks() }
     }
@@ -667,6 +668,7 @@ final class LibraryModel: ObservableObject {
             ReadingReminder.reschedule()
         }
         await fillReadingPages()
+        Task { await fetchCleanTitles() }
     }
 
     /// The shelf listing itself carries no progress field — only the home
@@ -698,6 +700,33 @@ final class LibraryModel: ObservableObject {
         }
         if !missing.isEmpty { extras = await BookExtras.all() }
         bookExtras = extras
+    }
+
+    private var isFetchingTitles = false
+
+    /// With a Google Books key, looks up clean titles by ISBN for your books —
+    /// what's on screen first, then every saved shelf — and shows them as
+    /// they arrive.
+    func fetchCleanTitles() async {
+        guard !isFetchingTitles,
+              !Preferences.shared.googleBooksAPIKey.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        isFetchingTitles = true
+        defer { isFetchingTitles = false }
+
+        var seen = Set<String>()
+        let everything = (currentlyReading + shelfEntries + shelves.flatMap { ShelfCache.read($0)?.entries ?? [] })
+            .filter { seen.insert($0.bookID).inserted }
+        let todo = ShelfTitles.missing(everything)
+        var index = 0
+        while index < todo.count, !Task.isCancelled {
+            let chunk = Array(todo[index..<min(index + 20, todo.count)])
+            index += 20
+            guard await ShelfTitles.fetch(chunk) else { continue }
+            shelfEntries = ShelfTitles.apply(shelfEntries)
+            currentlyReading = ShelfTitles.apply(currentlyReading)
+            if let shelf = currentShelf { ShelfCache.write(shelfEntries, for: shelf) }
+            ShelfCache.write(currentlyReading, for: .currentlyReading)
+        }
     }
 
     /// Friends who have `bookID` on their Currently Reading shelf too.
@@ -1026,6 +1055,7 @@ final class LibraryModel: ObservableObject {
             cacheNote = String(localized: "updated just now")
             ShelfCache.write(fetched, for: shelf)
             setCount(fetched.count, for: shelf)
+            Task { await fetchCleanTitles() }
 
             if fetched.isEmpty {
                 status = Status(text: String(localized: "Nothing on \(shelf.title) yet."), isError: false)

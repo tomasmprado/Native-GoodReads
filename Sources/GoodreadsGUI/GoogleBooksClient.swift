@@ -90,6 +90,21 @@ enum GoogleBooksClient {
         return found
     }
 
+    enum TitleLookup: Sendable { case found(String), none, failed }
+
+    /// The title Google Books has for this exact ISBN. `.failed` when Google
+    /// couldn't be asked (no key, out of quota, offline), so it's tried again.
+    static func title(isbn: String) async -> TitleLookup {
+        guard !isbn.isEmpty else { return .none }
+        do {
+            let found = try await volumes(q: "isbn:\(isbn)", maxResults: 1).first
+            guard let title = found?.title, !title.isEmpty else { return .none }
+            return .found(title)
+        } catch {
+            return .failed
+        }
+    }
+
     /// The candidate whose title matches, preferring one in `language`, then
     /// one with a description.
     static func bestMatch(_ candidates: [Book], title: String, language: String? = nil) -> Book? {

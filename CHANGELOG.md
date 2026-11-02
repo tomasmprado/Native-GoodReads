@@ -16,6 +16,10 @@ added in that diff, meaning `v1.0.0` predates all of it.
   own edition by ISBN, else one in the app's language — and keeps Goodreads
   for ratings, reviews, awards, series and characters. The Goodreads title
   shows underneath when it differs.
+- Book titles on shelves, Home, the menu bar and widgets come from Google
+  Books by ISBN when there's a key, instead of whatever the edition was
+  typed as on Goodreads. Titles without an ISBN that carry the author and
+  publisher ("… de Author pela Publisher 1996") are trimmed.
 - Genres are shown in Portuguese when the app is in Portuguese: on books, in
   the shelf filter, in Stats and in Your Year in Books.
 
