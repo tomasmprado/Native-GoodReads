@@ -18,6 +18,45 @@ enum GoodreadsBookPage {
         var pageCount: Int? = nil
         var genres: [String]? = nil
         var series: GoodreadsSeries.Ref? = nil
+        // Absent from book pages cached before 2.6.
+        var about: About? = nil
+    }
+
+    /// What Book Details shows about the book itself.
+    struct About: Codable, Equatable {
+        var title: String?
+        var authorName: String?
+        /// The synopsis, as plain text with paragraph breaks.
+        var synopsis: String?
+        var publisher: String?
+        var format: String?
+        /// This edition's publication date.
+        var published: Date?
+        /// When the work first came out, if earlier.
+        var firstPublished: Date?
+        var originalTitle: String?
+        var isbn: String?
+        var isbn13: String?
+        var averageRating: Double?
+        var ratingsCount: Int?
+        /// Ratings by stars, 1★ first.
+        var ratingsByStars: [Int]?
+        var reviewsCount: Int?
+        var contributors: [Contributor] = []
+        var awards: [Award] = []
+        var characters: [String] = []
+        var places: [String] = []
+    }
+
+    struct Contributor: Codable, Equatable, Hashable {
+        let name: String
+        let role: String
+    }
+
+    struct Award: Codable, Equatable, Hashable {
+        let name: String
+        let year: Int?
+        let won: Bool
     }
 
     struct Review: Identifiable, Codable {
@@ -63,8 +102,81 @@ enum GoodreadsBookPage {
             reviews: reviews(from: apollo),
             pageCount: (details?["numPages"] as? Int).flatMap { $0 > 0 ? $0 : nil },
             genres: genres(of: book),
-            series: series(of: book, in: apollo)
+            series: series(of: book, in: apollo),
+            about: about(of: book, in: apollo, html: html)
         )
+    }
+
+    private static func about(of book: [String: Any]?, in apollo: [String: Any], html: String) -> About? {
+        guard let book else { return nil }
+        let details = book["details"] as? [String: Any] ?? [:]
+        let work = ((book["work"] as? [String: Any])?["__ref"] as? String).flatMap { apollo[$0] as? [String: Any] }
+        let workDetails = work?["details"] as? [String: Any] ?? [:]
+        let stats = work?["stats"] as? [String: Any] ?? [:]
+
+        func text(_ value: Any?) -> String? {
+            guard let string = value as? String else { return nil }
+            let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        func date(_ value: Any?) -> Date? {
+            guard let millis = (value as? NSNumber)?.doubleValue else { return nil }
+            return Date(timeIntervalSince1970: millis / 1000)
+        }
+        func names(_ value: Any?) -> [String] {
+            (value as? [[String: Any]] ?? []).compactMap { text($0["name"]) }
+        }
+
+        var about = About()
+        about.title = text(book["titleComplete"]) ?? text(book["title"])
+        about.authorName = contributorName(book["primaryContributorEdge"] as? [String: Any], in: apollo)
+            ?? authorName(fromJSONLD: html)
+        about.synopsis = text(book["description"]).map(plainText(fromHTML:)).flatMap { $0.isEmpty ? nil : $0 }
+        about.publisher = text(details["publisher"])
+        about.format = text(details["format"])
+        about.published = date(details["publicationTime"])
+        if let first = date(workDetails["publicationTime"]),
+           about.published.map({ first < $0.addingTimeInterval(-366 * 86400) }) ?? true {
+            about.firstPublished = first
+        }
+        about.originalTitle = text(workDetails["originalTitle"]).flatMap { original in
+            Suggestions.normalizedTitle(original) == Suggestions.normalizedTitle(about.title ?? "") ? nil : original
+        }
+        about.isbn = text(details["isbn"])
+        about.isbn13 = text(details["isbn13"])
+        about.averageRating = (stats["averageRating"] as? NSNumber)?.doubleValue
+        about.ratingsCount = (stats["ratingsCount"] as? NSNumber)?.intValue
+        if let counts = (stats["ratingsCountDist"] as? [NSNumber])?.map(\.intValue), counts.count == 5 {
+            about.ratingsByStars = counts
+        }
+        about.reviewsCount = (stats["textReviewsCount"] as? NSNumber)?.intValue
+        about.contributors = (book["secondaryContributorEdges"] as? [[String: Any]] ?? []).compactMap { edge in
+            guard let name = contributorName(edge, in: apollo) else { return nil }
+            return Contributor(name: name, role: text(edge["role"]) ?? "")
+        }
+        about.awards = (workDetails["awardsWon"] as? [[String: Any]] ?? []).compactMap { award in
+            guard let name = text(award["name"]) else { return nil }
+            let year = date(award["awardedAt"]).map { Calendar(identifier: .gregorian).component(.year, from: $0) }
+            return Award(name: name, year: year, won: (award["designation"] as? String) == "WINNER")
+        }
+        about.characters = names(workDetails["characters"])
+        about.places = names(workDetails["places"])
+        return about
+    }
+
+    private static func contributorName(_ edge: [String: Any]?, in apollo: [String: Any]) -> String? {
+        guard let ref = (edge?["node"] as? [String: Any])?["__ref"] as? String,
+              let name = (apollo[ref] as? [String: Any])?["name"] as? String, !name.isEmpty else { return nil }
+        return name
+    }
+
+    private static func authorName(fromJSONLD html: String) -> String? {
+        guard let tagRange = html.range(of: #"<script type="application/ld\+json">"#, options: .regularExpression),
+              let closeRange = html.range(of: "</script>", range: tagRange.upperBound..<html.endIndex),
+              let data = html[tagRange.upperBound..<closeRange.lowerBound].data(using: .utf8),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let authors = root["author"] as? [[String: Any]] else { return nil }
+        return authors.first?["name"] as? String
     }
 
     /// The JSON-LD block (present for SEO) carries a plain author profile
@@ -175,7 +287,7 @@ enum GoodreadsBookPage {
     }
 
     /// Good-enough HTML stripping for a review preview — not a renderer.
-    private static func plainText(fromHTML html: String) -> String {
+    static func plainText(fromHTML html: String) -> String {
         var text = html
             .replacingOccurrences(of: "<br\\s*/?>", with: "\n", options: .regularExpression)
             .replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)

@@ -1,543 +1,277 @@
-# Goodreads GUI
+# Goodreads for Mac
 
-A small native macOS front end for [`yareeh/goodreads-cli`](https://github.com/yareeh/goodreads-cli).
-SwiftUI, no dependencies. Search a book, shelve it, see what your friends are
-reading — done.
+A simple, native Mac app for your Goodreads library. See what you're reading,
+update your progress, find your next book and keep up with your friends —
+without opening the Goodreads website.
+
+The app is in English and European Portuguese, following your Mac's language.
+
+- [Install](#install)
+- [Getting started](#getting-started)
+- [What you can do](#what-you-can-do)
+- [Widgets, Shortcuts and Siri](#widgets-shortcuts-and-siri)
+- [Settings](#settings)
+- [Your data and privacy](#your-data-and-privacy)
+- [Questions and problems](#questions-and-problems)
 
 ## Install
 
-1. Download `Goodreads.dmg` and `install.sh` from the [latest release](../../releases/latest)
-   into your Downloads folder.
-2. Open Terminal and run:
+You need a Mac with macOS 13 Ventura or later.
+
+1. Go to the [latest release](../../releases/latest) and download both
+   **Goodreads.dmg** and **install.sh** into your Downloads folder.
+2. Open **Terminal** (it's in Applications → Utilities), paste this line and
+   press Return:
 
    ```sh
    bash ~/Downloads/install.sh
    ```
 
-That's it — the app opens. The script:
+The app is copied into your Applications folder and opens. The first time,
+your Mac may ask for your login password so the app can use the Keychain —
+type it and choose **Always Allow**. It won't ask again, not even after
+updates.
 
-- copies `Goodreads.app` from the `.dmg` into `/Applications` (quitting the
-  app first if it's running);
-- removes the "downloaded from the internet" flag, so macOS doesn't refuse an
-  app that isn't notarised by Apple (no more *"Goodreads" can't be opened* or
-  trips to System Settings → Privacy & Security → Open Anyway);
-- signs the app on your Mac with a certificate it makes the first time —
-  "Goodreads Local Signing", self-signed, kept in your login keychain and used
-  for nothing else.
+<details>
+<summary>What does install.sh do?</summary>
 
-Why the signing matters: the app keeps your Google Books key in the Keychain,
-and macOS asks for your password whenever an app with a *different* signature
-wants it. Downloaded builds aren't signed with a fixed certificate, so every
-update looked new and the prompt kept coming back. Signed by the script, it
-asks once — choose **Always Allow** — and never again, including after
-updates from inside the app, which re-sign themselves with the same
-certificate.
+The app isn't sold through the App Store, so macOS doesn't know it. The script
+takes care of that on your Mac only:
 
-Other options:
+- it copies the app to Applications (and closes it first if it's open);
+- it tells macOS the app is safe to open, so you don't get *"Goodreads" can't
+  be opened* warnings;
+- it gives the app a signature that stays the same from version to version,
+  so the Keychain doesn't keep asking for your password.
 
-```sh
-bash install.sh ~/Somewhere/Goodreads.dmg   # a .dmg (or .app) somewhere else
-bash install.sh --resign                    # re-sign /Applications/Goodreads.app only
-bash install.sh --remove-certificate        # delete the certificate again
-SIGN_IDENTITY="Apple Development: …" bash install.sh   # use a certificate you already have
-```
+Nothing is sent anywhere and it doesn't need your administrator password.
 
-Nothing is sent anywhere and no administrator password is needed. Prefer not
-to run a script? Drag the app from the `.dmg` to Applications, then
-right-click it → Open the first time (or System Settings → Privacy &
-Security → Open Anyway); the Keychain prompt will just come back after each
-update.
+If you'd rather not use it: open the .dmg, drag Goodreads to Applications,
+then right-click the app → **Open** the first time. You may see the Keychain
+password prompt again after each update.
 
-## How it's wired
+</details>
 
-Everything is native. There's no CLI, no Go, no Homebrew, no Chromium, and no
-password on disk.
+### Updating
 
-| Action | Path |
-| --- | --- |
-| Search | Google Books' `volumes` API (language, publisher, ISBN — Goodreads' own autocomplete reports none of these) |
-| Sign in | `WKWebView` showing Goodreads' real sign-in page |
-| Shelving | `WKWebView` — legacy AJAX endpoint first, page automation as fallback |
-| Shelf contents | `/review/list?print=true`, the old table view, parsed in the page |
-| Removing | same shelf endpoint with `a=remove` |
-| Reading progress | home-feed widget automation (`/user_status/create` is confirmed gone — see below) |
-| Rating + date read | `POST /review/create` |
-| Shelf discovery | shelf links scraped from the My Books sidebar |
-| Suggestions | recent Read shelf → author search → edition language check |
+When a new version is out, an **Update** button appears at the bottom of the
+window. Click it to see what's new, then install — the app replaces itself
+and reopens.
 
-A plain, unauthenticated Goodreads `auto_complete` search is still in the app
-(`SearchClient.swift`) as `GoodreadsLookup`'s last-resort way to find a
-Goodreads id for a book that has no ISBN.
+### Removing the app
 
-Reads happen through `fetch` + `DOMParser` from inside one resident page, not by
-navigating the web view. Navigation is stateful and serial — two jobs sharing
-one web view end up scraping each other's pages — so the only navigation left is
-sign-in and the DOM fallback. Shelf pages are fetched four at a time.
+Drag Goodreads from Applications to the Bin. To remove the signing certificate
+the installer made, run `bash ~/Downloads/install.sh --remove-certificate`.
 
-Every write is verified: the shelf is read back, newest first, and the book has
-to actually be there. Goodreads will happily return HTTP 200 and do nothing, and
-a silent no-op is worse than an error.
+## Getting started
 
-WebKit does what rod did, but it's part of macOS. Practical differences:
+1. Open the app and click **Log In** at the bottom of the window.
+2. Sign in on Goodreads' own page, the same way you do on the website. Your
+   password goes only to Goodreads — the app never sees it.
+3. Your shelves appear in the sidebar. That's it.
 
-- **No install step.** Nothing to `brew install`, no PATH to fix.
-- **No stored password.** You sign in on Amazon's own page. The app only ever
-  holds a session cookie, in its own `WKWebsiteDataStore`.
-- **CAPTCHA and 2FA just work**, because you're looking at the page. That was
-  the CLI's hardest failure mode.
-- **Much faster.** Shelving reuses one warm web view instead of spawning a
-  process and launching a browser each time.
+**Tip:** for better search results, add a free Google Books key in Settings
+(see [Settings](#settings)). Search works without one, but shows less about
+each book.
 
-## Build
-
-Prebuilt releases are on the [Releases](../../releases) page — see
-[Install](#install). That's the easiest way to get the app, and what most
-people want.
-
-To build from source instead:
-
-```sh
-swift build -c release
-.build/release/GoodreadsGUI
-```
-
-Needs a full Xcode install, not just the Command Line Tools — SwiftPM calls
-`xcrun --sdk macosx --show-sdk-platform-path`, which only Xcode ships (the
-Command Line Tools package alone doesn't have a `Platforms/` directory to
-resolve). If `swift build` fails with `xcrun: error: unable to lookup item
-'PlatformPath'`, that's it: install Xcode from the App Store, or point
-`xcode-select` at one you already have (`sudo xcode-select -s
-/Applications/Xcode.app`), then retry. `open Package.swift` in Xcode works
-the same way, and sidesteps the command line entirely.
-
-This gets you a running app, not a proper signed `.app` bundle: no custom
-Dock icon, no Info.plist, no code signing. Bundling, icon generation, and
-`.dmg` packaging happen in the maintainer's own local tooling, which isn't
-part of this repo — grab a Release if you want that experience without
-assembling it yourself.
-
-### Tests
-
-```sh
-swift test
-```
-
-Needs the same full Xcode install as `swift build` (Command Line Tools alone
-can't resolve `XCTest`). CI runs this for real on every push and PR, on a
-GitHub-hosted runner that does have full Xcode. The suite only covers pure
-logic — date parsing, CSV escaping, shelf sorting, the author-matching
-heuristic, stats — plus the parsers for what Goodreads sends back: a cut-down
-book page with the same structure as a real one, and the JSON the shelf and
-friends scripts return. When Goodreads changes a page, those are the tests to
-update first. The in-page scripts themselves (WebKit DOM scraping) have no
-practical way to run headless against Goodreads' real markup; that's still
-what **Browser** and **Log** are for.
-
-The package builds in the Swift 6 language mode, so data races are compile
-errors.
-
-## Using it
-
-### ⌥Space — the reason this exists
-
-Press ⌥Space anywhere. A panel appears, you type, you click a shelf icon, it's
-gone. No browser tab, no Dock icon, no window management. Everything else here
-is a nicer version of something the website already does; this is the part the
-website can't do.
-
-There's also a menu bar item with the same thing, plus a way back to the main
-window. Its menu also lists what you're currently reading, with a progress bar
-and an estimated finish date for each; choosing a book opens its progress
-update.
-
-The hotkey uses Carbon's `RegisterEventHotKey`, which is ancient but is the only
-route that doesn't demand Accessibility permission. If another app already owns
-⌥Space it silently loses the race — check Console for the warning, and change
-the key in `HotKey.swift`.
-
-Keyboard, once results appear: ↑/↓ moves the highlight, ⌘1/⌘2/⌘3 shelves the
-highlighted book to Want to Read/Currently Reading/Read. The mouse still works
-too — the point is not needing it.
+## What you can do
 
 ### Home
 
-A "Read Next" card — one pick from what you've been reading most, minus
-anything already on a shelf — plus a horizontal carousel of whatever's on
-Currently Reading, with a shortcut to update progress on each and, once
-there's a little history, when you'll finish at your pace so far. The app
-remembers each progress update (Goodreads only shows the latest), which is
-what that estimate comes from. If you've put Want to Read in your own order,
-**Up next** shows the first book.
+What you're reading right now, with your progress and — once you've updated it
+a couple of times — roughly when you'll finish. There's also a book suggestion
+picked from the authors you've read lately, and the next book on your Want to
+Read list if you've put it in order.
 
-The **Suggestions** pane also has **New from Your Authors**: books out in the
-last year, or due in the next, by anyone with two or more books on your Read
-shelf (from Google Books, checked once a day).
+Right-click a book on Home to update your progress, mark it as read, stop
+reading it, or see its details.
 
-The full list behind that one pick lives in its own **Suggestions** pane in
-the sidebar. No Goodreads recommendation API worth using exists, so both work
-off what's visible: the authors you've finished recently.
+### Your shelves
 
-Empty until you've marked something read inside the look-back window.
+Every shelf you have is in the sidebar, including your own custom shelves,
+with how many books each holds.
 
-### Settings (⌘,)
+- **Click a book** to see everything about it (see [Book details](#book-details)).
+- Switch between a **list** and a **wall of covers** from the toolbar.
+- **Sort** by title, author, rating or date, and **filter** by your rating,
+  the year you read it, or genre.
+- On **Want to Read**, choose *My Order* and drag books into the order you'll
+  read them.
+- **Drag** a book onto another shelf in the sidebar to move it there.
+- Each book's **•••** menu lets you update progress, mark it read and rate it,
+  give it stars, move it, share it, or remove it. Moving or removing a book
+  shows an **Undo** button for a few seconds.
 
-**Book language** filters suggestions by edition language, read from each book
-page's JSON-LD. This is about the books, not the interface. Books whose
-language can't be determined can be included or hidden.
+### Book details
 
-**Interface language** follows macOS: the app is in English and European
-Portuguese, picked from System Settings → General → Language & Region (or per
-app, under Applications there). Translations live in
-`Sources/GoodreadsGUI/Resources/pt.lproj/Localizable.strings`.
+Click any book — on a shelf, in search, in suggestions, or in a friend's
+updates — to open its page:
 
-**Friends** — optionally, a notification when a friend starts or finishes a
-book. Checked whenever the friend list refreshes and every hour while the app
-is open; the first check only records what's there, so turning it on is quiet.
+- the **synopsis**, with Goodreads' **average rating** and how the stars are
+  spread;
+- **genres**, the **publisher**, publication dates, pages, format, language,
+  ISBN, and who illustrated, translated or edited it;
+- **awards**, the main **characters** and where it's **set**;
+- the **series** it belongs to, and the next book in it, which you can add to
+  Want to Read in one click;
+- **friends who read it**, with the stars they gave;
+- a few **reviews** from other readers, and a box to post your own rating and
+  review;
+- **your notes and quotes** — private, kept on your Mac.
 
-**Notifications** also cover new books from authors you read, and a daily
-**Reading Reminder** at a time you pick: it names your current book and its
-progress, and takes a new percentage typed right into the notification.
+Click the author's name to see their bio and their other books.
 
-**Spotlight** — on by default: the books on your shelves show up when you
-search from ⌘Space, and choosing one opens its details here. Each shelf is
-re-indexed whenever it loads; turning this off removes them.
+### Search
 
-**Reading Goal** — when you've joined this year's Reading Challenge on
-Goodreads, Stats takes its goal from there (read from your challenge page,
-twice a day at most); turn it off to set the goal yourself.
+Type a title or author. Books already on your shelves appear first, with the
+shelf they're on. Use the filters to narrow by language, subject or the newest
+books. From any result you can add the book to a shelf, mark it read, or open
+its details.
 
-**Backup** saves what exists only on this Mac — notes and quotes, progress
-history, books you stopped reading — to one `.goodreadsbackup` file, and
-restores from it (replacing what's there). Also in the File menu.
+### Suggestions
 
-**Cache** shows how much the app keeps on disk (shelves, book and author pages,
-friends, covers) and clears it. Clearing is safe — everything is fetched again
-the next time it's opened.
-
-**Look back** sets how far "recently read" reaches: 30, 90, 180 days or a year.
-
-**Google Books API key** — search and suggestions run against Google Books,
-whose free unauthenticated tier is shared across every caller on the internet
-and stays exhausted. Get a free key at console.cloud.google.com (enable the
-"Books API", then Credentials → Create Credentials → API key) and paste it in;
-it's kept in the Keychain, not on disk. Without one, search falls back to
-Goodreads' own unauthenticated `auto_complete` endpoint instead of surfacing a
-quota error — you lose language, publisher and ISBN data on results found
-that way, but search still works out of the box. A key set here fixes that
-and is generally worth adding.
-
-### Main window
-
-The sidebar lists every shelf you have, custom ones included, with counts.
-
-**Search** — type, results appear as you pause, Return searches immediately.
-Books already on any of your shelves come first, under **On Your Shelves**,
-with the shelves they're on.
-
-**Shelves** — click one to load it. Cached copies appear instantly while the
-refresh runs behind them, and refresh again on their own after six hours even
-if you never touch them. The filter field in the toolbar narrows what's on
-screen without touching the network; the sort menu next to it reorders by
-title, author, rating, date read or date added, or leaves Goodreads' own shelf
-order alone. On Want to Read there's also **My Order**: drag books into the
-order you want to read them.
-
-The toolbar switches between the list and a **Covers** grid, and **Filter**
-narrows a shelf by your rating, the year you read it, or genre (genres come
-from book pages, so they appear for books you've opened or after Stats →
-*Fill In*).
-
-**Stats** — this year's reading goal (set it right there; it shows whether
-you're ahead or behind schedule, with a per-month chart), books read, average
-rating, books per year, your rating distribution and most-read authors. All
-worked out from the Read shelf. Goodreads' shelf pages carry no page counts
-or genres, so **Pages and Genres** (pages per year, top genres) uses each
-book's own page: whatever you've opened in the app is already known, and
-*Fill In* fetches the rest, a few at a time.
-
-**Your Year in Books** (the gift button) sums up any year — books, pages,
-average rating, top genre and author, busiest month, longest book and your
-favourites — as a card you can save as an image.
-
-When the Mac is offline the status bar says so: what's on screen is the saved
-copy, and the pane refreshes on its own once the connection is back.
-
-On macOS 26 the app uses Liquid Glass: the sidebar floats, pane buttons sit in
-the glass toolbar, and cards and the ⌥Space panel are glass. Older macOS keeps
-the previous look.
-
-Each row's ••• menu:
-
-- *Update Progress…* — currently-reading only. Percent or page, plus a note.
-- *Mark Read & Rate…* — rating, finish date and an optional review, all in one
-  post. This is the right way to finish a book; a bare shelf move leaves it
-  unrated, which is the one thing Goodreads actually wants from you.
-- *Rate* — stars on their own, for books already shelved.
-- *Move to* — any shelf. The three built-ins are exclusive, so moving between
-  them changes reading status. Custom shelves stack instead.
-- *Remove from Shelf*, *Open on Goodreads*, *Share…*
-
-You can also drag a row onto a shelf in the sidebar to move it there, the
-same as *Move to*.
-
-Removing and moving both offer an **Undo** button in the status bar for a few
-seconds afterward — the same shelf calls run in reverse, not a local-only
-revert, so it's a real Goodreads write either way.
-
-*View Details…* opens a book's description, Google Books metadata, and a
-handful of Goodreads' own community reviews — scraped from the book page's
-embedded JSON, not the CLI-era HTML. You can post your own rating and review
-right there; like every other rating action in the app, it moves the book to
-Read. Tapping the author's name opens their Goodreads author page (bio,
-stats, their other books) in its own sheet. A book in a series shows the
-series and its position, and the next volume with a one-click Want to Read.
-**My Notes** keeps your own notes and quotes for the book — on this Mac only,
-kept through Clear Cache, and included in CSV exports.
+Books by authors you've read recently that aren't on your shelves yet, and
+**New from Your Authors**: books just out or coming soon by writers you've
+read more than once.
 
 ### Friends
 
-Your friends' recent activity, grouped by friend. Tap a name to open their
-profile — avatar, stats, and more of their updates. Both views are scraped
-from authenticated pages, so this is the one pane that costs a real page
-load every time it's opened.
+Your friends' latest reading updates. Click a friend to see their profile,
+browse their shelves, or **Compare Tastes** — how many books you've both read,
+how often you agree, where you disagree most, and the books they loved that
+you haven't read yet.
 
-From a friend's profile, **Collections** lets you browse their own shelves —
-Want to Read, Currently Reading, Read — the same way you'd browse your own,
-ratings included. It's the same `/review/list` page Goodreads serves for your
-own shelves, just keyed to their id instead.
+### Stats
 
-**Compare Tastes** puts their Read shelf next to yours: how many books you've
-both read, how often your stars agree, where they disagree most, and the
-books they rated highly that aren't on any of your shelves. Different editions
-of the same book are matched by title and author.
+Your reading at a glance: this year's goal and whether you're ahead or behind,
+books per month and per year, your average rating, pages read, favourite
+authors and genres. If you've joined the **Goodreads Reading Challenge**, its
+goal is used automatically.
 
-Goodreads' home-feed activity table has drifted out from under the selectors
-this scrapes for it, so the activity list can come back empty even when your
-actual Home feed shows updates. When that happens the Friends pane falls back
-to each friend's own current-status line instead (what they're reading right
-now, pulled from their profile page, which has stayed put) — see
-[The fragile part](#the-fragile-part).
+**Your Year in Books** (the gift button) sums up any year as a card you can
+save as an image and share.
 
-### Troubleshooting
+Books you stopped reading are listed here too, with **Resume Reading**.
 
-Two buttons in the status bar, for when a scrape or a write doesn't do what
-it should:
+### Stopping a book
 
-- **Browser** shows the live page the app is actually driving — the
-  fastest way to see what Goodreads served instead of what the app expected.
-- **Log** is a running, copyable record of every request the app has made
-  (shelf loads, writes, verification checks), including ones that failed
-  silently. Paste it when something breaks.
+Not enjoying a book? Choose **Stop Reading…** from its menu. Note why, if you
+like, and choose whether it goes back to Want to Read or off your shelves. The
+app remembers how far you got, and it doesn't count as read. If you have a
+shelf called *dnf* or *abandoned*, it's added there too.
 
-An **Update to X.Y** button appears in the same status bar when a newer
-version is out on [Releases](../../releases) — a quiet, best-effort check
-against the GitHub API on launch, silent on any failure (offline, rate
-limited). Clicking it shows what's new in that release first; *Install and
-Relaunch* then downloads the release's `.dmg` (with a progress bar), checks the
-app inside is Goodreads at that version, swaps it for the running copy and
-reopens. The old
-copy is put back if anything goes wrong. When the app can't replace itself —
-run straight from the disk image, or from Downloads before being moved — the
-button opens the release page instead.
+### Notes, quotes and highlights
+
+Every book has a private **My Notes** box for your thoughts and favourite
+quotes.
+
+**File → Import Highlights…** brings in what you highlighted in **Apple Books**
+on this Mac, or on a **Kindle** (connect it and choose
+`documents/My Clippings.txt`). Each highlight lands as a quote in the right
+book's notes. Importing twice doesn't create duplicates.
 
 ### Export
 
-Per-shelf CSV from the toolbar icon, or **Export Library…** at the bottom of the
-sidebar, which walks every shelf and writes one file. Columns (`Book Id,
-Title, Author, ISBN, ISBN13, My Rating, Date Read, Date Added, Shelf`) match
-Goodreads' own export format closely enough to import elsewhere; ISBNs are
-wrapped `="0439023483"` the same way Goodreads' export does, so a spreadsheet
-treats them as text instead of mangling a leading zero or a 13-digit number
-into scientific notation. **Export Library…** also tells you if any shelf
-failed to read rather than just quietly leaving it out of the file.
+**Export Library…** at the bottom of the sidebar saves every shelf to one
+spreadsheet file (CSV), in a format close to Goodreads' own export. The
+toolbar button on a shelf exports just that shelf. It's a good idea to keep a
+copy now and then.
 
-Worth doing occasionally. This app rests on undocumented endpoints, Goodreads
-could retire them whenever, and Amazon has let the site rot for a decade. A
-local copy is cheap insurance.
+### Menu bar
 
-### Widgets, Shortcuts and Siri
+The books icon in the menu bar lists what you're reading, with a progress bar
+and finish estimate for each. Choose one to update your progress. The app keeps
+running there when you close its window, so notifications and widgets stay up
+to date.
 
-Two widgets for the desktop and Notification Center: **Currently Reading**
-(your books with progress, finish estimates and covers; small, medium and
-large) and **Reading Goal** (books this year against your goal). Add them from
-the desktop's Edit Widgets. They show what the app last saved, and the app
-refreshes them whenever something changes — so they're current as long as the
-app has run since.
+### Spotlight
 
-In Shortcuts (and by asking Siri) the app offers **What Am I Reading**,
-**Update Reading Progress**, **Mark Book as Read** and **Reading Goal Status**.
-They run inside the app, opening it in the background if needed.
+Your books show up when you search with ⌘Space. Choosing one opens it in the
+app.
 
-### Stopping a book, friends, highlights
+## Widgets, Shortcuts and Siri
 
-**Stop Reading…** on a Currently Reading book (row menu, or right-click a card
-on Home) records why and how far you got, and moves it on Goodreads — to Want
-to Read, or off your shelves; with a custom shelf called `dnf`, `abandoned` or
-similar, it's added there too. Stats lists these books with **Resume
-Reading**; they never count as read.
+**Widgets** — right-click your desktop, choose **Edit Widgets**, and search for
+Goodreads:
 
-**Friends Who Read This** in Book Details shows which friends have read the
-book or are reading it, with their stars. It's built from your friends' Read
-and Currently Reading shelves, read once in the background and refreshed every
-few days.
+- **Currently Reading** — your books with progress, covers and finish dates
+  (small, medium and large);
+- **Reading Goal** — books read this year against your goal.
 
-**File → Import Highlights…** brings in highlights and notes from Apple Books
-on this Mac or from a Kindle's `My Clippings.txt`. Each book is matched to your
-shelves by title and author; highlights become quotes in the book's notes and
-notes are added to its text, without duplicates. macOS asks before the app can
-read Apple Books' data (or choose its folder when asked).
+They update whenever something changes in the app.
 
-## Limits worth knowing
+**Shortcuts and Siri** — in the Shortcuts app, search for Goodreads to use:
+*What Am I Reading*, *Update Reading Progress*, *Mark Book as Read* and
+*Reading Goal Status*. You can also ask Siri, in English — for example
+"What am I reading in Goodreads".
 
-- **Removing isn't deleting.** A removed book keeps its review and rating on
-  your profile. Deleting the review outright is a different endpoint.
-- **Paging stops at 2500 books** (25 pages of 100) as a safety stop. Raise
-  `maxPages` in `ShelfLibrary.swift` if your library is bigger.
-- **Everything is cached and refreshes in the background**: shelves after six
-  hours, friends after one, book pages after a day, author pages after three.
-  The last copy shows immediately either way; a failed refresh keeps it on
-  screen. A few seconds after launch the app also fills in any shelf or
-  friends list it has never fetched. Sign Out (or Settings → Clear Cache)
-  clears it all.
-- **Custom shelves aren't exclusive**, so "Move to" a custom shelf adds without
-  removing. That's Goodreads' behaviour, not a bug here.
+## Settings
 
-## The fragile part
+Open them with **⌘,** (or Goodreads → Settings).
 
-Shelving tries two things:
+- **Suggestions** — which language suggested books should be in, and how far
+  back "recently read" goes.
+- **Google Books** — a free key that makes search and suggestions work better.
+  To get one: go to console.cloud.google.com, enable the *Books API*, then
+  *Credentials → Create Credentials → API key*, and paste it here. It's kept
+  safely in your Keychain.
+- **Notifications** — when a friend starts or finishes a book, and when an
+  author you read has a new book.
+- **Reading Reminder** — a daily nudge at the time you choose. Type a
+  percentage straight into the notification to update your progress.
+- **Reading Goal** — use your Goodreads Reading Challenge goal, or set your
+  own in Stats.
+- **Spotlight** — show or hide your books in ⌘Space search.
+- **Backup** — save your notes, quotes, progress history and stopped books to
+  a file, and restore them later (also in the File menu). Keep the file
+  somewhere safe, like iCloud Drive — these exist only on your Mac.
+- **Cache** — how much space the app uses to stay fast, and a button to clear
+  it. Clearing is safe: everything is downloaded again when needed, and your
+  notes are kept.
 
-1. `POST /shelf/add_to_shelf.json` with the page's CSRF token. DOM-independent,
-   fast, and works if Goodreads still honours the legacy endpoint.
-2. If that fails, it finds and clicks the shelf control in the page.
+## Your data and privacy
 
-**Strategy 2's selectors are educated guesses.** I couldn't inspect Goodreads'
-current markup while writing this, so `[data-testid="wantToReadButton"]` and
-friends in `ShelfService.swift` may not match what's actually served. If
-shelving fails with "Could not find the shelf control", open **Browser**, load a
-book page, and check the real element — then update the selector list at the top
-of the second strategy. That's a one-line fix if you're building from source.
+- You sign in on Goodreads' own page; the app never sees or stores your
+  password.
+- Your shelves, ratings and reviews live on Goodreads, as always. The app
+  keeps a copy on your Mac so it opens instantly.
+- Your **notes, quotes, progress history and stopped books** are only on your
+  Mac. Use **Settings → Backup** to keep a copy.
+- Your Google Books key is kept in the Keychain.
+- The app talks only to Goodreads, Google Books and GitHub (to check for
+  updates). There's no tracking and no account of its own.
 
-Running the prebuilt `.dmg` instead? `SelectorOverrides.swift` reads extra
-selectors — tried before the built-ins, so a working override doesn't need to
-oust anything — from a JSON file at
-`~/Library/Application Support/GoodreadsGUI/selectors.json`:
+## Questions and problems
 
-```json
-{ "shelfOpener": ["button.someNewClassName"] }
-```
+**The Mac keeps asking for my Keychain password.**
+Run the installer again (`bash ~/Downloads/install.sh`) and choose **Always
+Allow** once. If you installed by dragging the app, this is expected after each
+update.
 
-`shelfOpener`, `shelfDropdown`, `activityRow` and `friendCard` are the four
-lists it reads, matching the four fragile spots below; relaunch after editing.
-No Xcode, no rebuild.
+**"Goodreads" can't be opened because it's from an unidentified developer.**
+Use the installer, or right-click the app → **Open**, or go to System Settings
+→ Privacy & Security and click **Open Anyway**.
 
-Strategy 1 failing silently is the good case: it falls through to 2.
+**Search finds nothing, or says the quota is used up.**
+Add a Google Books key in Settings — the free shared one is almost always busy.
 
-Shelf listing relies the same way on `/review/list?print=true`, a legacy Rails
-endpoint the site still serves but no longer advertises — stable in a way the
-React UI isn't, but not a supported API, and Goodreads could retire it without
-notice. If a shelf loads empty while the website shows books, open **Browser**
-and look at what `/review/list?print=true&view=table` actually returns — the
-app itself tries to tell the two apart (a page that doesn't even look like a
-shelf page gets its own error instead of "Nothing here yet."), but that check
-is a generic heuristic, not a guarantee.
+**A shelf or my friends' updates look empty or out of date.**
+Click the reload button in the toolbar. If it's still wrong, Goodreads may
+have changed its website: click **Log** at the bottom of the window, copy it,
+and [open an issue](../../issues) with it.
 
-Every fetch-based read in here also retries once or twice, with backoff, on a
-429 or 503 — Goodreads answering a burst of requests (four shelf pages at
-once, or a full-library export) with a rate limit rather than throttling the
-connection itself turns into a slower load instead of pages that come back
-mysteriously empty.
+**Friends Who Read This doesn't show anyone.**
+It reads your friends' shelves in the background the first time, which can
+take a minute. Friends whose shelves are private won't appear.
 
-Reading progress is worse off: `/user_status/create`, the endpoint this used to
-go through, is confirmed gone (404, even signed out) — the control moved off
-the book page entirely, onto a widget on the Goodreads home feed, one per
-currently-reading book. `ShelfService.swift` still tries the old endpoint first
-(costs nothing, in case Goodreads brings it back) and falls through to driving
-that home-feed widget, the same click-and-read-the-DOM-back approach as
-shelving's strategy 2.
+**The widget is empty.**
+Open the app once — the widget shows what the app last saw.
 
-Friends' activity feed is the confirmed-broken case, not just a suspected
-one: `GoodreadsFriends.swift`'s selector for the home feed's newsfeed table
-(`table.newsfeedUpdates tr.update[data-timestamp]`) no longer matches
-anything, even though the page still visually shows friend updates — Goodreads
-restructured that section at some point without changing what it looks like.
-The `/friend` page's own markup (`.friendInfo`, `.statuses`), by contrast, was
-checked against a real signed-in fetch and is current as of this writing,
-which is why the Friends pane now leans on that instead. If it goes stale too,
-the fix is the same as strategy 2's: open **Browser**, load `/friend`, and
-update the selectors at the top of `friendsScript` (`activityRow` and
-`friendCard` in `selectors.json`, for the no-Xcode version of that fix).
+**I'm offline.**
+The app shows what it saved last time and says so at the bottom of the window.
+It refreshes on its own when you're back online.
 
-## Files
+---
 
-```
-Package.swift           swift build entry point
-Sources/GoodreadsGUI/
-  App.swift               entry point, window
-  ContentView.swift       search bar, results, status bar, sheets
-  LibraryModel.swift      state, debounced search, shelf actions
-  Models.swift            Book, Shelf, ShelfEntry
-  SearchClient.swift      Goodreads auto_complete client (last-resort id lookup)
-  GoogleBooksClient.swift search and author lookups via Google Books
-  GoodreadsLookup.swift   resolves a Book to a Goodreads id (cached)
-  GoodreadsBookPage.swift book detail: language, author link, reviews
-  GoodreadsAuthorPage.swift author bio, stats, and their books
-  GoodreadsFriends.swift  friends list, activity feed, friend profiles, a friend's own shelves
-  WebSession.swift        shared WKWebView, cookies, sign-in state, locking
-  ShelfService.swift      shelving, rating, progress — the write path
-  WebScripts.swift        shared JS (fetch + DOMParser helpers)
-  WebViewHost.swift       SwiftUI wrapper + sign-in and browser sheets
-  ShelfLibrary.swift      reads shelf contents, paginated; shelf and friend-shelf discovery
-  ShelfCache.swift        on-disk JSON cache
-  CSVExport.swift         CSV generation and save panel
-  Suggestions.swift       "Read Next" recommendation building
-  Preferences.swift       settings window, language filter, API key
-  Keychain.swift          Keychain wrapper for the API key
-  Diagnostics.swift       request log, for troubleshooting
-  BookDetailView.swift    book detail sheet: metadata, reviews, rate/review
-  ProgressSheet.swift     progress update UI
-  FinishSheet.swift       rating, finish date, review
-  HotKey.swift            Carbon global hotkey
-  QuickPanel.swift        floating panel + compact search
-  AppDelegate.swift       menu bar item, hotkey wiring
-  SelectorOverrides.swift user-editable extra CSS selectors (selectors.json)
-  UpdateChecker.swift     checks GitHub Releases for a newer build
-  SelfUpdater.swift       downloads, verifies and installs an update
-  ReleaseNotes.swift      what's-new popover shown before updating
-  DataCache.swift         cache for pages, friends and covers
-  ReadingStats.swift      Stats pane and its numbers
-  FriendNotifier.swift    notifications for friends' reading
-  SpotlightIndex.swift    puts shelved books into Spotlight
-  Connectivity.swift      online/offline status
-  GoodreadsSeries.swift   a series' volumes, and which comes next
-  ReadingPace.swift       progress history and finish estimates
-  ReadingReminder.swift   the daily reading notification
-  ShelfFilters.swift      shelf filters, your Want to Read order, search across shelves
-  BookNotes.swift         your notes and quotes per book
-  TasteComparison.swift   comparing your Read shelf with a friend's
-  NewReleases.swift       new books by authors you read
-  YearInReview.swift      the Year in Books card
-  Glass.swift             Liquid Glass helpers, with fallbacks
-  Backup.swift            backing up and restoring notes, progress and stopped books
-  Abandoned.swift         books you stopped reading
-  FriendsBooks.swift      which friends have read which books
-  GoodreadsChallenge.swift your Reading Challenge goal
-  Highlights.swift        importing Apple Books and Kindle highlights
-  Intents.swift           Shortcuts and Siri actions
-  WidgetBridge.swift      keeps the widgets' snapshot up to date
-  WidgetData.swift        the snapshot format, shared with the widget
-  Resources/              translations (Localizable.strings, plurals in .stringsdict)
-Sources/GoodreadsWidget/  the widget extension (built as an .appex, not by SwiftPM)
-Tests/GoodreadsGUITests/  unit tests for the pure logic above (`swift test`)
-```
-
-## Migrating from the CLI version
-
-The CLI, `~/.goodreads-cli.yaml`, and `~/.goodreads-cli-session` are no longer
-used. Once this build works you can remove them:
-
-```sh
-brew uninstall goodreads-cli 2>/dev/null || rm -f ~/go/bin/goodreads*
-rm -f ~/.goodreads-cli.yaml ~/.goodreads-cli-session
-```
-
-Delete the password file even if you keep the CLI around.
+Building the app yourself, or curious how it works? See
+[DEVELOPMENT.md](DEVELOPMENT.md).
