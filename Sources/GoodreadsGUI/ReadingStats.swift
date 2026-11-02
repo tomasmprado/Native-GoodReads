@@ -368,7 +368,7 @@ struct StatsPane: View {
                             .appFont(size: 12, weight: .medium)
                         ForEach(stats.topGenres) { item in
                             HStack {
-                                Text(item.genre).appFont(size: 12).lineLimit(1)
+                                Text(GenreNames.display(item.genre)).appFont(size: 12).lineLimit(1)
                                 Spacer()
                                 Text("\(item.count)").appFont(size: 12).foregroundStyle(.secondary)
                             }

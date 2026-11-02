@@ -70,7 +70,8 @@ enum GoogleBooksClient {
     /// One book's Google Books record, for details Goodreads didn't give:
     /// by ISBN when there is one, otherwise by title and author. Cached for a
     /// week; nil when nothing matches closely enough.
-    static func details(isbn: String?, title: String, author: String) async -> Book? {
+    static func details(isbn: String?, title: String, author: String,
+                        language: String? = Bundle.main.preferredLocalizations.first) async -> Book? {
         let cleanTitle = title.replacingOccurrences(of: #"\s*\([^()]*#[^()]*\)\s*$"#, with: "", options: .regularExpression)
         let key = isbn.map { "isbn:\($0)" } ?? "\(cleanTitle)|\(author)".lowercased()
         if let hit = await DataCache.shared.read(Book?.self, "google-book", key, ttl: 7 * 24 * 3600), !hit.isStale {
@@ -83,14 +84,15 @@ enum GoogleBooksClient {
         if found == nil {
             let byline = author.isEmpty ? "" : " inauthor:\"\(author.split(separator: ",").first.map(String.init) ?? author)\""
             let candidates = (try? await volumes(q: "intitle:\"\(cleanTitle)\"\(byline)", maxResults: 10)) ?? []
-            found = bestMatch(candidates, title: cleanTitle)
+            found = bestMatch(candidates, title: cleanTitle, language: language)
         }
         await DataCache.shared.write(found, "google-book", key)
         return found
     }
 
-    /// The candidate whose title matches, preferring one with a description.
-    static func bestMatch(_ candidates: [Book], title: String) -> Book? {
+    /// The candidate whose title matches, preferring one in `language`, then
+    /// one with a description.
+    static func bestMatch(_ candidates: [Book], title: String, language: String? = nil) -> Book? {
         let wanted = Suggestions.normalizedTitle(title)
         let exact = candidates.filter { Suggestions.normalizedTitle($0.title) == wanted }
         // A longer title only counts as a subtitle ("Dune: Deluxe Edition"),
@@ -99,8 +101,14 @@ enum GoogleBooksClient {
             guard let cut = candidate.title.firstIndex(where: { ":(—–".contains($0) }) else { return false }
             return Suggestions.normalizedTitle(String(candidate.title[..<cut])) == wanted
         }
+        func hasText(_ book: Book) -> Bool { !(book.description ?? "").isEmpty }
+        func inLanguage(_ book: Book) -> Bool {
+            guard let language, let bookLanguage = book.language else { return false }
+            return bookLanguage.lowercased().hasPrefix(language.lowercased())
+        }
         for group in [exact, subtitled] where !group.isEmpty {
-            return group.first { !($0.description ?? "").isEmpty } ?? group.first
+            return group.first { inLanguage($0) && hasText($0) } ?? group.first(where: inLanguage)
+                ?? group.first(where: hasText) ?? group.first
         }
         return nil
     }

@@ -144,3 +144,40 @@ final class GoogleFallbackTests: XCTestCase {
         XCTAssertEqual(mine.filled(from: nil), mine)
     }
 }
+
+final class GoogleFirstTests: XCTestCase {
+
+    private func book(_ title: String, language: String? = nil, description: String? = nil) -> Book {
+        Book(id: title, title: title, author: "A", coverURL: nil, rating: nil, language: language, description: description)
+    }
+
+    func testPrefersTheAppsLanguage() {
+        let candidates = [book("Dune", language: "en", description: "Spice."), book("Dune", language: "pt-BR", description: "Especiaria.")]
+        XCTAssertEqual(GoogleBooksClient.bestMatch(candidates, title: "Dune", language: "pt")?.description, "Especiaria.")
+        XCTAssertEqual(GoogleBooksClient.bestMatch(candidates, title: "Dune", language: "en")?.description, "Spice.")
+    }
+
+    func testPreferringTakesGooglesDetails() {
+        var mine = Book(id: "1", title: "The Hobbit", author: "J.R.R. Tolkien", coverURL: URL(string: "https://a/b.jpg"),
+                        rating: nil, publisher: "Houghton", goodreadsID: "5907", description: "English.")
+        mine.pageCount = 300
+        var google = book("O Hobbit", language: "pt", description: "Num buraco no chão…")
+        google.publisher = "Europa-América"
+        let shown = mine.preferring(google)
+        XCTAssertEqual(shown.title, "O Hobbit")
+        XCTAssertEqual(shown.description, "Num buraco no chão…")
+        XCTAssertEqual(shown.publisher, "Europa-América")
+        XCTAssertEqual(shown.pageCount, 300, "kept when Google has none")
+        XCTAssertEqual(shown.author, "J.R.R. Tolkien")
+        XCTAssertEqual(shown.goodreadsID, "5907")
+        XCTAssertEqual(shown.coverURL, mine.coverURL)
+        XCTAssertEqual(mine.preferring(nil), mine)
+    }
+
+    func testGoogleDates() {
+        XCTAssertEqual(BookAboutView.readableDate("2002"), "2002")
+        XCTAssertNotEqual(BookAboutView.readableDate("2002-08-15"), "2002-08-15")
+        XCTAssertTrue(BookAboutView.readableDate("2002-08-15").contains("2002"))
+        XCTAssertEqual(BookAboutView.readableDate("soon"), "soon")
+    }
+}

@@ -7,6 +7,18 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
+## [Unreleased]
+
+### Changed
+
+- With a Google Books key set, Book Details takes the title, synopsis,
+  publisher, date, pages and language from Google Books first — the reader's
+  own edition by ISBN, else one in the app's language — and keeps Goodreads
+  for ratings, reviews, awards, series and characters. The Goodreads title
+  shows underneath when it differs.
+- Genres are shown in Portuguese when the app is in Portuguese: on books, in
+  the shelf filter, in Stats and in Your Year in Books.
+
 ## [2.6.0] — 2026-11-02
 
 ### Added

@@ -37,6 +37,25 @@ struct Book: Identifiable, Hashable, Codable {
         return book
     }
 
+    /// `other`'s details where it has them — for when Google Books comes
+    /// first. Keeps this book's identity, cover and author.
+    func preferring(_ other: Book?) -> Book {
+        guard let other else { return self }
+        var book = self
+        if !other.title.isEmpty { book = Book(id: id, title: other.title, author: author, coverURL: coverURL, rating: rating,
+                                              publisher: publisher, isbn: isbn, goodreadsID: goodreadsID,
+                                              language: language, description: description, pageCount: pageCount,
+                                              publishedDate: publishedDate, categories: categories) }
+        if let value = other.description, !value.isEmpty { book.description = value }
+        if let value = other.publisher, !value.isEmpty { book.publisher = value }
+        if let value = other.pageCount { book.pageCount = value }
+        if let value = other.publishedDate, !value.isEmpty { book.publishedDate = value }
+        if let value = other.language, !value.isEmpty { book.language = value }
+        if let value = other.isbn, !value.isEmpty { book.isbn = value }
+        if let value = other.categories, !value.isEmpty { book.categories = value }
+        return book
+    }
+
     /// Google's subjects as plain genres: "Fiction / Science Fiction" gives
     /// "Science Fiction", without repeats or the generic "General".
     var genresFromCategories: [String] {
@@ -193,5 +212,13 @@ enum ShelfSortOrder: String, CaseIterable, Identifiable {
                     > (Suggestions.parseDate($1.dateAdded ?? "") ?? .distantPast)
             }
         }
+    }
+}
+
+/// Genre names from Goodreads and Google Books are English; this shows them
+/// in the app's language (Resources/*.lproj/Genres.strings).
+enum GenreNames {
+    static func display(_ genre: String) -> String {
+        Bundle.main.localizedString(forKey: genre, value: genre, table: "Genres")
     }
 }

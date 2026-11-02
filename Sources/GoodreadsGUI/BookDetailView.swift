@@ -56,9 +56,9 @@ struct BookDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    BookAboutView(about: about, genres: genres.isEmpty ? book.filled(from: google).genresFromCategories : genres,
-                                  book: book.filled(from: google),
-                                  pages: pageCount, language: pageLanguage)
+                    BookAboutView(about: about, genres: genres.isEmpty ? shownBook.genresFromCategories : genres,
+                                  book: shownBook,
+                                  pages: pageCount, language: pageLanguage, preferBook: preferGoogle)
                     // Without the "(Series, #1)" Goodreads adds, which shops don't know.
                     StoreLinksView(title: book.title.replacingOccurrences(of: #"\s*\([^()]*#[^()]*\)\s*$"#, with: "",
                                                                           options: .regularExpression),
@@ -121,9 +121,15 @@ struct BookDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: 5))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(book.title)
+                Text(shownBook.title)
                     .appFont(size: 17, weight: .semibold)
                     .textSelection(.enabled)
+                if preferGoogle, Suggestions.normalizedTitle(shownBook.title) != Suggestions.normalizedTitle(book.title) {
+                    Text(book.title)
+                        .appFont(size: 12)
+                        .foregroundStyle(.secondary)
+                        .help("The title on Goodreads")
+                }
                 if let authorURL {
                     Button(authorName) { model.showAuthorPage(authorURL) }
                         .appFont(size: 13)
@@ -462,8 +468,21 @@ struct BookDetailView: View {
         await fillFromGoogle()
     }
 
+    /// With a Google Books key, Google's title, synopsis and edition details
+    /// come first; without one, it only fills what Goodreads didn't give.
+    private var hasGoogleKey: Bool {
+        !Preferences.shared.googleBooksAPIKey.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    private var preferGoogle: Bool { hasGoogleKey && google != nil }
+    private var shownBook: Book { preferGoogle ? book.preferring(google) : book.filled(from: google) }
+
     /// Whatever Goodreads didn't give — synopsis first of all — from Google Books.
     private func fillFromGoogle() async {
+        if hasGoogleKey {
+            google = await GoogleBooksClient.details(isbn: about?.isbn13 ?? about?.isbn ?? book.isbn,
+                                                     title: book.title, author: authorName)
+            return
+        }
         let missing = (about?.synopsis == nil && (book.description ?? "").isEmpty)
             || (about?.publisher == nil && book.publisher == nil)
             || (pageCount == nil && book.pageCount == nil)

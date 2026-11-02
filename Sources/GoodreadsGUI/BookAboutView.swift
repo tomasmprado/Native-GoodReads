@@ -9,6 +9,9 @@ struct BookAboutView: View {
     let book: Book
     let pages: Int?
     let language: String?
+    /// Google Books comes first (there's a key): `book`'s details win over
+    /// the Goodreads page's.
+    var preferBook = false
 
     @State private var synopsisExpanded = false
 
@@ -90,9 +93,9 @@ struct BookAboutView: View {
     // MARK: Synopsis
 
     private var synopsis: String? {
-        if let text = about?.synopsis, !text.isEmpty { return text }
-        guard let description = book.description, !description.isEmpty else { return nil }
-        return GoodreadsBookPage.plainText(fromHTML: description)
+        let fromBook = book.description.flatMap { $0.isEmpty ? nil : GoodreadsBookPage.plainText(fromHTML: $0) }
+        let fromPage = about?.synopsis.flatMap { $0.isEmpty ? nil : $0 }
+        return preferBook ? (fromBook ?? fromPage) : (fromPage ?? fromBook)
     }
 
     private func synopsisBlock(_ text: String) -> some View {
@@ -121,7 +124,7 @@ struct BookAboutView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
                 ForEach(genres.prefix(10), id: \.self) { genre in
-                    Text(genre)
+                    Text(GenreNames.display(genre))
                         .appFont(size: 11)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
@@ -130,34 +133,59 @@ struct BookAboutView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("Genres: \(genres.prefix(10).joined(separator: ", "))"))
+        .accessibilityLabel(Text("Genres: \(genres.prefix(10).map(GenreNames.display).joined(separator: ", "))"))
     }
 
     // MARK: Facts
 
     private var facts: [(String, String)] {
         var rows: [(String, String)] = []
-        let publisher = about?.publisher ?? book.publisher
+        let publisher = preferBook ? (book.publisher ?? about?.publisher) : (about?.publisher ?? book.publisher)
         if let publisher { rows.append((String(localized: "Publisher"), publisher)) }
-        if let published = about?.published {
+        if preferBook, let date = book.publishedDate {
+            rows.append((String(localized: "Published"), Self.readableDate(date)))
+        } else if let published = about?.published {
             rows.append((String(localized: "Published"), published.formatted(date: .long, time: .omitted)))
         } else if let date = book.publishedDate {
-            rows.append((String(localized: "Published"), date))
+            rows.append((String(localized: "Published"), Self.readableDate(date)))
         }
         if let first = about?.firstPublished {
             rows.append((String(localized: "First published"), first.formatted(.dateTime.year())))
         }
-        if let pages = pages ?? book.pageCount {
+        if let pages = preferBook ? (book.pageCount ?? pages) : (pages ?? book.pageCount) {
             rows.append((String(localized: "Pages"), "\(pages)"))
         }
         if let format = about?.format { rows.append((String(localized: "Format"), format)) }
-        if let language = language ?? book.language { rows.append((String(localized: "Language"), language.capitalized)) }
+        if let language = preferBook ? (book.language ?? language) : (language ?? book.language) {
+            rows.append((String(localized: "Language"), Self.languageName(language)))
+        }
         if let isbn = about?.isbn13 ?? about?.isbn ?? book.isbn { rows.append((String(localized: "ISBN"), isbn)) }
         if let original = about?.originalTitle { rows.append((String(localized: "Original title"), original)) }
         for (role, people) in contributorsByRole {
             rows.append((role, people.joined(separator: ", ")))
         }
         return rows
+    }
+
+    /// Google gives "2002", "2002-08" or "2002-08-15".
+    static func readableDate(_ text: String) -> String {
+        let formats = ["yyyy-MM-dd": Date.FormatStyle(date: .long, time: .omitted),
+                       "yyyy-MM": Date.FormatStyle().month(.wide).year()]
+        for (pattern, style) in formats {
+            let parser = DateFormatter()
+            parser.locale = Locale(identifier: "en_US_POSIX")
+            parser.dateFormat = pattern
+            if text.count == pattern.count, let date = parser.date(from: text) { return date.formatted(style) }
+        }
+        return text
+    }
+
+    /// "pt" or "Portuguese" → the language's name in the app's language.
+    static func languageName(_ code: String) -> String {
+        if code.count <= 3, let name = Locale.current.localizedString(forLanguageCode: code) {
+            return name.prefix(1).uppercased() + name.dropFirst()
+        }
+        return code.capitalized
     }
 
     /// "Illustrator: A, B" — Goodreads lists one edge per person.
