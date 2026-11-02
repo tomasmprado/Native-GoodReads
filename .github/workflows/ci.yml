@@ -25,3 +25,13 @@ jobs:
 
       - name: Test
         run: swift test
+
+      # The widget extension isn't a SwiftPM target (SwiftPM can't build an
+      # .appex), so it's compiled on its own here to catch breakage.
+      - name: Build widget
+        run: |
+          xcrun swiftc -c -wmo -module-name GoodreadsWidget -swift-version 6 \
+            -parse-as-library -application-extension \
+            -sdk "$(xcrun --sdk macosx --show-sdk-path)" -target arm64-apple-macos13.0 \
+            -o "$RUNNER_TEMP/widget.o" \
+            Sources/GoodreadsWidget/*.swift Sources/GoodreadsGUI/WidgetData.swift

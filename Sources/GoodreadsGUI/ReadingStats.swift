@@ -181,6 +181,7 @@ struct StatsPane: View {
                             authorsCard(stats)
                         }
                         extrasCard(stats)
+                        AbandonedCard(model: model)
                     }
                     .padding(16)
                 }
@@ -234,9 +235,18 @@ struct StatsPane: View {
                 Text("\(String(year)) Reading Goal")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
-                Stepper("Goal: \(goal)", value: $prefs.yearlyGoal, in: 1...500)
+                if prefs.useGoodreadsChallenge, model.challenge?.goal != nil {
+                    Button("Goodreads Reading Challenge") {
+                        NSWorkspace.shared.open(GoodreadsChallenge.url(year: year))
+                    }
+                    .buttonStyle(.link)
                     .font(.system(size: 11))
-                    .fixedSize()
+                    .help("Your goal comes from your Reading Challenge. Change it there.")
+                } else {
+                    Stepper("Goal: \(goal)", value: $prefs.yearlyGoal, in: 1...500)
+                        .font(.system(size: 11))
+                        .fixedSize()
+                }
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(stats.readThisYear)")

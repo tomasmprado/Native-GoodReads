@@ -80,7 +80,43 @@ actor DataCache {
 
     /// Things you wrote or that can't be fetched again — your notes, and
     /// your reading progress over time. Clearing the cache keeps them.
-    static let keptNamespaces: Set<String> = ["notes", "progress-history"]
+    static let keptNamespaces: Set<String> = ["notes", "progress-history", "abandoned"]
+
+    /// The kept namespaces' files as they are on disk, for a backup.
+    func keptFiles() -> [String: [String: Data]] {
+        var result: [String: [String: Data]] = [:]
+        for namespace in Self.keptNamespaces {
+            let folder = Self.folder.appendingPathComponent(namespace, isDirectory: true)
+            let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+            for file in files where file.pathExtension == "json" {
+                if let data = try? Data(contentsOf: file) {
+                    result[namespace, default: [:]][file.lastPathComponent] = data
+                }
+            }
+        }
+        return result
+    }
+
+    /// Replaces the kept namespaces with a backup's files. Anything else in
+    /// the backup is ignored, and so are names that aren't plain file names.
+    func restoreKept(_ files: [String: [String: Data]]) {
+        for namespace in Self.keptNamespaces {
+            let folder = Self.folder.appendingPathComponent(namespace, isDirectory: true)
+            try? FileManager.default.removeItem(at: folder)
+            memory = memory.filter { id, _ in !id.hasPrefix("\(namespace)/") }
+            guard let entries = files[namespace], !entries.isEmpty else { continue }
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            for (name, data) in entries
+            where name.hasSuffix(".json") && !name.contains("/") && !name.hasPrefix(".") {
+                try? data.write(to: folder.appendingPathComponent(name), options: .atomic)
+            }
+        }
+    }
+
+    /// Decodes one cache file's value without going through the cache.
+    nonisolated static func decodeStored<T: Decodable>(_ type: T.Type, from data: Data) -> T? {
+        try? JSONDecoder().decode(StoredValue<T>.self, from: data).value
+    }
 
     /// Signing out drops everything fetched — it all belongs to the old
     /// account — but not `keptNamespaces`.
@@ -158,6 +194,10 @@ actor DataCache {
         static let series: TimeInterval = 3 * 24 * 3600
         static let newReleases: TimeInterval = 24 * 3600
     }
+}
+
+private struct StoredValue<T: Decodable>: Decodable {
+    let value: T
 }
 
 // MARK: - Images

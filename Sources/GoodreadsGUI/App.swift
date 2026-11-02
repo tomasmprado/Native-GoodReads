@@ -37,6 +37,26 @@ struct GoodreadsGUIApp: App {
         .defaultSize(width: 820, height: 680)
         .commands {
             CommandGroup(replacing: .newItem) { }
+            CommandGroup(after: .importExport) {
+                Button("Import Highlights…") {
+                    WindowManager.shared.openMain?()
+                    LibraryModel.shared.activeSheet = .importHighlights
+                }
+                Divider()
+                Button("Back Up Notes & Progress…") {
+                    Task {
+                        if let status = await Backup.export() { LibraryModel.shared.status = status }
+                    }
+                }
+                Button("Restore from Backup…") {
+                    Task {
+                        if let status = await Backup.restore() {
+                            LibraryModel.shared.status = status
+                            await LibraryModel.shared.reloadLocalData()
+                        }
+                    }
+                }
+            }
         }
 
         Settings {

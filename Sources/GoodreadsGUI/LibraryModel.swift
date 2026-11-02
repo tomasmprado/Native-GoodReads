@@ -68,6 +68,8 @@ final class LibraryModel: ObservableObject {
         case progress(ShelfEntry)
         case finish(ShelfEntry)
         case finishBook(Book)
+        case abandon(ShelfEntry)
+        case importHighlights
         case detail(Book)
         case friendProfile
         case authorPage
@@ -80,6 +82,8 @@ final class LibraryModel: ObservableObject {
             case .progress(let entry):  return "progress-\(entry.id)"
             case .finish(let entry):    return "finish-\(entry.id)"
             case .finishBook(let book): return "finishBook-\(book.id)"
+            case .abandon(let entry):   return "abandon-\(entry.id)"
+            case .importHighlights:     return "importHighlights"
             case .detail(let book):     return "detail-\(book.id)"
             case .friendProfile:        return "friendProfile"
             case .authorPage:           return "authorPage"
@@ -96,10 +100,16 @@ final class LibraryModel: ObservableObject {
     /// Recent books by authors you've read more than once.
     @Published var newReleases: [Suggestion] = []
 
-    @Published var currentlyReading: [ShelfEntry] = []
+    @Published var currentlyReading: [ShelfEntry] = [] {
+        didSet { WidgetBridge.scheduleUpdate() }
+    }
     /// Progress over time per book id, for finish-date estimates.
-    @Published var progressHistory: [String: [ProgressPoint]] = [:]
+    @Published var progressHistory: [String: [ProgressPoint]] = [:] {
+        didSet { WidgetBridge.scheduleUpdate() }
+    }
     @Published var isLoadingCurrentlyReading = false
+    /// Books you stopped reading, by book id — kept on this Mac.
+    @Published var abandoned: [String: AbandonedBook] = [:]
 
     // Search filters
     @Published var searchLanguage: BookLanguage = .any
@@ -107,8 +117,12 @@ final class LibraryModel: ObservableObject {
     @Published var searchSubject = ""
 
     // Stats
-    @Published var readingStats: ReadingStats?
+    @Published var readingStats: ReadingStats? {
+        didSet { WidgetBridge.scheduleUpdate() }
+    }
     @Published var isLoadingStats = false
+    /// This year's Goodreads Reading Challenge, once read.
+    @Published var challenge: ReadingChallenge?
     /// "Fill In" on the Stats pane: book pages fetched so far, of how many.
     @Published var extrasDone = 0
     @Published var extrasTotal = 0
@@ -121,6 +135,9 @@ final class LibraryModel: ObservableObject {
     private var friendsFetched: Date?
     @Published var isLoadingFriends = false
     @Published var friendsNote: String?
+    /// Friends' Read and Currently Reading shelves, for "Friends who read this".
+    @Published var friendsBooks: [String: FriendLibrary] = [:]
+    @Published var friendsBooksProgress: String?
 
     // Friend profile — the "dive deeper" sheet
     @Published var friendProfileURL: URL?
@@ -334,6 +351,19 @@ final class LibraryModel: ObservableObject {
             await loadFriends()
         }
         await loadNewReleases()
+        friendsBooks = await FriendsBooks.index()
+        if FriendsBooks.isStale(friendsBooks) { await syncFriendsBooks() }
+    }
+
+    /// Reads every friend's Read and Currently Reading shelves.
+    func syncFriendsBooks() async {
+        guard friendsBooksProgress == nil else { return }
+        if friends.isEmpty { await loadFriends() }
+        guard !friends.isEmpty else { return }
+        friendsBooks = await FriendsBooks.sync(friends) { [weak self] done, total in
+            self?.friendsBooksProgress = String(localized: "Reading friends’ shelves… \(done) of \(total)")
+        }
+        friendsBooksProgress = nil
     }
 
     /// "New from your authors" — refreshed at most daily, since each author
@@ -619,6 +649,7 @@ final class LibraryModel: ObservableObject {
     /// otherwise a reload (which also refreshes that cache for everyone else).
     func loadStats(force: Bool = false) async {
         guard !isLoadingStats else { return }
+        abandoned = await AbandonedBooks.all()
         let extras = await BookExtras.all()
         let cached = ShelfCache.read(.read)
         if let cached { readingStats = ReadingStats.compute(from: cached.entries, extras: extras) }
@@ -633,6 +664,22 @@ final class LibraryModel: ObservableObject {
             readingStats = ReadingStats.compute(from: entries, extras: extras)
         }
         if currentlyReading.isEmpty { await loadCurrentlyReading() }
+        await loadChallenge(force: force)
+    }
+
+    /// Reads this year's Reading Challenge and, when you've joined it, makes
+    /// its goal the Stats goal. A page the app can't read changes nothing.
+    func loadChallenge(force: Bool = false) async {
+        guard loggedIn, Preferences.shared.useGoodreadsChallenge else { return }
+        let year = Calendar.current.component(.year, from: Date())
+        try? await DataCache.load("challenge", String(year), ttl: 12 * 3600, force: force) {
+            try await GoodreadsChallenge.fetch(year: year)
+        } show: { [weak self] challenge, _ in
+            self?.challenge = challenge
+            if let goal = challenge.goal, Preferences.shared.useGoodreadsChallenge {
+                Preferences.shared.yearlyGoal = goal
+            }
+        }
     }
 
     /// Fetches the Goodreads page of every read book whose page count and
@@ -1127,6 +1174,78 @@ final class LibraryModel: ObservableObject {
             status = Status(text: String(localized: "Couldn’t finish “\(title)”: \(error.localizedDescription)"),
                             isError: true)
         }
+    }
+
+    // MARK: - Abandoned books
+
+    /// Stops reading `entry`: records it here, then moves it on Goodreads.
+    func abandon(_ entry: ShelfEntry, reason: String,
+                 destination: AbandonedBooks.Destination, alsoShelf: Shelf?) async {
+        busyBookID = entry.bookID
+        status = nil
+        defer { busyBookID = nil }
+
+        do {
+            switch destination {
+            case .wantToRead:
+                _ = try await ShelfService.add(bookID: entry.bookID, to: .wantToRead)
+                bumpCountIfNew(bookID: entry.bookID, shelf: .wantToRead)
+                bumpCount(-1, for: .currentlyReading)
+                if let alsoShelf {
+                    _ = try await ShelfService.add(bookID: entry.bookID, to: alsoShelf)
+                    bumpCountIfNew(bookID: entry.bookID, shelf: alsoShelf)
+                }
+            case .remove:
+                _ = try await ShelfService.remove(bookID: entry.bookID, from: .currentlyReading)
+                bumpCount(-1, for: .currentlyReading)
+            }
+        } catch {
+            reportWriteFailure(String(localized: "Couldn’t stop reading “\(entry.title)”"), error: error)
+            return
+        }
+
+        await AbandonedBooks.add(AbandonedBook(entry: entry, reason: reason))
+        abandoned = await AbandonedBooks.all()
+
+        currentlyReading.removeAll { $0.bookID == entry.bookID }
+        ShelfCache.write(currentlyReading, for: .currentlyReading)
+        if currentShelf?.name == Shelf.currentlyReading.name {
+            shelfEntries.removeAll { $0.bookID == entry.bookID }
+            ShelfCache.write(shelfEntries, for: .currentlyReading)
+        }
+        ReadingReminder.reschedule()
+        status = Status(text: String(localized: "Stopped reading “\(entry.title)”."), isError: false)
+    }
+
+    /// Back on Currently Reading, and off the abandoned list.
+    func resumeAbandoned(_ book: AbandonedBook) async {
+        busyBookID = book.bookID
+        status = nil
+        defer { busyBookID = nil }
+
+        do {
+            _ = try await ShelfService.add(bookID: book.bookID, to: .currentlyReading)
+            bumpCountIfNew(bookID: book.bookID, shelf: .currentlyReading)
+        } catch {
+            reportWriteFailure(String(localized: "Couldn’t resume “\(book.title)”"), error: error)
+            return
+        }
+        await AbandonedBooks.remove(bookID: book.bookID)
+        abandoned = await AbandonedBooks.all()
+        status = Status(text: String(localized: "“\(book.title)” is back on Currently Reading."), isError: false)
+        await loadCurrentlyReading(force: true)
+    }
+
+    /// Drops the record only; Goodreads isn't touched.
+    func forgetAbandoned(_ book: AbandonedBook) async {
+        await AbandonedBooks.remove(bookID: book.bookID)
+        abandoned = await AbandonedBooks.all()
+    }
+
+    /// Reloads what a backup restore replaced.
+    func reloadLocalData() async {
+        progressHistory = await ReadingPace.all()
+        abandoned = await AbandonedBooks.all()
     }
 
     /// Stars only — doesn't touch shelf membership. See `ShelfService.rate`.
