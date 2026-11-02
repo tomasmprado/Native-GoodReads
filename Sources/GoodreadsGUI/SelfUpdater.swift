@@ -98,7 +98,7 @@ final class SelfUpdater: ObservableObject {
     /// and doesn't ask for the password again. Best-effort: an unsigned
     /// update still installs.
     private func resignLikeCurrent(_ staged: URL, in work: URL) async {
-        guard let details = try? await Self.shell("/usr/bin/codesign", ["-dv", Bundle.main.bundlePath]),
+        guard let details = try? await Self.shell("/usr/bin/codesign", ["-dvv", Bundle.main.bundlePath]),
               let authority = Self.signingAuthority(fromCodesignOutput: details) else { return }
         let entitlements = work.appendingPathComponent("widget.entitlements")
         let widget = staged.appendingPathComponent("Contents/PlugIns/GoodreadsWidget.appex")
@@ -115,7 +115,7 @@ final class SelfUpdater: ObservableObject {
         }
     }
 
-    /// The certificate name in `codesign -dv` output, or nil when ad hoc.
+    /// The certificate name in `codesign -dvv` output (plain `-dv` leaves it out), or nil when ad hoc.
     nonisolated static func signingAuthority(fromCodesignOutput output: String) -> String? {
         output.split(separator: "\n")
             .first { $0.hasPrefix("Authority=") }
