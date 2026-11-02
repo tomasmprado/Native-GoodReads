@@ -95,8 +95,11 @@ enum FriendsBooks {
             let tasks = batch.map { friend in
                 Task { @MainActor () -> FriendLibrary? in
                     let userID = GoodreadsFriends.userID(from: friend.profileURL) ?? friend.id
-                    guard let read = try? await ShelfLibrary.load(.read, ofUser: userID) else { return nil }
-                    let reading = (try? await ShelfLibrary.load(.currentlyReading, ofUser: userID)) ?? []
+                    guard let read = await shelf(.read, of: userID) else {
+                        Diagnostics.shared.log("friends' books", "couldn’t read \(friend.name)’s shelves", ok: false)
+                        return nil
+                    }
+                    let reading = await shelf(.currentlyReading, of: userID) ?? []
                     return library(for: friend, read: read, reading: reading)
                 }
             }
@@ -110,6 +113,21 @@ enum FriendsBooks {
             await save(index)
         }
         return index
+    }
+
+    /// A friend's shelf: fetched (with one retry), saved for the friend's
+    /// profile too, or the copy saved from browsing it when the fetch fails.
+    @MainActor
+    private static func shelf(_ shelf: Shelf, of userID: String) async -> [ShelfEntry]? {
+        let key = "\(userID)/\(shelf.name)"
+        for attempt in 0..<2 {
+            if attempt > 0 { try? await Task.sleep(for: .seconds(2)) }
+            if let entries = try? await ShelfLibrary.load(shelf, ofUser: userID) {
+                await DataCache.shared.write(entries, "friend-shelf", key)
+                return entries
+            }
+        }
+        return await DataCache.shared.read([ShelfEntry].self, "friend-shelf", key, ttl: .infinity)?.value
     }
 
     static func isStale(_ index: [String: FriendLibrary], now: Date = Date()) -> Bool {
