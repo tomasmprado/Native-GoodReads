@@ -23,6 +23,12 @@ added in that diff, meaning `v1.0.0` predates all of it.
 - Genres are shown in Portuguese when the app is in Portuguese: on books, in
   the shelf filter, in Stats and in Your Year in Books.
 
+### Fixed
+
+- Widgets on a Liquid Glass or tinted desktop lost their covers and showed
+  the progress bar as one solid line; covers stay pictures and the bar's
+  filled part stands out in every mode.
+
 ## [2.6.0] — 2026-11-02
 
 ### Added

@@ -94,10 +94,8 @@ struct ReadingWidgetView: View {
         }
     }
 
-    @ViewBuilder
     private func progress(_ book: WidgetSnapshot.Book) -> some View {
-        ProgressView(value: Double(book.percent ?? 0), total: 100)
-            .tint(.orange)
+        ProgressBar(fraction: Double(book.percent ?? 0) / 100)
     }
 
     private func detail(_ book: WidgetSnapshot.Book) -> String {
@@ -117,7 +115,7 @@ struct ReadingWidgetView: View {
     private func cover(_ book: WidgetSnapshot.Book) -> some View {
         if let file = book.coverFile,
            let image = NSImage(contentsOf: WidgetStore.folder.appendingPathComponent(file)) {
-            Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+            CoverImage(image: image)
                 .clipShape(RoundedRectangle(cornerRadius: 3))
         } else {
             RoundedRectangle(cornerRadius: 3).fill(Color.secondary.opacity(0.2))
@@ -147,11 +145,8 @@ struct GoalWidgetView: View {
             if let goal = entry.snapshot.goal, goal.goal > 0 {
                 VStack(spacing: 6) {
                     ZStack {
-                        Circle().stroke(Color.secondary.opacity(0.2), lineWidth: 8)
-                        Circle()
-                            .trim(from: 0, to: min(1, Double(goal.read) / Double(goal.goal)))
-                            .stroke(Color.orange, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                            .rotationEffect(.degrees(-90))
+                        Circle().stroke(Color.primary.opacity(0.15), lineWidth: 8)
+                        GoalRing(fraction: min(1, Double(goal.read) / Double(goal.goal)))
                         VStack(spacing: 0) {
                             Text("\(goal.read)").font(.system(size: 24, weight: .bold, design: .rounded))
                             Text("of \(goal.goal)").font(.caption2).foregroundStyle(.secondary)
@@ -199,6 +194,64 @@ struct GoodreadsWidgets: WidgetBundle {
     var body: some Widget {
         ReadingWidget()
         GoalWidget()
+    }
+}
+
+// MARK: - Glass and tinted widgets
+
+// On the macOS 26 desktop, widgets are often drawn in one colour (Liquid
+// Glass, or tinted): images turn into flat shapes and every colour becomes
+// the same, so an ordinary progress bar's track and fill can't be told apart.
+// These keep covers as pictures and the filled part distinct in every mode.
+
+/// A cover that stays a picture when the widget is tinted.
+struct CoverImage: View {
+    let image: NSImage
+
+    var body: some View {
+        if #available(macOS 15, *) {
+            Image(nsImage: image)
+                .resizable()
+                .widgetAccentedRenderingMode(.fullColor)
+                .aspectRatio(contentMode: .fill)
+        } else {
+            Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+        }
+    }
+}
+
+/// A thin bar whose filled part stands out in colour, tinted and glass widgets.
+struct ProgressBar: View {
+    let fraction: Double
+    @Environment(\.widgetRenderingMode) private var renderingMode
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.primary.opacity(0.18))
+                Capsule()
+                    .fill(renderingMode == .fullColor ? Color.orange : Color.primary)
+                    .frame(width: max(4, proxy.size.width * min(1, max(0, fraction))))
+                    .widgetAccentable()
+            }
+        }
+        .frame(height: 4)
+        .accessibilityElement()
+        .accessibilityLabel(Text("\(Int((fraction * 100).rounded()))%"))
+    }
+}
+
+struct GoalRing: View {
+    let fraction: Double
+    @Environment(\.widgetRenderingMode) private var renderingMode
+
+    var body: some View {
+        Circle()
+            .trim(from: 0, to: fraction)
+            .stroke(renderingMode == .fullColor ? Color.orange : Color.primary,
+                    style: StrokeStyle(lineWidth: 8, lineCap: .round))
+            .rotationEffect(.degrees(-90))
+            .widgetAccentable()
     }
 }
 
