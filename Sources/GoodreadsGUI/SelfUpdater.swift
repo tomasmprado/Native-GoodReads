@@ -56,6 +56,7 @@ final class SelfUpdater: ObservableObject {
             state = .installing
             let staged = try await stageApp(from: dmg, in: work)
             try verify(staged, expectedVersion: version)
+            await resignLikeCurrent(staged, in: work)
             try relaunch(replacingWith: staged, workDir: work)
         } catch {
             state = .failed(error.localizedDescription)
@@ -91,6 +92,47 @@ final class SelfUpdater: ObservableObject {
         try await Self.shell("/usr/bin/ditto", [app.path, staged.path])
         return staged
     }
+
+    /// When this copy was signed on this Mac (install.sh, or a local build),
+    /// the update is signed the same way, so the Keychain keeps trusting it
+    /// and doesn't ask for the password again. Best-effort: an unsigned
+    /// update still installs.
+    private func resignLikeCurrent(_ staged: URL, in work: URL) async {
+        guard let details = try? await Self.shell("/usr/bin/codesign", ["-dv", Bundle.main.bundlePath]),
+              let authority = Self.signingAuthority(fromCodesignOutput: details) else { return }
+        let entitlements = work.appendingPathComponent("widget.entitlements")
+        let widget = staged.appendingPathComponent("Contents/PlugIns/GoodreadsWidget.appex")
+        do {
+            if FileManager.default.fileExists(atPath: widget.path) {
+                try Self.widgetEntitlements.write(to: entitlements, atomically: true, encoding: .utf8)
+                try await Self.shell("/usr/bin/codesign", ["--force", "--sign", authority,
+                                                          "--entitlements", entitlements.path,
+                                                          "--generate-entitlement-der", widget.path])
+            }
+            try await Self.shell("/usr/bin/codesign", ["--force", "--sign", authority, staged.path])
+        } catch {
+            Diagnostics.shared.log("update", "couldn’t sign the update like this copy: \(error.localizedDescription)", ok: false)
+        }
+    }
+
+    /// The certificate name in `codesign -dv` output, or nil when ad hoc.
+    nonisolated static func signingAuthority(fromCodesignOutput output: String) -> String? {
+        output.split(separator: "\n")
+            .first { $0.hasPrefix("Authority=") }
+            .map { String($0.dropFirst("Authority=".count)) }
+    }
+
+    nonisolated static let widgetEntitlements = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+        <key>com.apple.security.app-sandbox</key><true/>
+        <key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
+        <array><string>/Library/Application Support/GoodreadsGUI/widget/</string></array>
+    </dict>
+    </plist>
+    """
 
     /// Same app, and actually the version we went to get.
     private func verify(_ staged: URL, expectedVersion: String) throws {

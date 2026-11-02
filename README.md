@@ -4,6 +4,50 @@ A small native macOS front end for [`yareeh/goodreads-cli`](https://github.com/y
 SwiftUI, no dependencies. Search a book, shelve it, see what your friends are
 reading — done.
 
+## Install
+
+1. Download `Goodreads.dmg` and `install.sh` from the [latest release](../../releases/latest)
+   into your Downloads folder.
+2. Open Terminal and run:
+
+   ```sh
+   bash ~/Downloads/install.sh
+   ```
+
+That's it — the app opens. The script:
+
+- copies `Goodreads.app` from the `.dmg` into `/Applications` (quitting the
+  app first if it's running);
+- removes the "downloaded from the internet" flag, so macOS doesn't refuse an
+  app that isn't notarised by Apple (no more *"Goodreads" can't be opened* or
+  trips to System Settings → Privacy & Security → Open Anyway);
+- signs the app on your Mac with a certificate it makes the first time —
+  "Goodreads Local Signing", self-signed, kept in your login keychain and used
+  for nothing else.
+
+Why the signing matters: the app keeps your Google Books key in the Keychain,
+and macOS asks for your password whenever an app with a *different* signature
+wants it. Downloaded builds aren't signed with a fixed certificate, so every
+update looked new and the prompt kept coming back. Signed by the script, it
+asks once — choose **Always Allow** — and never again, including after
+updates from inside the app, which re-sign themselves with the same
+certificate.
+
+Other options:
+
+```sh
+bash install.sh ~/Somewhere/Goodreads.dmg   # a .dmg (or .app) somewhere else
+bash install.sh --resign                    # re-sign /Applications/Goodreads.app only
+bash install.sh --remove-certificate        # delete the certificate again
+SIGN_IDENTITY="Apple Development: …" bash install.sh   # use a certificate you already have
+```
+
+Nothing is sent anywhere and no administrator password is needed. Prefer not
+to run a script? Drag the app from the `.dmg` to Applications, then
+right-click it → Open the first time (or System Settings → Privacy &
+Security → Open Anyway); the Keychain prompt will just come back after each
+update.
+
 ## How it's wired
 
 Everything is native. There's no CLI, no Go, no Homebrew, no Chromium, and no
@@ -46,9 +90,9 @@ WebKit does what rod did, but it's part of macOS. Practical differences:
 
 ## Build
 
-Prebuilt releases — a `.dmg`, drag to Applications — are on the
-[Releases](../../releases) page. That's the easiest way to get the app, and
-what most people want.
+Prebuilt releases are on the [Releases](../../releases) page — see
+[Install](#install). That's the easiest way to get the app, and what most
+people want.
 
 To build from source instead:
 
@@ -157,6 +201,14 @@ progress, and takes a new percentage typed right into the notification.
 **Spotlight** — on by default: the books on your shelves show up when you
 search from ⌘Space, and choosing one opens its details here. Each shelf is
 re-indexed whenever it loads; turning this off removes them.
+
+**Reading Goal** — when you've joined this year's Reading Challenge on
+Goodreads, Stats takes its goal from there (read from your challenge page,
+twice a day at most); turn it off to set the goal yourself.
+
+**Backup** saves what exists only on this Mac — notes and quotes, progress
+history, books you stopped reading — to one `.goodreadsbackup` file, and
+restores from it (replacing what's there). Also in the File menu.
 
 **Cache** shows how much the app keeps on disk (shelves, book and author pages,
 friends, covers) and clears it. Clearing is safe — everything is fetched again
@@ -303,6 +355,38 @@ Worth doing occasionally. This app rests on undocumented endpoints, Goodreads
 could retire them whenever, and Amazon has let the site rot for a decade. A
 local copy is cheap insurance.
 
+### Widgets, Shortcuts and Siri
+
+Two widgets for the desktop and Notification Center: **Currently Reading**
+(your books with progress, finish estimates and covers; small, medium and
+large) and **Reading Goal** (books this year against your goal). Add them from
+the desktop's Edit Widgets. They show what the app last saved, and the app
+refreshes them whenever something changes — so they're current as long as the
+app has run since.
+
+In Shortcuts (and by asking Siri) the app offers **What Am I Reading**,
+**Update Reading Progress**, **Mark Book as Read** and **Reading Goal Status**.
+They run inside the app, opening it in the background if needed.
+
+### Stopping a book, friends, highlights
+
+**Stop Reading…** on a Currently Reading book (row menu, or right-click a card
+on Home) records why and how far you got, and moves it on Goodreads — to Want
+to Read, or off your shelves; with a custom shelf called `dnf`, `abandoned` or
+similar, it's added there too. Stats lists these books with **Resume
+Reading**; they never count as read.
+
+**Friends Who Read This** in Book Details shows which friends have read the
+book or are reading it, with their stars. It's built from your friends' Read
+and Currently Reading shelves, read once in the background and refreshed every
+few days.
+
+**File → Import Highlights…** brings in highlights and notes from Apple Books
+on this Mac or from a Kindle's `My Clippings.txt`. Each book is matched to your
+shelves by title and author; highlights become quotes in the book's notes and
+notes are added to its text, without duplicates. macOS asks before the app can
+read Apple Books' data (or choose its folder when asked).
+
 ## Limits worth knowing
 
 - **Removing isn't deleting.** A removed book keeps its review and rating on
@@ -433,7 +517,16 @@ Sources/GoodreadsGUI/
   NewReleases.swift       new books by authors you read
   YearInReview.swift      the Year in Books card
   Glass.swift             Liquid Glass helpers, with fallbacks
+  Backup.swift            backing up and restoring notes, progress and stopped books
+  Abandoned.swift         books you stopped reading
+  FriendsBooks.swift      which friends have read which books
+  GoodreadsChallenge.swift your Reading Challenge goal
+  Highlights.swift        importing Apple Books and Kindle highlights
+  Intents.swift           Shortcuts and Siri actions
+  WidgetBridge.swift      keeps the widgets' snapshot up to date
+  WidgetData.swift        the snapshot format, shared with the widget
   Resources/              translations (Localizable.strings, plurals in .stringsdict)
+Sources/GoodreadsWidget/  the widget extension (built as an .appex, not by SwiftPM)
 Tests/GoodreadsGUITests/  unit tests for the pure logic above (`swift test`)
 ```
 

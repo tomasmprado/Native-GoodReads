@@ -80,6 +80,14 @@ struct ContentView: View {
                         await model.finishBook(book, rating: rating, dateRead: date, note: note)
                     }
                 }
+            case .abandon(let entry):
+                AbandonSheet(entry: entry, dnfShelf: AbandonedBooks.dnfShelf(in: model.shelves)) { reason, destination, alsoShelf in
+                    Task {
+                        await model.abandon(entry, reason: reason, destination: destination, alsoShelf: alsoShelf)
+                    }
+                }
+            case .importHighlights:
+                HighlightsImportSheet(model: model)
             case .detail(let book):
                 BookDetailView(book: book)
             case .friendProfile:
@@ -1285,6 +1293,11 @@ private struct ShelfPane: View {
             } label: {
                 Label("Update Progress…", systemImage: "chart.bar")
             }
+            Button {
+                model.activeSheet = .abandon(entry)
+            } label: {
+                Label("Stop Reading…", systemImage: "xmark.circle")
+            }
         }
 
         Button {
@@ -1413,6 +1426,13 @@ private struct CurrentlyReadingCarousel: View {
                             model.activeSheet = .progress(entry)
                         } onOpenDetail: {
                             model.showBookDetail(entry.asBook)
+                        }
+                        .contextMenu {
+                            Button("Update Progress…") { model.activeSheet = .progress(entry) }
+                            Button("Mark Read & Rate…") { model.activeSheet = .finish(entry) }
+                            Button("Stop Reading…") { model.activeSheet = .abandon(entry) }
+                            Divider()
+                            Button("View Details…") { model.showBookDetail(entry.asBook) }
                         }
                     }
                 }

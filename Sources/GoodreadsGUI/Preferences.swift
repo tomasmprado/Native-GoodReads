@@ -78,7 +78,15 @@ final class Preferences: ObservableObject {
 
     /// Books you want to read this year, for the Stats goal.
     @Published var yearlyGoal: Int {
-        didSet { defaults.set(yearlyGoal, forKey: Keys.goal) }
+        didSet {
+            defaults.set(yearlyGoal, forKey: Keys.goal)
+            WidgetBridge.scheduleUpdate()
+        }
+    }
+
+    /// Take the Stats goal from your Goodreads Reading Challenge when you've joined it.
+    @Published var useGoodreadsChallenge: Bool {
+        didSet { defaults.set(useGoodreadsChallenge, forKey: Keys.useChallenge) }
     }
 
     /// Post a notification when a friend starts or finishes a book.
@@ -127,6 +135,7 @@ final class Preferences: ObservableObject {
         static let unknown  = "includeUnknownLanguage"
         static let apiKey   = "googleBooksAPIKey"
         static let goal     = "yearlyGoal"
+        static let useChallenge = "useGoodreadsChallenge"
         static let notify   = "notifyFriendActivity"
         static let reminder = "readingReminder"
         static let newReleases = "notifyNewReleases"
@@ -144,6 +153,7 @@ final class Preferences: ObservableObject {
 
         let goal = defaults.integer(forKey: Keys.goal)
         yearlyGoal = goal > 0 ? goal : 24
+        useGoodreadsChallenge = defaults.object(forKey: Keys.useChallenge) as? Bool ?? true
         notifyFriendActivity = defaults.bool(forKey: Keys.notify)
         indexInSpotlight = SpotlightIndex.isEnabled
         readingReminder = defaults.bool(forKey: Keys.reminder)
@@ -165,6 +175,7 @@ struct PreferencesView: View {
     @ObservedObject private var prefs = Preferences.shared
     @State private var cacheBytes: Int?
     @State private var isClearing = false
+    @State private var backupMessage: LibraryModel.Status?
 
     var body: some View {
         Form {
@@ -255,11 +266,52 @@ struct PreferencesView: View {
             }
 
             Section {
+                Toggle("Use my Goodreads Reading Challenge goal", isOn: Binding(
+                    get: { prefs.useGoodreadsChallenge },
+                    set: { wanted in
+                        prefs.useGoodreadsChallenge = wanted
+                        if wanted { Task { await LibraryModel.shared.loadChallenge(force: true) } }
+                    }
+                ))
+            } header: {
+                Text("Reading Goal")
+            } footer: {
+                Text("When you’ve joined this year’s Reading Challenge on Goodreads, Stats uses its goal. Otherwise you set the goal in Stats.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Show my books in Spotlight", isOn: $prefs.indexInSpotlight)
             } header: {
                 Text("Spotlight")
             } footer: {
                 Text("Search your shelves from ⌘Space. Choosing a book opens its details here.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
+                HStack {
+                    Button("Back Up…") {
+                        Task { backupMessage = await Backup.export() }
+                    }
+                    Button("Restore…") {
+                        Task {
+                            backupMessage = await Backup.restore()
+                            await LibraryModel.shared.reloadLocalData()
+                        }
+                    }
+                }
+                if let backupMessage {
+                    Text(backupMessage.text)
+                        .font(.system(size: 11))
+                        .foregroundStyle(backupMessage.isError ? Color.red : Color.secondary)
+                }
+            } header: {
+                Text("Backup")
+            } footer: {
+                Text("Your notes and quotes, your progress history and the books you stopped reading exist only on this Mac. Save them to a file you keep elsewhere, like iCloud Drive.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -287,7 +339,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 720)
+        .frame(width: 460, height: 820)
         .task { cacheBytes = DataCache.diskUsage() }
     }
 }

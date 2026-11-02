@@ -56,6 +56,7 @@ struct BookDetailView: View {
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                     }
+                    friendsSection
                     Divider()
                     composeBox
                     Divider()
@@ -214,6 +215,90 @@ struct BookDetailView: View {
         RoundedRectangle(cornerRadius: 5)
             .fill(Color.secondary.opacity(0.15))
             .overlay(Image(systemName: "book.closed").font(.system(size: 24)).foregroundStyle(.tertiary))
+    }
+
+    // MARK: - Friends
+
+    @ViewBuilder
+    private var friendsSection: some View {
+        if let goodreadsID {
+            let readers = FriendsBooks.friends(with: goodreadsID, in: model.friendsBooks)
+            if !readers.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Friends Who Read This")
+                        .font(.system(size: 12, weight: .semibold))
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(readers) { friendChip($0) }
+                        }
+                    }
+                }
+            } else if let progress = model.friendsBooksProgress {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text(progress).font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+            } else if model.friendsBooks.isEmpty {
+                Button {
+                    Task { await model.syncFriendsBooks() }
+                } label: {
+                    Label("See which friends have read this", systemImage: "person.2")
+                }
+                .buttonStyle(.link)
+                .font(.system(size: 11))
+                .help("Reads your friends’ Read and Currently Reading shelves once; refreshed every few days")
+            }
+        }
+    }
+
+    private func friendChip(_ friend: FriendReading) -> some View {
+        Button {
+            if let url = friend.profileURL { Task { await model.openFriendProfile(url) } }
+        } label: {
+            HStack(spacing: 6) {
+                CachedAsyncImage(url: friend.avatarURL) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        Circle().fill(Color.secondary.opacity(0.2))
+                    }
+                }
+                .frame(width: 22, height: 22)
+                .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(friend.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
+                    Group {
+                        switch friend.book.state {
+                        case .reading:
+                            Text("Reading now")
+                        case .read:
+                            if let rating = friend.book.rating {
+                                Text(String(repeating: "★", count: rating)).foregroundStyle(.orange)
+                            } else {
+                                Text("Read it")
+                            }
+                        }
+                    }
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(Color.secondary.opacity(0.1)))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(accessibilityText(friend)))
+    }
+
+    private func accessibilityText(_ friend: FriendReading) -> String {
+        switch friend.book.state {
+        case .reading: return String(localized: "\(friend.name), reading it now")
+        case .read:
+            if let rating = friend.book.rating { return String(localized: "\(friend.name), rated it \(rating) stars") }
+            return String(localized: "\(friend.name), read it")
+        }
     }
 
     // MARK: - Notes
