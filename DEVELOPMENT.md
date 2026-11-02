@@ -3,6 +3,9 @@
 The user guide is [README.md](README.md). This file covers how the app
 works inside, how to build it, and the parts most likely to break.
 
+The website (https://tomasmprado.github.io/Native-GoodReads/) is a single
+`index.html` on the `gh-pages` branch, served by GitHub Pages.
+
 A small native macOS front end for [`yareeh/goodreads-cli`](https://github.com/yareeh/goodreads-cli).
 SwiftUI, no dependencies. Search a book, shelve it, see what your friends are
 reading — done.

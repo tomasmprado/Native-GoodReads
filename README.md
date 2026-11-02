@@ -6,6 +6,8 @@ without opening the Goodreads website.
 
 The app is in English and European Portuguese, following your Mac's language.
 
+**Website:** [tomasmprado.github.io/Native-GoodReads](https://tomasmprado.github.io/Native-GoodReads/)
+
 - [Install](#install)
 - [Getting started](#getting-started)
 - [What you can do](#what-you-can-do)
