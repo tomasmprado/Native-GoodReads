@@ -19,6 +19,8 @@ struct BookDetailView: View {
     @State private var about: GoodreadsBookPage.About?
     @State private var genres: [String] = []
     @State private var pageCount: Int?
+    /// Google Books' record, for what the Goodreads page didn't have.
+    @State private var google: Book?
     @State private var note = BookNote()
     @State private var noteLoaded = false
     @State private var savedNote = BookNote()
@@ -35,7 +37,7 @@ struct BookDetailView: View {
         VStack(spacing: 0) {
             GlassHeader {
                 Text("Book Details")
-                    .font(.system(size: 13, weight: .semibold))
+                    .appFont(size: 13, weight: .semibold)
                 Spacer()
                 if let goodreadsID, let url = LibraryModel.goodreadsURL(bookID: goodreadsID) {
                     ShareLink(item: url,
@@ -54,8 +56,13 @@ struct BookDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    BookAboutView(about: about, genres: genres, book: book,
+                    BookAboutView(about: about, genres: genres.isEmpty ? book.filled(from: google).genresFromCategories : genres,
+                                  book: book.filled(from: google),
                                   pages: pageCount, language: pageLanguage)
+                    // Without the "(Series, #1)" Goodreads adds, which shops don't know.
+                    StoreLinksView(title: book.title.replacingOccurrences(of: #"\s*\([^()]*#[^()]*\)\s*$"#, with: "",
+                                                                          options: .regularExpression),
+                                   author: authorName)
                     friendsSection
                     Divider()
                     composeBox
@@ -115,15 +122,15 @@ struct BookDetailView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(book.title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .appFont(size: 17, weight: .semibold)
                     .textSelection(.enabled)
                 if let authorURL {
                     Button(authorName) { model.showAuthorPage(authorURL) }
-                        .font(.system(size: 13))
+                        .appFont(size: 13)
                         .buttonStyle(.link)
                 } else {
                     Text(authorName)
-                        .font(.system(size: 13))
+                        .appFont(size: 13)
                         .foregroundStyle(.secondary)
                 }
 
@@ -134,7 +141,7 @@ struct BookDetailView: View {
                 HStack(spacing: 6) {
                     ForEach(metaBits, id: \.self) { bit in
                         Text(bit)
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -142,19 +149,19 @@ struct BookDetailView: View {
 
                 if let rating = book.rating {
                     Text("Google rating: ★ \(rating)")
-                        .font(.system(size: 11))
+                        .appFont(size: 11)
                         .foregroundStyle(.secondary)
                 }
 
                 if let resolveError {
                     Text(resolveError)
-                        .font(.system(size: 11))
+                        .appFont(size: 11)
                         .foregroundStyle(.orange)
                 } else if goodreadsID == nil {
                     HStack(spacing: 5) {
                         ProgressView().controlSize(.small)
                         Text("Finding this book on Goodreads…")
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -174,13 +181,13 @@ struct BookDetailView: View {
                       systemImage: "books.vertical")
             }
             .buttonStyle(.link)
-            .font(.system(size: 12))
+            .appFont(size: 12)
             .help("Open the series on Goodreads")
 
             if let next = nextInSeries {
                 HStack(spacing: 6) {
                     Text("Next: \(next.title)")
-                        .font(.system(size: 11))
+                        .appFont(size: 11)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                     Button("Details") { model.showBookDetail(next.asBook) }
@@ -223,7 +230,7 @@ struct BookDetailView: View {
     private var coverPlaceholder: some View {
         RoundedRectangle(cornerRadius: 5)
             .fill(Color.secondary.opacity(0.15))
-            .overlay(Image(systemName: "book.closed").font(.system(size: 24)).foregroundStyle(.tertiary))
+            .overlay(Image(systemName: "book.closed").appFont(size: 24).foregroundStyle(.tertiary))
     }
 
     // MARK: - Friends
@@ -235,7 +242,7 @@ struct BookDetailView: View {
             if !readers.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Friends Who Read This")
-                        .font(.system(size: 12, weight: .semibold))
+                        .appFont(size: 12, weight: .semibold)
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
                             ForEach(readers) { friendChip($0) }
@@ -245,7 +252,7 @@ struct BookDetailView: View {
             } else if let progress = model.friendsBooksProgress {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
-                    Text(progress).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(progress).appFont(size: 11).foregroundStyle(.secondary)
                 }
             } else if model.friendsBooks.isEmpty {
                 Button {
@@ -254,7 +261,7 @@ struct BookDetailView: View {
                     Label("See which friends have read this", systemImage: "person.2")
                 }
                 .buttonStyle(.link)
-                .font(.system(size: 11))
+                .appFont(size: 11)
                 .help("Reads your friends’ Read and Currently Reading shelves once; refreshed every few days")
             }
         }
@@ -275,7 +282,7 @@ struct BookDetailView: View {
                 .frame(width: 22, height: 22)
                 .clipShape(Circle())
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(friend.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
+                    Text(friend.name).appFont(size: 11, weight: .medium).lineLimit(1)
                     Group {
                         switch friend.book.state {
                         case .reading:
@@ -288,7 +295,7 @@ struct BookDetailView: View {
                             }
                         }
                     }
-                    .font(.system(size: 10))
+                    .appFont(size: 10)
                     .foregroundStyle(.secondary)
                 }
             }
@@ -323,15 +330,15 @@ struct BookDetailView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("My Notes")
-                    .font(.system(size: 12, weight: .semibold))
+                    .appFont(size: 12, weight: .semibold)
                 Spacer()
                 Text("Only on this Mac")
-                    .font(.system(size: 10))
+                    .appFont(size: 10)
                     .foregroundStyle(.tertiary)
             }
 
             TextEditor(text: $note.text)
-                .font(.system(size: 12))
+                .appFont(size: 12)
                 .frame(minHeight: 54, maxHeight: 110)
                 .scrollContentBackground(.hidden)
                 .padding(4)
@@ -342,10 +349,10 @@ struct BookDetailView: View {
             ForEach(Array(note.quotes.enumerated()), id: \.offset) { index, quote in
                 HStack(alignment: .top, spacing: 6) {
                     Image(systemName: "quote.opening")
-                        .font(.system(size: 10))
+                        .appFont(size: 10)
                         .foregroundStyle(.secondary)
                     Text(quote)
-                        .font(.system(size: 12).italic())
+                        .appFont(size: 12, italic: true)
                         .textSelection(.enabled)
                     Spacer()
                     Button {
@@ -381,7 +388,7 @@ struct BookDetailView: View {
     private var composeBox: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Your rating")
-                .font(.system(size: 12, weight: .semibold))
+                .appFont(size: 12, weight: .semibold)
 
             StarPicker(rating: $rating)
 
@@ -418,7 +425,7 @@ struct BookDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("Goodreads Reviews")
-                    .font(.system(size: 12, weight: .semibold))
+                    .appFont(size: 12, weight: .semibold)
                 if isLoadingReviews {
                     ProgressView().controlSize(.small)
                 }
@@ -426,11 +433,11 @@ struct BookDetailView: View {
 
             if let reviewsError {
                 Text(reviewsError)
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
             } else if reviews.isEmpty && !isLoadingReviews {
                 Text("No reviews to show yet.")
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 14) {
@@ -452,6 +459,18 @@ struct BookDetailView: View {
         } catch {
             resolveError = String(localized: "Couldn't find this book on Goodreads.")
         }
+        await fillFromGoogle()
+    }
+
+    /// Whatever Goodreads didn't give — synopsis first of all — from Google Books.
+    private func fillFromGoogle() async {
+        let missing = (about?.synopsis == nil && (book.description ?? "").isEmpty)
+            || (about?.publisher == nil && book.publisher == nil)
+            || (pageCount == nil && book.pageCount == nil)
+            || genres.isEmpty
+        guard missing else { return }
+        google = await GoogleBooksClient.details(isbn: about?.isbn13 ?? about?.isbn ?? book.isbn,
+                                                 title: book.title, author: authorName)
     }
 
     private func loadReviews(bookID: String) async {
@@ -509,22 +528,22 @@ private struct ReviewRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(review.reviewerName)
-                        .font(.system(size: 12, weight: .medium))
+                        .appFont(size: 12, weight: .medium)
                     if let rating = review.rating {
                         Text(String(repeating: "★", count: rating))
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.yellow)
                             .accessibilityLabel(Text("\(rating) stars"))
                     }
                 }
                 Text(review.text)
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
                     .lineLimit(6)
                     .textSelection(.enabled)
                 if let likes = review.likeCount, likes > 0 {
                     Text("\(likes) likes")
-                        .font(.system(size: 10))
+                        .appFont(size: 10)
                         .foregroundStyle(.tertiary)
                 }
             }

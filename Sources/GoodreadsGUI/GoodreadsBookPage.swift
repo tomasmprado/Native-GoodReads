@@ -74,17 +74,48 @@ enum GoodreadsBookPage {
             + "(KHTML, like Gecko) Version/17.0 Safari/605.1.15", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 20
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw AppError("Goodreads returned HTTP \(http.statusCode).")
+        var detail: Detail?
+        var firstError: Error?
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+                throw AppError("Goodreads returned HTTP \(http.statusCode).")
+            }
+            guard let html = String(data: data, encoding: .utf8) else {
+                throw AppError("Couldn't read the book page.")
+            }
+            detail = try parse(html: html, bookID: bookID)
+        } catch {
+            firstError = error
         }
-        guard let html = String(data: data, encoding: .utf8) else {
-            throw AppError("Couldn't read the book page.")
+        // Goodreads' bot protection often answers a plain request with an
+        // empty page (HTTP 202). The same page fetched from inside the
+        // signed-in web view gets through.
+        if detail == nil, let html = try? await htmlViaSession(bookID: bookID), !html.isEmpty {
+            detail = try? parse(html: html, bookID: bookID)
         }
-
-        let detail = try parse(html: html, bookID: bookID)
-        await BookExtras.save(BookExtras(pages: detail.pageCount, genres: detail.genres ?? []), for: bookID)
+        guard let detail else { throw firstError ?? AppError("Couldn't read the book page.") }
+        await BookExtras.save(BookExtras(pages: detail.pageCount, genres: detail.genres ?? [],
+                                           rating: detail.about?.averageRating), for: bookID)
         return detail
+    }
+
+    @MainActor
+    private static func htmlViaSession(bookID: String) async throws -> String {
+        let session = WebSession.shared
+        guard session.isSignedIn else { return "" }
+        return try await session.exclusive { () -> String in
+            try await session.ensureOnGoodreads()
+            return try await session.evaluate(
+                """
+                const response = await fetch('/book/show/' + encodeURIComponent(bookID), { credentials: 'include' });
+                if (!response.ok) return '';
+                return await response.text();
+                """,
+                arguments: ["bookID": bookID],
+                label: "book page \(bookID) (in session)"
+            )
+        }
     }
 
     /// Everything the app reads from a book page's HTML — no network, so

@@ -20,7 +20,9 @@ final class LibraryModel: ObservableObject {
     @Published var sortOrder: ShelfSortOrder = .asShelved
     @Published var filters = ShelfFilters()
     /// Page counts and genres, for the genre filter.
-    @Published var bookExtras: [String: BookExtras] = [:]
+    @Published var bookExtras: [String: BookExtras] = [:] {
+        didSet { WidgetBridge.scheduleUpdate() }
+    }
     /// Search: books already on your shelves that match the query.
     @Published var libraryMatches: [LibraryMatch] = []
     /// The top of your own Want to Read order, for Home.
@@ -169,6 +171,7 @@ final class LibraryModel: ObservableObject {
         case suggestions
         case friends
         case stats
+        case quotes
         case shelf(String)      // shelf slug
     }
 
@@ -192,7 +195,49 @@ final class LibraryModel: ObservableObject {
     }
 
     var visibleEntries: [ShelfEntry] {
-        sortOrder.sorted(shelfEntries.filter { $0.matches(filter) && filters.matches($0, extras: bookExtras) })
+        let shown = shelfEntries.filter {
+            $0.matches(filter) && filters.matches($0, extras: bookExtras, favouriteAuthors: favouriteAuthors)
+        }
+        return filters.ordered(shown, extras: bookExtras) ?? sortOrder.sorted(shown)
+    }
+
+    /// For the "By authors you love" smart list, from the Read shelf.
+    @Published var favouriteAuthors: Set<String> = []
+
+    /// Books on the shelf on screen whose page count or rating isn't known,
+    /// for the smart lists that need them.
+    var shelfEntriesMissingPages: [ShelfEntry] {
+        shelfEntries.filter { extras in
+            guard let known = bookExtras[extras.bookID] else { return true }
+            return known.pages == nil || known.rating == nil
+        }
+    }
+
+    /// Fetches the book pages the smart lists need, for the shelf on screen.
+    func fillShelfExtras() async {
+        let missing = shelfEntriesMissingPages
+        guard !isFillingExtras, !missing.isEmpty else { return }
+        isFillingExtras = true
+        extrasDone = 0
+        extrasTotal = missing.count
+        defer {
+            isFillingExtras = false
+            extrasTotal = 0
+        }
+        await withTaskGroup(of: Void.self) { group in
+            var queue = missing.makeIterator()
+            func addNext() {
+                guard let entry = queue.next() else { return }
+                group.addTask { await BookExtras.fetch(entry) }
+            }
+            for _ in 0..<3 { addNext() }
+            while await group.next() != nil {
+                extrasDone += 1
+                if extrasDone % 10 == 0 { bookExtras = await BookExtras.all() }
+                addNext()
+            }
+        }
+        bookExtras = await BookExtras.all()
     }
 
     /// Rows can be dragged into your own order only when all of them show.
@@ -486,7 +531,7 @@ final class LibraryModel: ObservableObject {
             await loadFriends()
         case .stats:
             await loadStats()
-        case .search:
+        case .search, .quotes:
             break
         }
     }
@@ -500,7 +545,7 @@ final class LibraryModel: ObservableObject {
         case .home:        await loadCurrentlyReading(force: true)
         case .friends:     await loadFriends(force: true)
         case .stats:       await loadStats(force: true)
-        case .suggestions, .search: break
+        case .suggestions, .search, .quotes: break
         }
     }
 
@@ -603,8 +648,13 @@ final class LibraryModel: ObservableObject {
         if progressHistory.isEmpty { progressHistory = await ReadingPace.all() }
         let cached = ShelfCache.read(.currentlyReading)
         if let cached { currentlyReading = cached.entries }
+        if bookExtras.isEmpty { bookExtras = await BookExtras.all() }
+        if friendsBooks.isEmpty { friendsBooks = await FriendsBooks.index() }
         let stale = cached.map { ShelfCache.isStale($0.fetched) } ?? true
-        guard currentlyReading.isEmpty || force || stale else { return }
+        guard currentlyReading.isEmpty || force || stale else {
+            await fillReadingPages()
+            return
+        }
 
         isLoadingCurrentlyReading = true
         defer { isLoadingCurrentlyReading = false }
@@ -616,6 +666,7 @@ final class LibraryModel: ObservableObject {
             setCount(fetched.count, for: .currentlyReading)
             ReadingReminder.reschedule()
         }
+        await fillReadingPages()
     }
 
     /// The shelf listing itself carries no progress field — only the home
@@ -635,6 +686,30 @@ final class LibraryModel: ObservableObject {
     /// "14 Nov" — for finish estimates.
     nonisolated static func shortDate(_ date: Date) -> String {
         date.formatted(.dateTime.day().month(.abbreviated))
+    }
+
+    /// Page counts known for what's on Currently Reading — fetched once for
+    /// books that don't have one yet, so Home can show pages.
+    private func fillReadingPages() async {
+        var extras = await BookExtras.all()
+        let missing = currentlyReading.filter { extras[$0.bookID]?.pages == nil }.prefix(8)
+        for entry in missing {
+            await BookExtras.fetch(entry)
+        }
+        if !missing.isEmpty { extras = await BookExtras.all() }
+        bookExtras = extras
+    }
+
+    /// Friends who have `bookID` on their Currently Reading shelf too.
+    func friendsReading(_ bookID: String) -> [FriendReading] {
+        FriendsBooks.friends(with: bookID, in: friendsBooks).filter { $0.book.state == .reading }
+    }
+
+    /// Page `n` of `total`, from the percentage and the book's page count.
+    func pages(for entry: ShelfEntry) -> ReadingPace.Pages? {
+        guard let percent = entry.progress, let total = bookExtras[entry.bookID]?.pages else { return nil }
+        return ReadingPace.pages(percent: percent, total: total, history: progressHistory[entry.bookID] ?? [],
+                                 startedOn: entry.dateAdded.flatMap(Suggestions.parseDate))
     }
 
     /// Roughly when `entry` will be finished at the pace so far.
@@ -694,15 +769,15 @@ final class LibraryModel: ObservableObject {
         }
 
         let known = await BookExtras.all()
-        let missing = entries.map(\.bookID).filter { known[$0] == nil }
+        let missing = entries.filter { known[$0.bookID] == nil }
         extrasDone = 0
         extrasTotal = missing.count
 
         await withTaskGroup(of: Void.self) { group in
             var queue = missing.makeIterator()
             func addNext() {
-                guard let bookID = queue.next() else { return }
-                group.addTask { _ = try? await GoodreadsBookPage.fetch(bookID: bookID) }
+                guard let entry = queue.next() else { return }
+                group.addTask { await BookExtras.fetch(entry) }
             }
             for _ in 0..<3 { addNext() }
             while await group.next() != nil {
@@ -921,6 +996,7 @@ final class LibraryModel: ObservableObject {
 
     private func performLoad(of shelf: Shelf) async {
         bookExtras = await BookExtras.all()
+        favouriteAuthors = ShelfFilters.favouriteAuthors(in: ShelfCache.read(.read)?.entries ?? [])
         if let cached = ShelfCache.read(shelf) {
             shelfEntries = cached.entries
             cacheNote = String(localized: "cached \(ShelfCache.age(cached.fetched))")

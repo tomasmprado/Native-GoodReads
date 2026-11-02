@@ -26,9 +26,10 @@ enum WidgetBridge {
 
         var books: [WidgetSnapshot.Book] = []
         for entry in reading.prefix(6) {
+            let pages = model.pages(for: entry)
             books.append(.init(bookID: entry.bookID, title: entry.title, author: entry.author,
                                percent: entry.progress, finishEstimate: model.finishEstimate(for: entry),
-                               coverFile: await saveCover(entry)))
+                               coverFile: await saveCover(entry), page: pages?.page, totalPages: pages?.total))
         }
 
         let year = Calendar.current.component(.year, from: Date())

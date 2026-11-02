@@ -36,6 +36,32 @@ enum ReadingPace {
     /// When the book will be done at the pace so far: from the first point
     /// (or the day it was shelved, at 0%) to the latest. Nil when there's
     /// not enough to go on — under a day of history, or no progress made.
+    /// Where a percentage lands in a book of `total` pages, and how fast
+    /// you've been going.
+    struct Pages: Equatable {
+        let page: Int
+        let total: Int
+        var left: Int { max(0, total - page) }
+        /// Pages a day so far, when there's enough history to tell.
+        let perDay: Double?
+    }
+
+    static func pages(percent: Int, total: Int, history: [ProgressPoint],
+                      startedOn: Date? = nil) -> Pages? {
+        guard total > 0, (0...100).contains(percent) else { return nil }
+        let page = Int((Double(total) * Double(percent) / 100).rounded())
+        var perDay: Double?
+        if let last = history.last, var first = history.first {
+            if let startedOn, startedOn < first.date, first.percent > 0 {
+                first = ProgressPoint(date: startedOn, percent: 0)
+            }
+            let days = last.date.timeIntervalSince(first.date) / 86400
+            let gained = Double(last.percent - first.percent)
+            if days >= 1, gained > 0 { perDay = Double(total) * gained / 100 / days }
+        }
+        return Pages(page: page, total: total, perDay: perDay)
+    }
+
     static func estimate(_ history: [ProgressPoint], startedOn: Date? = nil, now: Date = Date()) -> Date? {
         guard let last = history.last, last.percent < 100 else { return nil }
         guard var first = history.first else { return nil }

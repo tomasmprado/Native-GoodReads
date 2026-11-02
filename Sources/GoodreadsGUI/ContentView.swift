@@ -15,6 +15,7 @@ struct ContentView: View {
                 case .suggestions: SuggestionsPane(model: model)
                 case .friends:     FriendsPane(model: model)
                 case .stats:       StatsPane(model: model)
+                case .quotes:      QuotesPane(model: model)
                 case .shelf:       ShelfPane(model: model)
                 }
                 Divider()
@@ -64,7 +65,7 @@ struct ContentView: View {
                     set: { if !$0 { model.activeSheet = nil } }
                 ))
             case .progress(let entry):
-                ProgressSheet(entry: entry) { percent, page, note in
+                ProgressSheet(entry: entry, totalPages: model.bookExtras[entry.bookID]?.pages) { percent, page, note in
                     Task { await model.updateProgress(entry, percent: percent, page: page, note: note) }
                 }
             case .finish(let entry):
@@ -115,6 +116,9 @@ struct ContentView: View {
             Label("Stats", systemImage: "chart.bar")
                 .tag(LibraryModel.Pane.stats)
 
+            Label("Quotes", systemImage: "quote.bubble")
+                .tag(LibraryModel.Pane.quotes)
+
             Section("Shelves") {
                 ForEach(model.shelves) { shelf in
                     ShelfSidebarRow(model: model, shelf: shelf)
@@ -127,7 +131,7 @@ struct ContentView: View {
             VStack(spacing: 4) {
                 if model.isExporting, let note = model.exportProgress {
                     Text(note)
-                        .font(.system(size: 10))
+                        .appFont(size: 10)
                         .foregroundStyle(.secondary)
                 }
                 Button {
@@ -137,7 +141,7 @@ struct ContentView: View {
                         ProgressView().controlSize(.small)
                     } else {
                         Label("Export Library…", systemImage: "square.and.arrow.down")
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                     }
                 }
                 .glassButton()
@@ -162,7 +166,7 @@ private struct ShelfSidebarRow: View {
             Spacer()
             if let count = shelf.count {
                 Text("\(count)")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
         }
@@ -203,7 +207,7 @@ private struct HomePane: View {
                 ProgressView().controlSize(.small)
             } else {
                 Text("Nothing on Currently Reading yet.")
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
             }
 
@@ -216,7 +220,7 @@ private struct HomePane: View {
                     } icon: {
                         Image(systemName: "arrow.right.circle")
                     }
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .glassCapsule(interactive: true)
@@ -264,7 +268,7 @@ private struct AppLogoImage: View {
                 .frame(width: 72, height: 72)
         } else {
             Image(systemName: "book.closed.fill")
-                .font(.system(size: 48))
+                .appFont(size: 48)
                 .foregroundStyle(.secondary)
         }
     }
@@ -279,7 +283,7 @@ private struct ReadNextCard: View {
         if let suggestion = model.suggestions.first {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Read Next")
-                    .font(.system(size: 11, weight: .semibold))
+                    .appFont(size: 11, weight: .semibold)
                     .foregroundStyle(.secondary)
 
                 HStack(spacing: 10) {
@@ -287,10 +291,10 @@ private struct ReadNextCard: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(suggestion.book.title)
-                            .font(.system(size: 12, weight: .medium))
+                            .appFont(size: 12, weight: .medium)
                             .lineLimit(2)
                         Text(suggestion.book.author)
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
@@ -302,7 +306,7 @@ private struct ReadNextCard: View {
                     Button("Add to Currently Reading") {
                         Task { await model.shelve(suggestion.book, to: .currentlyReading) }
                     }
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .controlSize(.small)
                     .glassProminentButton()
                 }
@@ -336,7 +340,7 @@ private struct ReadNextCard: View {
     private var placeholder: some View {
         RoundedRectangle(cornerRadius: 3)
             .fill(Color.secondary.opacity(0.15))
-            .overlay(Image(systemName: "book.closed").font(.system(size: 12)).foregroundStyle(.tertiary))
+            .overlay(Image(systemName: "book.closed").appFont(size: 12).foregroundStyle(.tertiary))
     }
 }
 
@@ -408,7 +412,7 @@ private struct SuggestionsPane: View {
             if let note = model.suggestionNote, !model.suggestions.isEmpty {
                 Divider()
                 Text(note)
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
@@ -542,22 +546,22 @@ private struct FriendStatusRow: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(friend.name)
-                        .font(.system(size: 12, weight: .semibold))
+                        .appFont(size: 12, weight: .semibold)
                         .foregroundStyle(.primary)
 
                     if let label = friend.statusLabel, let title = friend.statusBookTitle {
                         Text("\(label) \(title)")
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     } else if let title = friend.statusBookTitle {
                         Text(title)
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     } else {
                         Text("No current status")
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -577,7 +581,7 @@ private struct FriendStatusRow: View {
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 9))
+                    .appFont(size: 9)
                     .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 14)
@@ -611,11 +615,11 @@ private struct FriendSection: View {
                     .clipShape(Circle())
 
                     Text(group.name)
-                        .font(.system(size: 13, weight: .semibold))
+                        .appFont(size: 13, weight: .semibold)
                         .foregroundStyle(.primary)
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10))
+                        .appFont(size: 10)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -671,16 +675,16 @@ private struct FriendActivityRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 if let title = item.bookTitle {
                     Text(title)
-                        .font(.system(size: 12, weight: .medium))
+                        .appFont(size: 12, weight: .medium)
                 }
 
                 HStack(spacing: 5) {
                     Text(item.action)
-                        .font(.system(size: 10))
+                        .appFont(size: 10)
                         .foregroundStyle(.tertiary)
                     if let rating = item.rating {
                         Text(String(repeating: "★", count: rating))
-                            .font(.system(size: 10))
+                            .appFont(size: 10)
                             .foregroundStyle(.yellow)
                             .accessibilityLabel(Text("\(rating) stars"))
                     }
@@ -688,7 +692,7 @@ private struct FriendActivityRow: View {
 
                 if let comment = item.comment, !comment.isEmpty {
                     Text(comment)
-                        .font(.system(size: 11))
+                        .appFont(size: 11)
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
                 }
@@ -708,7 +712,7 @@ private struct FriendProfileSheet: View {
         VStack(spacing: 0) {
             GlassHeader {
                 Text("Profile")
-                    .font(.system(size: 13, weight: .semibold))
+                    .appFont(size: 13, weight: .semibold)
                 Spacer()
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.defaultAction)
@@ -735,15 +739,15 @@ private struct FriendProfileSheet: View {
 
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(profile.name)
-                                    .font(.system(size: 16, weight: .semibold))
+                                    .appFont(size: 16, weight: .semibold)
                                 if let stats = profile.stats {
                                     Text(stats)
-                                        .font(.system(size: 12))
+                                        .appFont(size: 12)
                                         .foregroundStyle(.secondary)
                                 }
                                 if let url = model.friendProfileURL {
                                     Button("Open on Goodreads") { NSWorkspace.shared.open(url) }
-                                        .font(.system(size: 11))
+                                        .appFont(size: 11)
                                         .buttonStyle(.link)
                                 }
                             }
@@ -756,14 +760,14 @@ private struct FriendProfileSheet: View {
                                 Task { await model.compareTastes() }
                             } label: {
                                 Label("Compare Tastes", systemImage: "person.2.wave.2")
-                                    .font(.system(size: 11))
+                                    .appFont(size: 11)
                             }
                             .buttonStyle(.bordered)
                             .tint(model.tasteComparison != nil && model.friendShelf == nil ? .accentColor : .secondary)
                             .disabled(model.isComparingTastes)
                             if model.isComparingTastes { ProgressView().controlSize(.small) }
                             if let error = model.tasteError {
-                                Text(error).font(.system(size: 11)).foregroundStyle(.orange).lineLimit(2)
+                                Text(error).appFont(size: 11).foregroundStyle(.orange).lineLimit(2)
                             }
                         }
 
@@ -776,7 +780,7 @@ private struct FriendProfileSheet: View {
                             }
                         } else if !profile.activity.isEmpty {
                             Text("Recent Activity")
-                                .font(.system(size: 12, weight: .semibold))
+                                .appFont(size: 12, weight: .semibold)
                                 .foregroundStyle(.secondary)
 
                             VStack(spacing: 0) {
@@ -803,7 +807,7 @@ private struct FriendCollectionsPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Collections")
-                .font(.system(size: 12, weight: .semibold))
+                .appFont(size: 12, weight: .semibold)
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
@@ -813,7 +817,7 @@ private struct FriendCollectionsPicker: View {
                         Task { await model.openFriendShelf(shelf) }
                     } label: {
                         Label(shelf.title, systemImage: shelf.symbol)
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                     }
                     .buttonStyle(.bordered)
                     .tint(isSelected ? .accentColor : .secondary)
@@ -833,24 +837,24 @@ private struct FriendShelfContent: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Text(model.friendShelf?.title ?? "")
-                    .font(.system(size: 12, weight: .semibold))
+                    .appFont(size: 12, weight: .semibold)
                     .foregroundStyle(.secondary)
                 if model.isLoadingFriendShelf {
                     ProgressView().controlSize(.small)
                 }
                 Spacer()
                 Button("Close") { model.closeFriendShelf() }
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .buttonStyle(.link)
             }
 
             if let error = model.friendShelfError {
                 Text(error)
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
             } else if model.friendShelfEntries.isEmpty {
                 Text(model.isLoadingFriendShelf ? String(localized: "Loading…") : String(localized: "Nothing on this shelf."))
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 0) {
@@ -885,7 +889,7 @@ private struct AuthorPageSheet: View {
         VStack(spacing: 0) {
             GlassHeader {
                 Text("Author")
-                    .font(.system(size: 13, weight: .semibold))
+                    .appFont(size: 13, weight: .semibold)
                 Spacer()
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.defaultAction)
@@ -912,25 +916,25 @@ private struct AuthorPageSheet: View {
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(author.name)
-                                    .font(.system(size: 17, weight: .semibold))
+                                    .appFont(size: 17, weight: .semibold)
                                 if let born = author.born {
                                     Text("Born \(born)")
-                                        .font(.system(size: 12))
+                                        .appFont(size: 12)
                                         .foregroundStyle(.secondary)
                                 }
                                 if let genres = author.genres {
                                     Text(genres)
-                                        .font(.system(size: 12))
+                                        .appFont(size: 12)
                                         .foregroundStyle(.secondary)
                                 }
                                 if let avg = author.averageRating {
                                     Text("★ \(avg)" + (author.ratingsCount.map { " (\($0))" } ?? ""))
-                                        .font(.system(size: 12))
+                                        .appFont(size: 12)
                                         .foregroundStyle(.secondary)
                                 }
                                 if let website = author.website {
                                     Button("Website") { NSWorkspace.shared.open(website) }
-                                        .font(.system(size: 11))
+                                        .appFont(size: 11)
                                         .buttonStyle(.link)
                                 }
                             }
@@ -938,14 +942,14 @@ private struct AuthorPageSheet: View {
 
                         if let bio = author.bio, !bio.isEmpty {
                             Text(bio)
-                                .font(.system(size: 12))
+                                .appFont(size: 12)
                                 .foregroundStyle(.secondary)
                         }
 
                         if !author.books.isEmpty {
                             Divider()
                             Text("Books")
-                                .font(.system(size: 12, weight: .semibold))
+                                .appFont(size: 12, weight: .semibold)
                                 .foregroundStyle(.secondary)
 
                             ForEach(author.books) { book in
@@ -974,11 +978,11 @@ private struct AuthorPageSheet: View {
 
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(book.title)
-                                                .font(.system(size: 12, weight: .medium))
+                                                .appFont(size: 12, weight: .medium)
                                                 .foregroundStyle(.primary)
                                             if let line = book.ratingLine {
                                                 Text(line)
-                                                    .font(.system(size: 10))
+                                                    .appFont(size: 10)
                                                     .foregroundStyle(.secondary)
                                             }
                                         }
@@ -1023,10 +1027,10 @@ private struct SearchFilterRow: View {
             .onChange(of: model.searchSortNewest) { _ in model.filtersChanged() }
 
             HStack(spacing: 5) {
-                Image(systemName: "bookmark").font(.system(size: 10)).foregroundStyle(.secondary)
+                Image(systemName: "bookmark").appFont(size: 10).foregroundStyle(.secondary)
                 TextField("Subject", text: $model.searchSubject)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .onChange(of: model.searchSubject) { _ in model.filtersChanged() }
             }
             .padding(.horizontal, 10)
@@ -1052,7 +1056,7 @@ private struct SearchPane: View {
 
                 TextField("Search Goodreads", text: $model.query)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 15))
+                    .appFont(size: 15)
                     .focused($focused)
                     .onChange(of: model.query) { _ in model.queryChanged() }
                     .onSubmit { model.searchNow() }
@@ -1194,7 +1198,7 @@ private struct ShelfPane: View {
             if model.sortOrder == .myOrder && !model.canReorder && !model.visibleEntries.isEmpty {
                 Divider()
                 Text("Clear the filters to drag books into your order.")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
                     .padding(6)
             }
@@ -1212,6 +1216,9 @@ private struct ShelfPane: View {
         var bits: [String] = []
         if !model.shelfEntries.isEmpty { bits.append(String(localized: "\(model.visibleEntries.count) books")) }
         if let note = model.loadProgress ?? model.cacheNote { bits.append(note) }
+        if model.isFillingExtras, model.extrasTotal > 0 {
+            bits.append(String(localized: "Reading book pages… \(model.extrasDone) of \(model.extrasTotal)"))
+        }
         return bits.joined(separator: " · ")
     }
 
@@ -1258,6 +1265,18 @@ private struct ShelfPane: View {
 
     private var filterMenu: some View {
         Menu {
+            Picker("Show", selection: $model.filters.smart) {
+                ForEach(ShelfFilters.SmartList.allCases) { Text($0.title).tag($0) }
+            }
+            if model.filters.smart.needsBookPages, !model.shelfEntriesMissingPages.isEmpty {
+                Button(model.isFillingExtras
+                       ? String(localized: "Reading book pages… \(model.extrasDone) of \(model.extrasTotal)")
+                       : String(localized: "Get page counts and ratings (\(model.shelfEntriesMissingPages.count) books)")) {
+                    Task { await model.fillShelfExtras() }
+                }
+                .disabled(model.isFillingExtras)
+            }
+            Divider()
             Picker("Rating", selection: $model.filters.rating) {
                 ForEach(ShelfFilters.Rating.allCases) { Text($0.title).tag($0) }
             }
@@ -1292,6 +1311,11 @@ private struct ShelfPane: View {
 
     private var emptyText: String {
         if model.isLoadingShelf { return model.loadProgress ?? String(localized: "Loading your shelf…") }
+        if model.filters.smart.needsBookPages, !model.shelfEntriesMissingPages.isEmpty {
+            return model.isFillingExtras
+                ? String(localized: "Reading book pages… \(model.extrasDone) of \(model.extrasTotal)")
+                : String(localized: "This list needs page counts and ratings. Choose Filter → Get page counts and ratings.")
+        }
         if model.filters.isActive { return String(localized: "No books match these filters.") }
         if !model.filter.isEmpty { return String(localized: "Nothing matches “\(model.filter)”.") }
         return String(localized: "Nothing here yet.")
@@ -1399,15 +1423,15 @@ private struct CoverTile: View {
             .buttonStyle(.plain)
 
             Text(entry.title)
-                .font(.system(size: 11, weight: .medium))
+                .appFont(size: 11, weight: .medium)
                 .lineLimit(2)
             Text(entry.author)
-                .font(.system(size: 10))
+                .appFont(size: 10)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
             if let stars = entry.rating, stars > 0 {
                 Text(String(repeating: "★", count: stars))
-                    .font(.system(size: 9))
+                    .appFont(size: 9)
                     .foregroundStyle(.yellow)
                     .accessibilityLabel(Text("\(stars) stars"))
             } else if let progress = entry.progress {
@@ -1430,7 +1454,7 @@ private struct CurrentlyReadingCarousel: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Currently Reading")
-                    .font(.system(size: 13, weight: .semibold))
+                    .appFont(size: 13, weight: .semibold)
                 if model.isLoadingCurrentlyReading {
                     ProgressView().controlSize(.small)
                 }
@@ -1441,7 +1465,9 @@ private struct CurrentlyReadingCarousel: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(model.currentlyReading) { entry in
                         CurrentlyReadingCard(entry: entry, isBusy: model.busyBookID == entry.bookID,
-                                             finishEstimate: model.finishEstimate(for: entry)) {
+                                             finishEstimate: model.finishEstimate(for: entry),
+                                             pages: model.pages(for: entry),
+                                             friends: model.friendsReading(entry.bookID)) {
                             model.activeSheet = .progress(entry)
                         } onOpenDetail: {
                             model.showBookDetail(entry.asBook)
@@ -1468,6 +1494,8 @@ private struct CurrentlyReadingCard: View {
     let entry: ShelfEntry
     let isBusy: Bool
     let finishEstimate: Date?
+    let pages: ReadingPace.Pages?
+    let friends: [FriendReading]
     let onUpdateProgress: () -> Void
     let onOpenDetail: () -> Void
 
@@ -1494,7 +1522,7 @@ private struct CurrentlyReadingCard: View {
             .accessibilityLabel(Text("Details for \(entry.title)"))
 
             Text(entry.title)
-                .font(.system(size: 12, weight: .medium))
+                .appFont(size: 12, weight: .medium)
                 .lineLimit(2)
                 .frame(width: 96, alignment: .leading)
 
@@ -1502,33 +1530,79 @@ private struct CurrentlyReadingCard: View {
                 ProgressView(value: Double(progress), total: 100)
                     .frame(width: 96)
                     .accessibilityLabel(Text("Progress"))
-                Text("\(progress)%")
-                    .font(.system(size: 10))
+                Text(pages.map { String(localized: "\(progress)% · p. \($0.page) of \($0.total)") } ?? "\(progress)%")
+                    .appFont(size: 10)
                     .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let pages, pages.left > 0 {
+                    Text(pagesLeftText(pages))
+                        .appFont(size: 10)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let finishEstimate {
                     Text("Done around \(LibraryModel.shortDate(finishEstimate))")
-                        .font(.system(size: 10))
+                        .appFont(size: 10)
                         .foregroundStyle(.secondary)
                         .help("At your pace so far")
                 }
             } else {
                 Text("No progress yet")
-                    .font(.system(size: 10))
+                    .appFont(size: 10)
                     .foregroundStyle(.tertiary)
+            }
+
+            if !friends.isEmpty {
+                HStack(spacing: -5) {
+                    ForEach(friends.prefix(3)) { friend in
+                        CachedAsyncImage(url: friend.avatarURL) { phase in
+                            if case .success(let image) = phase {
+                                image.resizable().aspectRatio(contentMode: .fill)
+                            } else {
+                                Circle().fill(Color.secondary.opacity(0.25))
+                            }
+                        }
+                        .frame(width: 16, height: 16)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 1.5))
+                    }
+                    Text(friendsText)
+                        .appFont(size: 10)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .padding(.leading, 9)
+                }
+                .help(friends.map(\.name).joined(separator: ", "))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(friendsText))
             }
 
             if isBusy {
                 ProgressView().controlSize(.small)
             } else {
                 Button("Update Progress…", action: onUpdateProgress)
-                    .font(.system(size: 10))
+                    .appFont(size: 10)
                     .buttonStyle(.link)
             }
         }
         .frame(width: 96)
         .padding(10)
         .glassCard(cornerRadius: 14)
+    }
+
+    private var friendsText: String {
+        guard let first = friends.first?.name.split(separator: " ").first.map(String.init) else { return "" }
+        return friends.count == 1
+            ? String(localized: "\(first) is reading it too")
+            : String(localized: "\(first) and \(friends.count - 1) more are reading it too")
+    }
+
+    private func pagesLeftText(_ pages: ReadingPace.Pages) -> String {
+        if let perDay = pages.perDay, perDay >= 1 {
+            return String(localized: "\(pages.left) pages left · ~\(Int(perDay.rounded())) a day")
+        }
+        return String(localized: "\(pages.left) pages left")
     }
 
     private var coverPlaceholder: some View {
@@ -1548,7 +1622,7 @@ private struct EmptyPane: View {
         VStack(spacing: 10) {
             Spacer()
             Image(systemName: symbol)
-                .font(.system(size: 40))
+                .appFont(size: 40)
                 .foregroundStyle(.tertiary)
             Text(text).foregroundStyle(.secondary)
             Spacer()
@@ -1574,23 +1648,23 @@ private struct BookRow<Actions: View>: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 13, weight: .medium))
+                    .appFont(size: 13, weight: .medium)
                     .lineLimit(2)
                 Text(author)
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
                     if let stars, stars > 0 {
                         Text(String(repeating: "★", count: stars))
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.yellow)
                             .accessibilityLabel(Text("\(stars) stars"))
                     }
                     if let detail, !detail.isEmpty {
                         Text(detail)
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -1638,7 +1712,7 @@ private struct BookRow<Actions: View>: View {
             .fill(Color.secondary.opacity(0.15))
             .overlay(
                 Image(systemName: "book.closed")
-                    .font(.system(size: 14))
+                    .appFont(size: 14)
                     .foregroundStyle(.tertiary)
             )
             .accessibilityHidden(true)
@@ -1654,7 +1728,7 @@ private struct StatusBar: View {
         HStack(spacing: 8) {
             if !connectivity.isOnline {
                 Label("Offline — showing saved data", systemImage: "wifi.slash")
-                    .font(.system(size: 11, weight: .medium))
+                    .appFont(size: 11, weight: .medium)
                     .foregroundStyle(.orange)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -1666,14 +1740,14 @@ private struct StatusBar: View {
                     .foregroundStyle(status.isError ? .orange : .green)
                 Text(status.text)
                     .lineLimit(2)
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .textSelection(.enabled)
             } else {
                 Circle()
                     .fill(model.loggedIn ? Color.green : Color.secondary)
                     .frame(width: 7, height: 7)
                 Text(model.loggedIn ? String(localized: "Signed in") : String(localized: "Not signed in"))
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
 
@@ -1729,7 +1803,7 @@ private struct UpdateButton: View {
         case .downloading(let fraction):
             HStack(spacing: 6) {
                 Text("Downloading \(update.version)…")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .appFont(size: 11).foregroundStyle(.secondary)
                 if let fraction {
                     ProgressView(value: fraction)
                         .frame(width: 80)
@@ -1740,7 +1814,7 @@ private struct UpdateButton: View {
             }
         case .installing:
             Label("Installing…", systemImage: "gearshape")
-                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .appFont(size: 11).foregroundStyle(.secondary)
         case .idle, .failed:
             Button(String(localized: "Update to \(update.version)…")) { showingNotes = true }
                 .controlSize(.small)

@@ -45,11 +45,11 @@ struct BookAboutView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(String(format: "%.2f", average))
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                    Text("★").font(.system(size: 18)).foregroundStyle(.orange)
+                        .appFont(size: 26, weight: .bold, design: .rounded)
+                    Text("★").appFont(size: 18).foregroundStyle(.orange)
                 }
                 Text(countsLine(about))
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)
@@ -59,7 +59,7 @@ struct BookAboutView: View {
                     ForEach((0..<5).reversed(), id: \.self) { index in
                         HStack(spacing: 6) {
                             Text("\(index + 1)★")
-                                .font(.system(size: 9))
+                                .appFont(size: 9)
                                 .foregroundStyle(.secondary)
                                 .frame(width: 18, alignment: .trailing)
                             GeometryReader { proxy in
@@ -98,9 +98,9 @@ struct BookAboutView: View {
     private func synopsisBlock(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Synopsis")
-                .font(.system(size: 12, weight: .semibold))
+                .appFont(size: 12, weight: .semibold)
             Text(text)
-                .font(.system(size: 12))
+                .appFont(size: 12)
                 .foregroundStyle(.secondary)
                 .lineLimit(synopsisExpanded ? nil : 6)
                 .textSelection(.enabled)
@@ -110,7 +110,7 @@ struct BookAboutView: View {
                     withAnimation(.easeInOut(duration: 0.15)) { synopsisExpanded.toggle() }
                 }
                 .buttonStyle(.link)
-                .font(.system(size: 11))
+                .appFont(size: 11)
             }
         }
     }
@@ -122,7 +122,7 @@ struct BookAboutView: View {
             HStack(spacing: 6) {
                 ForEach(genres.prefix(10), id: \.self) { genre in
                     Text(genre)
-                        .font(.system(size: 11))
+                        .appFont(size: 11)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Capsule().fill(Color.secondary.opacity(0.12)))
@@ -178,16 +178,16 @@ struct BookAboutView: View {
     private var factsGrid: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Details")
-                .font(.system(size: 12, weight: .semibold))
+                .appFont(size: 12, weight: .semibold)
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 4) {
                 ForEach(facts, id: \.0) { label, value in
                     GridRow {
                         Text(label)
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .foregroundStyle(.secondary)
                             .gridColumnAlignment(.trailing)
                         Text(value)
-                            .font(.system(size: 11))
+                            .appFont(size: 11)
                             .textSelection(.enabled)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -208,10 +208,10 @@ struct BookAboutView: View {
     private func listBlock(_ title: String, _ lines: [String]) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 12, weight: .semibold))
+                .appFont(size: 12, weight: .semibold)
             ForEach(lines, id: \.self) { line in
                 Text(line)
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }

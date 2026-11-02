@@ -18,10 +18,10 @@ struct FinishSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .appFont(size: 14, weight: .semibold)
                     .lineLimit(2)
                 Text(author)
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
             }
 
@@ -68,7 +68,7 @@ struct StarPicker: View {
                     rating = (rating == star) ? 0 : star
                 } label: {
                     Image(systemName: star <= rating ? "star.fill" : "star")
-                        .font(.system(size: size))
+                        .appFont(size: size)
                         .foregroundStyle(star <= rating ? Color.yellow : Color.secondary.opacity(0.5))
                 }
                 .buttonStyle(.plain)
@@ -77,7 +77,7 @@ struct StarPicker: View {
 
             if rating > 0 {
                 Text(Self.phrase(rating))
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
                     .padding(.leading, 6)
             }

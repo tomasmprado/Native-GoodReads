@@ -13,6 +13,9 @@ struct WidgetSnapshot: Codable, Equatable, Sendable {
         let finishEstimate: Date?
         /// A file in `WidgetStore.folder`, when the cover was saved.
         let coverFile: String?
+        /// The page that percentage is, and of how many — when known.
+        var page: Int? = nil
+        var totalPages: Int? = nil
 
         var id: String { bookID }
     }
