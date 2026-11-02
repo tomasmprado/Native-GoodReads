@@ -90,7 +90,11 @@ img, svg { display: block; }
 }
 
 /* ---------- hero ---------- */
-.hero { padding-top: 88px; padding-bottom: 40px; text-align: center; }
+.hero { padding-top: 88px; padding-bottom: 40px; text-align: center; position: relative; }
+.hero::before {
+  content: ""; position: absolute; inset: -60px 0 auto; height: 520px; z-index: -1; pointer-events: none;
+  background: radial-gradient(60% 55% at 50% 30%, color-mix(in srgb, var(--accent-2) 18%, transparent), transparent 70%);
+}
 .eyebrow {
   display: inline-flex; gap: 8px; align-items: center;
   font-size: 13px; font-weight: 600; letter-spacing: .02em;
@@ -134,6 +138,7 @@ img, svg { display: block; }
 .side .label { font-size: 11px; font-weight: 600; color: var(--ink-3); padding: 14px 8px 4px; }
 .dot { width: 14px; height: 14px; border-radius: 4px; background: color-mix(in srgb, var(--ink-3) 40%, transparent); flex: none; }
 .main { padding: 22px 24px; overflow: hidden; }
+.phonebar { display: none; }
 .main h3 { margin: 0 0 12px; font-size: 13px; }
 .shelfrow { display: flex; gap: 14px; margin-bottom: 22px; }
 .cardbook {
@@ -167,7 +172,15 @@ img, svg { display: block; }
 @media (max-width: 720px) {
   .window { grid-template-columns: 1fr; min-height: 0; }
   .side { display: none; }
-  .shelfrow { overflow: hidden; }
+  .main { padding: 14px 16px 18px; }
+  .phonebar { display: flex; align-items: center; gap: 10px; margin: 0 -16px 16px; padding: 0 16px 12px;
+              border-bottom: 1px solid var(--line); font-weight: 600; }
+  .phonebar .lights { padding: 0; }
+  .shelfrow { gap: 10px; }
+  .shelfrow .cardbook { flex: 1 1 0; width: auto; min-width: 0; }
+  .shelfrow .cardbook:nth-child(n+3) { display: none; }
+  .cover { height: 136px; }
+  .goal { max-width: none; }
 }
 
 /* ---------- sections ---------- */
@@ -182,8 +195,9 @@ h2 { font-family: var(--serif); font-size: clamp(30px, 4vw, 42px); line-height: 
 @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
 .feature {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 22px 22px 20px;
+  padding: 22px 22px 20px; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
 }
+.feature:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); box-shadow: 0 14px 30px -18px rgba(60, 35, 15, .35); }
 .feature .ic {
   width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; margin-bottom: 14px;
   background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent);
@@ -248,20 +262,27 @@ h2 { font-family: var(--serif); font-size: clamp(30px, 4vw, 42px); line-height: 
   content: counter(step); width: 36px; height: 36px; border-radius: 50%;
   display: grid; place-items: center; font-weight: 700; color: var(--accent-ink); background: var(--accent);
 }
+.step > div { min-width: 0; }
 .step h3 { margin: 4px 0 4px; font-size: 17px; }
 .step p { margin: 0; color: var(--ink-2); }
 .code {
   margin-top: 12px; display: flex; align-items: center; gap: 10px;
   background: #1d1611; color: #f3e6d6; border-radius: 10px; padding: 12px 12px 12px 16px;
-  font: 14px/1.4 var(--mono); overflow-x: auto;
+  font: 14px/1.4 var(--mono); overflow: hidden;
 }
-.code code { white-space: nowrap; }
+.code code { white-space: nowrap; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.code code::-webkit-scrollbar { display: none; }
 .code button {
   margin-left: auto; flex: none; font: 600 12px var(--sans); color: #1d1611; background: #f3e6d6;
   border: 0; border-radius: 7px; padding: 6px 10px; cursor: pointer;
 }
 details.more { margin-top: 18px; max-width: 760px; color: var(--ink-2); }
-details.more summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+details.more { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+details.more summary { cursor: pointer; font-weight: 600; color: var(--ink); list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+details.more summary::-webkit-details-marker { display: none; }
+details.more summary::after { content: "+"; color: var(--accent); font-size: 20px; line-height: 1; }
+details.more[open] summary::after { content: "–"; }
+details.more p { margin: 10px 0 0; }
 
 /* faq */
 .faq { display: grid; gap: 12px; max-width: 820px; }
@@ -275,6 +296,36 @@ details.more summary { cursor: pointer; font-weight: 600; color: var(--ink); }
 footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14px; border-top: 1px solid var(--line); }
 footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; }
 footer a { color: var(--ink-2); }
+
+@media (max-width: 600px) {
+  body { font-size: 16px; }
+  section { padding: 52px 0; }
+  .hero { padding-bottom: 24px; }
+  .hero h1 { margin: 18px auto 14px; }
+  .lede { font-size: 17px; }
+  .actions { flex-direction: column; align-items: stretch; max-width: 340px; margin: 28px auto 10px; }
+  .actions .btn { justify-content: center; }
+  .stage { padding-top: 20px; padding-bottom: 56px; }
+  .sub { font-size: 16px; margin-bottom: 28px; }
+  .grid { gap: 12px; }
+  .feature { display: grid; grid-template-columns: 40px 1fr; column-gap: 14px; padding: 16px; }
+  .feature .ic { grid-row: span 2; margin: 0; }
+  .feature h3 { margin: 1px 0 2px; font-size: 16px; }
+  .feature p { font-size: 14.5px; }
+  .detail { padding: 18px; }
+  .detail .head { grid-template-columns: 78px 1fr; gap: 14px; }
+  .detail .cover { height: 116px; font-size: 12px; }
+  .detail h4 { font-size: 18px; }
+  .rating { flex-wrap: wrap; row-gap: 0; }
+  .rating em { width: 100%; }
+  .widgets { flex-direction: column; align-items: center; }
+  .widget.medium { width: 100%; }
+  .step { grid-template-columns: 36px 1fr; gap: 14px; padding: 16px; }
+  .step::before { width: 32px; height: 32px; }
+  .code { font-size: 13px; }
+  .faq details { padding: 14px 16px; }
+  footer .wrap { flex-direction: column; }
+}
 </style>
 </head>
 <body>
@@ -326,6 +377,7 @@ footer a { color: var(--ink-2); }
         <div class="item"><span class="dot"></span>Favourites<b>24</b></div>
       </div>
       <div class="main">
+        <div class="phonebar"><div class="lights"><i></i><i></i><i></i></div><span>Home</span></div>
         <h3>Currently Reading</h3>
         <div class="shelfrow">
           <div class="cardbook">
@@ -552,14 +604,14 @@ footer a { color: var(--ink-2); }
         </details>
         <details>
           <summary>Search finds little, or says its quota is used up.</summary>
-          <p>Add a free Google Books key in Settings — the shared one is nearly always busy. The <a href="https://github.com/tomasmprado/Native-GoodReads#settings">guide</a> explains how to get one in a couple of minutes.</p>
+          <p>Add a free Google Books key in the app's Settings — the shared one is nearly always busy. Get one at <a href="https://console.cloud.google.com/">console.cloud.google.com</a>: enable the <em>Books API</em>, then <em>Credentials → Create Credentials → API key</em>.</p>
         </details>
         <details>
           <summary>Something looks wrong or empty.</summary>
           <p>Goodreads sometimes changes its website. Click <strong>Log</strong> at the bottom of the window, copy it, and <a href="https://github.com/tomasmprado/Native-GoodReads/issues">open an issue</a>.</p>
         </details>
       </div>
-      <p style="margin-top:28px">The full <a href="https://github.com/tomasmprado/Native-GoodReads#readme">user guide</a> covers every feature and setting.</p>
+      <p style="margin-top:28px;color:var(--ink-2)">Another question? <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Ask on GitHub</a>.</p>
     </div>
   </section>
 </main>
