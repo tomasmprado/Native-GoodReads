@@ -57,13 +57,14 @@ enum Backup {
         UTType(filenameExtension: BackupFile.fileExtension, conformingTo: .json) ?? .json
     }
 
+    static func make() async -> BackupFile {
+        BackupFile(appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+                   files: await DataCache.shared.keptFiles())
+    }
+
     /// Asks where to save, then writes the backup. Returns a status line.
     static func export() async -> LibraryModel.Status? {
-        let files = await DataCache.shared.keptFiles()
-        let backup = BackupFile(
-            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
-            files: files
-        )
+        let backup = await make()
         let panel = NSSavePanel()
         let day = Date().formatted(.iso8601.year().month().day())
         panel.nameFieldStringValue = "Goodreads backup \(day).\(BackupFile.fileExtension)"
@@ -105,5 +106,103 @@ enum Backup {
         await DataCache.shared.restoreKept(backup.files)
         return .init(text: String(localized: "Restored \(summary.notes) notes and the progress of \(summary.progress) books."),
                      isError: false)
+    }
+}
+
+/// A copy of the backup made on its own, once a week, into a folder you
+/// choose (iCloud Drive by default), keeping the last eight.
+@MainActor
+enum AutoBackup {
+    private static let enabledKey = "autoBackup"
+    private static let folderKey = "autoBackupFolder"
+    private static let lastKey = "autoBackupLast"
+    static let interval: TimeInterval = 7 * 24 * 3600
+    static let kept = 8
+
+    static var isEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: enabledKey) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: enabledKey)
+            if newValue { Task { await runIfDue() } }
+        }
+    }
+
+    static var folder: URL {
+        get {
+            if let path = UserDefaults.standard.string(forKey: folderKey) {
+                return URL(fileURLWithPath: path, isDirectory: true)
+            }
+            return defaultFolder
+        }
+        set { UserDefaults.standard.set(newValue.path, forKey: folderKey) }
+    }
+
+    static var lastBackup: Date? { UserDefaults.standard.object(forKey: lastKey) as? Date }
+
+    /// iCloud Drive when it's on, otherwise Documents.
+    static var defaultFolder: URL {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let iCloud = home.appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs", isDirectory: true)
+        let base = FileManager.default.fileExists(atPath: iCloud.path)
+            ? iCloud : home.appendingPathComponent("Documents", isDirectory: true)
+        return base.appendingPathComponent("Goodreads Backups", isDirectory: true)
+    }
+
+    /// A readable place name, e.g. "iCloud Drive › Goodreads Backups".
+    static var folderDescription: String {
+        let path = folder.path
+        let iCloud = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs").path
+        if path.hasPrefix(iCloud) {
+            let rest = path.dropFirst(iCloud.count).split(separator: "/").joined(separator: " › ")
+            return rest.isEmpty ? "iCloud Drive" : "iCloud Drive › \(rest)"
+        }
+        return (path as NSString).abbreviatingWithTildeInPath
+    }
+
+    static func runIfDue(now: Date = Date()) async {
+        guard isEnabled else { return }
+        if let last = lastBackup, now.timeIntervalSince(last) < interval { return }
+        _ = await backUpNow()
+    }
+
+    /// Writes one backup and trims old ones. Returns an error message, or nil.
+    @discardableResult
+    static func backUpNow() async -> String? {
+        let backup = await Backup.make()
+        let folder = self.folder
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let stamp = Date().formatted(.iso8601.year().month().day())
+            let file = folder.appendingPathComponent("Goodreads backup \(stamp).\(BackupFile.fileExtension)")
+            try backup.encoded().write(to: file, options: .atomic)
+            UserDefaults.standard.set(Date(), forKey: lastKey)
+            trim(folder)
+            return nil
+        } catch {
+            Diagnostics.shared.log("backup", "automatic backup failed: \(error.localizedDescription)", ok: false)
+            return error.localizedDescription
+        }
+    }
+
+    /// Keeps the newest `kept` automatic backups (they sort by date in their names).
+    private static func trim(_ folder: URL) {
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        let backups = files.filter { $0.hasPrefix("Goodreads backup ") && $0.hasSuffix(".\(BackupFile.fileExtension)") }
+            .sorted(by: >)
+        for old in backups.dropFirst(kept) {
+            try? FileManager.default.removeItem(at: folder.appendingPathComponent(old))
+        }
+    }
+
+    /// Checks at launch and then twice a day while the app runs.
+    static func start() {
+        Task {
+            try? await Task.sleep(for: .seconds(30))
+            while !Task.isCancelled {
+                await runIfDue()
+                try? await Task.sleep(for: .seconds(12 * 3600))
+            }
+        }
     }
 }

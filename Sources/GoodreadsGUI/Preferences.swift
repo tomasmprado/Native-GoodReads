@@ -176,6 +176,10 @@ struct PreferencesView: View {
     @State private var cacheBytes: Int?
     @State private var isClearing = false
     @State private var backupMessage: LibraryModel.Status?
+    @State private var autoBackup = AutoBackup.isEnabled
+    @State private var autoFolder = AutoBackup.folderDescription
+    @State private var lastBackup = AutoBackup.lastBackup
+    @State private var isBackingUp = false
 
     var body: some View {
         Form {
@@ -192,7 +196,7 @@ struct PreferencesView: View {
                 Text("Suggestions")
             } footer: {
                 Text("Filters suggested books by edition language.")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
 
@@ -211,7 +215,7 @@ struct PreferencesView: View {
                 Text("Google Books")
             } footer: {
                 Text("Search and suggestions use Google Books, whose free shared tier is usually out of quota. Get a free key at console.cloud.google.com — enable the “Books API”, then Credentials → Create Credentials → API key.")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
 
@@ -234,7 +238,7 @@ struct PreferencesView: View {
                 Text("Notifications")
             } footer: {
                 Text("Friends are checked every hour and new books once a day, while the app is open (it keeps running in the menu bar).")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
 
@@ -261,7 +265,7 @@ struct PreferencesView: View {
                 Text("Reading Reminder")
             } footer: {
                 Text("About the first book on Currently Reading. Type a percentage right in the notification to update it.")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
 
@@ -277,7 +281,7 @@ struct PreferencesView: View {
                 Text("Reading Goal")
             } footer: {
                 Text("When you’ve joined this year’s Reading Challenge on Goodreads, Stats uses its goal. Otherwise you set the goal in Stats.")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
 
@@ -287,7 +291,7 @@ struct PreferencesView: View {
                 Text("Spotlight")
             } footer: {
                 Text("Search your shelves from ⌘Space. Choosing a book opens its details here.")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
 
@@ -303,16 +307,58 @@ struct PreferencesView: View {
                         }
                     }
                 }
+                Toggle("Back up automatically every week", isOn: Binding(
+                    get: { autoBackup },
+                    set: { wanted in
+                        autoBackup = wanted
+                        AutoBackup.isEnabled = wanted
+                        if wanted {
+                            Task {
+                                try? await Task.sleep(for: .seconds(1))
+                                lastBackup = AutoBackup.lastBackup
+                            }
+                        }
+                    }
+                ))
+                if autoBackup {
+                    LabeledContent("Folder") {
+                        HStack(spacing: 8) {
+                            Text(autoFolder)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Button("Change…") { chooseBackupFolder() }
+                        }
+                    }
+                    LabeledContent("Last backup") {
+                        HStack(spacing: 8) {
+                            Text(lastBackup.map { $0.formatted(date: .abbreviated, time: .shortened) }
+                                 ?? String(localized: "Not yet"))
+                                .foregroundStyle(.secondary)
+                            Button(isBackingUp ? String(localized: "Backing Up…") : String(localized: "Back Up Now")) {
+                                isBackingUp = true
+                                Task {
+                                    if let error = await AutoBackup.backUpNow() {
+                                        backupMessage = .init(text: String(localized: "Couldn’t save the backup: \(error)"), isError: true)
+                                    }
+                                    lastBackup = AutoBackup.lastBackup
+                                    isBackingUp = false
+                                }
+                            }
+                            .disabled(isBackingUp)
+                        }
+                    }
+                }
                 if let backupMessage {
                     Text(backupMessage.text)
-                        .font(.system(size: 11))
+                        .appFont(size: 11)
                         .foregroundStyle(backupMessage.isError ? Color.red : Color.secondary)
                 }
             } header: {
                 Text("Backup")
             } footer: {
-                Text("Your notes and quotes, your progress history and the books you stopped reading exist only on this Mac. Save them to a file you keep elsewhere, like iCloud Drive.")
-                    .font(.system(size: 11))
+                Text("Your notes and quotes, your progress history and the books you stopped reading exist only on this Mac. Save them to a file you keep elsewhere, like iCloud Drive. Automatic backups keep the last eight.")
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
 
@@ -334,12 +380,24 @@ struct PreferencesView: View {
                 Text("Cache")
             } footer: {
                 Text("Shelves, book pages, friends and covers are saved so the app opens instantly. Clearing it is safe: everything is fetched again the next time you open it.")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
         .frame(width: 460, height: 820)
         .task { cacheBytes = DataCache.diskUsage() }
+    }
+
+    private func chooseBackupFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = AutoBackup.folder.deletingLastPathComponent()
+        panel.prompt = String(localized: "Choose")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        AutoBackup.folder = url
+        autoFolder = AutoBackup.folderDescription
     }
 }

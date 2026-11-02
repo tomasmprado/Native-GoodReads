@@ -59,13 +59,13 @@ struct UpdateNotesView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Image(systemName: "arrow.down.app")
-                    .font(.system(size: 26))
+                    .appFont(size: 26)
                     .foregroundStyle(Color.accentColor)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Goodreads \(update.version)")
-                        .font(.system(size: 15, weight: .semibold))
+                        .appFont(size: 15, weight: .semibold)
                     Text("You have \(Self.currentVersion)")
-                        .font(.system(size: 11))
+                        .appFont(size: 11)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -98,7 +98,7 @@ struct UpdateNotesView: View {
             }
             if !canInstallInPlace {
                 Text("Move the app to Applications to update it in one click.")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
         }
@@ -111,17 +111,17 @@ struct UpdateNotesView: View {
         switch block {
         case .heading(let text):
             Text(ReleaseNotes.inline(text))
-                .font(.system(size: 12, weight: .semibold))
+                .appFont(size: 12, weight: .semibold)
                 .padding(.top, 4)
         case .bullet(let text):
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("•").foregroundStyle(.secondary)
                 Text(ReleaseNotes.inline(text))
             }
-            .font(.system(size: 12))
+            .appFont(size: 12)
         case .paragraph(let text):
             Text(ReleaseNotes.inline(text))
-                .font(.system(size: 12))
+                .appFont(size: 12)
         }
     }
 

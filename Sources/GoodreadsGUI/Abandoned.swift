@@ -100,9 +100,9 @@ struct AbandonSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Stop Reading")
-                    .font(.system(size: 15, weight: .semibold))
+                    .appFont(size: 15, weight: .semibold)
                 Text("\(entry.title) — \(entry.author)")
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
@@ -123,7 +123,7 @@ struct AbandonSheet: View {
             }
 
             Text("The app keeps a list of the books you stopped, with how far you got, under Stats. They don’t count as read.")
-                .font(.system(size: 11))
+                .appFont(size: 11)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -156,10 +156,10 @@ struct AbandonedCard: View {
                                                      year: Calendar.current.component(.year, from: Date())).count
                 HStack {
                     Text("Stopped Reading")
-                        .font(.system(size: 13, weight: .semibold))
+                        .appFont(size: 13, weight: .semibold)
                     Spacer()
                     Text("\(thisYear) this year")
-                        .font(.system(size: 11))
+                        .appFont(size: 11)
                         .foregroundStyle(.secondary)
                 }
                 ForEach(books.prefix(12)) { book in
@@ -175,9 +175,9 @@ struct AbandonedCard: View {
                         .clipShape(RoundedRectangle(cornerRadius: 3))
 
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(book.title).font(.system(size: 12, weight: .medium)).lineLimit(1)
+                            Text(book.title).appFont(size: 12, weight: .medium).lineLimit(1)
                             Text(detail(book))
-                                .font(.system(size: 10))
+                                .appFont(size: 10)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
                         }

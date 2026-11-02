@@ -36,6 +36,7 @@ struct GoodreadsGUIApp: App {
         }
         .defaultSize(width: 820, height: 680)
         .commands {
+            TextSizeCommands()
             CommandGroup(replacing: .newItem) { }
             CommandGroup(after: .importExport) {
                 Button("Import Highlights…") {

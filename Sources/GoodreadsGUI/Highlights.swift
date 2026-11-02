@@ -260,7 +260,7 @@ struct HighlightsImportSheet: View {
         VStack(spacing: 0) {
             GlassHeader {
                 Text("Import Highlights")
-                    .font(.system(size: 13, weight: .semibold))
+                    .appFont(size: 13, weight: .semibold)
                 Spacer()
                 Button("Close") { dismiss() }
                     .keyboardShortcut(.cancelAction)
@@ -285,10 +285,10 @@ struct HighlightsImportSheet: View {
                 Text(source == .kindle
                      ? String(localized: "Connect your Kindle and pick documents/My Clippings.txt.")
                      : String(localized: "Highlights and notes you made in Apple Books on this Mac. macOS may ask to let the app read them."))
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
                 if let message {
-                    Text(message).font(.system(size: 11)).foregroundStyle(.orange)
+                    Text(message).appFont(size: 11).foregroundStyle(.orange)
                 }
             }
             .padding(14)
@@ -329,7 +329,7 @@ struct HighlightsImportSheet: View {
             Divider()
             HStack {
                 Text("\(chosen.count) books selected")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button("Import") { Task { await importChosen() } }
@@ -347,10 +347,10 @@ struct HighlightsImportSheet: View {
 
     private func row(_ book: ImportedBook, entry: ShelfEntry?) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(entry?.title ?? book.title).font(.system(size: 12, weight: .medium)).lineLimit(1)
+            Text(entry?.title ?? book.title).appFont(size: 12, weight: .medium).lineLimit(1)
             Text(String(localized: "\(book.highlights.count) highlights, \(book.notes.count) notes")
                  + (book.author.isEmpty ? "" : " · \(book.author)"))
-                .font(.system(size: 10))
+                .appFont(size: 10)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }

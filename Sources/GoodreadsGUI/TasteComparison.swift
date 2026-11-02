@@ -115,7 +115,7 @@ struct TasteComparisonView: View {
                                 Text(String(localized: "you \(pair.mine.rating ?? 0)★ · \(friendName) \(pair.theirs.rating ?? 0)★"))
                                     .foregroundStyle(.secondary)
                             }
-                            .font(.system(size: 12))
+                            .appFont(size: 12)
                         }
                         .buttonStyle(.plain)
                     }
@@ -136,7 +136,7 @@ struct TasteComparisonView: View {
                                     .foregroundStyle(.yellow)
                                     .accessibilityLabel(Text("\(entry.rating ?? 0) stars"))
                             }
-                            .font(.system(size: 12))
+                            .appFont(size: 12)
                         }
                         .buttonStyle(.plain)
                     }
@@ -145,7 +145,7 @@ struct TasteComparisonView: View {
 
             if comparison.inCommon.isEmpty && comparison.theirFavourites.isEmpty {
                 Text("Nothing to compare yet — no books in common, and no rated favourites.")
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
             }
         }
@@ -153,8 +153,8 @@ struct TasteComparisonView: View {
 
     private func stat(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.system(size: 22, weight: .semibold, design: .rounded))
-            Text(label).font(.system(size: 11)).foregroundStyle(.secondary)
+            Text(value).appFont(size: 22, weight: .semibold, design: .rounded)
+            Text(label).appFont(size: 11).foregroundStyle(.secondary)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -164,7 +164,7 @@ struct TasteComparisonView: View {
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.system(size: 12, weight: .semibold))
+                .appFont(size: 12, weight: .semibold)
                 .foregroundStyle(.secondary)
             content()
         }

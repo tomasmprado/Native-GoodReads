@@ -7,6 +7,8 @@ import SwiftUI
 struct BookExtras: Codable, Sendable, Equatable {
     let pages: Int?
     let genres: [String]
+    /// Goodreads' average rating, for the smart lists. Absent before 2.6.
+    var rating: Double? = nil
 
     private static let namespace = "book-extras"
     private static let key = "all"
@@ -189,7 +191,7 @@ struct StatsPane: View {
                 VStack(spacing: 10) {
                     Spacer()
                     Image(systemName: model.isLoadingStats ? "hourglass" : "chart.bar")
-                        .font(.system(size: 40))
+                        .appFont(size: 40)
                         .foregroundStyle(.tertiary)
                     Text(model.isLoadingStats ? String(localized: "Counting your books…") : String(localized: "Mark a book read and your stats show up here."))
                         .foregroundStyle(.secondary)
@@ -233,24 +235,24 @@ struct StatsPane: View {
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("\(String(year)) Reading Goal")
-                    .font(.system(size: 13, weight: .semibold))
+                    .appFont(size: 13, weight: .semibold)
                 Spacer()
                 if prefs.useGoodreadsChallenge, model.challenge?.goal != nil {
                     Button("Goodreads Reading Challenge") {
                         NSWorkspace.shared.open(GoodreadsChallenge.url(year: year))
                     }
                     .buttonStyle(.link)
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .help("Your goal comes from your Reading Challenge. Change it there.")
                 } else {
                     Stepper("Goal: \(goal)", value: $prefs.yearlyGoal, in: 1...500)
-                        .font(.system(size: 11))
+                        .appFont(size: 11)
                         .fixedSize()
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("\(stats.readThisYear)")
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .appFont(size: 34, weight: .bold, design: .rounded)
                 Text("of \(goal) books")
                     .foregroundStyle(.secondary)
             }
@@ -258,7 +260,7 @@ struct StatsPane: View {
             Text(ahead >= 0
                  ? (stats.readThisYear >= goal ? String(localized: "Goal reached 🎉") : String(localized: "\(ahead) ahead of schedule"))
                  : String(localized: "\(-ahead) behind schedule"))
-                .font(.system(size: 11))
+                .appFont(size: 11)
                 .foregroundStyle(ahead >= 0 ? Color.green : Color.orange)
 
             Chart(Array(stats.thisYearByMonth.enumerated()), id: \.offset) { month, count in
@@ -277,10 +279,10 @@ struct StatsPane: View {
     private func numberCard(_ title: String, _ value: String, symbol: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Label(title, systemImage: symbol)
-                .font(.system(size: 11))
+                .appFont(size: 11)
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(.system(size: 24, weight: .semibold, design: .rounded))
+                .appFont(size: 24, weight: .semibold, design: .rounded)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -290,13 +292,13 @@ struct StatsPane: View {
     private func perYearCard(_ stats: ReadingStats) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Books per Year")
-                .font(.system(size: 13, weight: .semibold))
+                .appFont(size: 13, weight: .semibold)
             Chart(stats.byYear.suffix(10)) { item in
                 BarMark(x: .value("Year", String(item.year)), y: .value("Books", item.count))
                     .foregroundStyle(Color.accentColor.gradient)
                     .annotation(position: .top) {
                         if item.count > 0 {
-                            Text("\(item.count)").font(.system(size: 9)).foregroundStyle(.secondary)
+                            Text("\(item.count)").appFont(size: 9).foregroundStyle(.secondary)
                         }
                     }
             }
@@ -313,7 +315,7 @@ struct StatsPane: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Pages and Genres")
-                    .font(.system(size: 13, weight: .semibold))
+                    .appFont(size: 13, weight: .semibold)
                 Spacer()
                 if model.isFillingExtras {
                     ProgressView(value: Double(model.extrasDone), total: Double(max(model.extrasTotal, 1)))
@@ -329,14 +331,14 @@ struct StatsPane: View {
                 }
             }
             Text("Known for \(stats.booksWithExtras) of \(stats.totalRead) books read.")
-                .font(.system(size: 11))
+                .appFont(size: 11)
                 .foregroundStyle(.secondary)
 
             if stats.booksWithExtras > 0 {
                 HStack(alignment: .top, spacing: 20) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Pages per Year")
-                            .font(.system(size: 12, weight: .medium))
+                            .appFont(size: 12, weight: .medium)
                         Chart(stats.pagesByYear.suffix(10)) { item in
                             BarMark(x: .value("Year", String(item.year)), y: .value("Pages", item.count))
                                 .foregroundStyle(Color.teal.gradient)
@@ -348,12 +350,12 @@ struct StatsPane: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Top Genres")
-                            .font(.system(size: 12, weight: .medium))
+                            .appFont(size: 12, weight: .medium)
                         ForEach(stats.topGenres) { item in
                             HStack {
-                                Text(item.genre).font(.system(size: 12)).lineLimit(1)
+                                Text(item.genre).appFont(size: 12).lineLimit(1)
                                 Spacer()
-                                Text("\(item.count)").font(.system(size: 12)).foregroundStyle(.secondary)
+                                Text("\(item.count)").appFont(size: 12).foregroundStyle(.secondary)
                             }
                             .accessibilityElement(children: .combine)
                         }
@@ -370,7 +372,7 @@ struct StatsPane: View {
     private func ratingsCard(_ stats: ReadingStats) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Your Ratings")
-                .font(.system(size: 13, weight: .semibold))
+                .appFont(size: 13, weight: .semibold)
             Chart(Array(stats.ratingCounts.enumerated()), id: \.offset) { index, count in
                 BarMark(x: .value("Books", count), y: .value("Stars", String(repeating: "★", count: index + 1)))
                     .foregroundStyle(Color.yellow.gradient)
@@ -387,17 +389,17 @@ struct StatsPane: View {
     private func authorsCard(_ stats: ReadingStats) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Most-Read Authors")
-                .font(.system(size: 13, weight: .semibold))
+                .appFont(size: 13, weight: .semibold)
             if stats.topAuthors.isEmpty {
                 Text("No author read more than once yet.")
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
             }
             ForEach(stats.topAuthors) { item in
                 HStack {
-                    Text(item.author).font(.system(size: 12)).lineLimit(1)
+                    Text(item.author).appFont(size: 12).lineLimit(1)
                     Spacer()
-                    Text("\(item.count)").font(.system(size: 12)).foregroundStyle(.secondary)
+                    Text("\(item.count)").appFont(size: 12).foregroundStyle(.secondary)
                 }
                 .accessibilityElement(children: .combine)
             }

@@ -102,7 +102,11 @@ struct ReadingWidgetView: View {
 
     private func detail(_ book: WidgetSnapshot.Book) -> String {
         var bits = [book.author]
-        if let percent = book.percent { bits.append("\(percent)%") }
+        if let page = book.page, let total = book.totalPages {
+            bits.append(String(localized: "p. \(page) of \(total)"))
+        } else if let percent = book.percent {
+            bits.append("\(percent)%")
+        }
         if let estimate = book.finishEstimate {
             bits.append(String(localized: "done around \(estimate.formatted(.dateTime.day().month(.abbreviated)))"))
         }

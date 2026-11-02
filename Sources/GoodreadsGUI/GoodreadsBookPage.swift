@@ -83,7 +83,8 @@ enum GoodreadsBookPage {
         }
 
         let detail = try parse(html: html, bookID: bookID)
-        await BookExtras.save(BookExtras(pages: detail.pageCount, genres: detail.genres ?? []), for: bookID)
+        await BookExtras.save(BookExtras(pages: detail.pageCount, genres: detail.genres ?? [],
+                                           rating: detail.about?.averageRating), for: bookID)
         return detail
     }
 

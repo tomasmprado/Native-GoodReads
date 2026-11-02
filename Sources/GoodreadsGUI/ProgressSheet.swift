@@ -4,6 +4,8 @@ import SwiftUI
 /// on your updates feed. Percent or page; Goodreads takes either.
 struct ProgressSheet: View {
     let entry: ShelfEntry
+    /// The book's page count, when known — shows which page a percentage is.
+    let totalPages: Int?
     let commit: (Int?, Int?, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -19,8 +21,9 @@ struct ProgressSheet: View {
         var id: String { rawValue }
     }
 
-    init(entry: ShelfEntry, commit: @escaping (Int?, Int?, String) -> Void) {
+    init(entry: ShelfEntry, totalPages: Int? = nil, commit: @escaping (Int?, Int?, String) -> Void) {
         self.entry = entry
+        self.totalPages = totalPages
         self.commit = commit
         _percent = State(initialValue: Double(entry.progress ?? 50))
     }
@@ -29,10 +32,10 @@ struct ProgressSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.title)
-                    .font(.system(size: 14, weight: .semibold))
+                    .appFont(size: 14, weight: .semibold)
                     .lineLimit(2)
                 Text(entry.author)
-                    .font(.system(size: 12))
+                    .appFont(size: 12)
                     .foregroundStyle(.secondary)
             }
 
@@ -49,9 +52,20 @@ struct ProgressSheet: View {
                         .font(.system(size: 12, weight: .medium).monospacedDigit())
                         .frame(width: 40, alignment: .trailing)
                 }
+                if let totalPages {
+                    Text("Page \(Int((Double(totalPages) * percent / 100).rounded())) of \(totalPages)")
+                        .appFont(size: 11)
+                        .foregroundStyle(.secondary)
+                }
             } else {
-                TextField("Page number", text: $page)
+                TextField(totalPages.map { String(localized: "Page number (of \($0))") } ?? String(localized: "Page number"),
+                          text: $page)
                     .textFieldStyle(.roundedBorder)
+                if let totalPages, let typed = Int(page), totalPages > 0 {
+                    Text("\(min(100, typed * 100 / totalPages))%")
+                        .appFont(size: 11)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             TextField("Note (optional)", text: $note, axis: .vertical)

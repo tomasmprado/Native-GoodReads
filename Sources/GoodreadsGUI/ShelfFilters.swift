@@ -30,14 +30,48 @@ struct ShelfFilters: Equatable {
         }
     }
 
+    /// Ready-made views, most useful on Want to Read.
+    enum SmartList: String, CaseIterable, Identifiable {
+        case none, short, highlyRated, waitingLongest, favouriteAuthors
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .none:             return String(localized: "All books")
+            case .short:            return String(localized: "Short books (under 250 pages)")
+            case .highlyRated:      return String(localized: "Highest rated on Goodreads")
+            case .waitingLongest:   return String(localized: "Waiting the longest")
+            case .favouriteAuthors: return String(localized: "By authors you love")
+            }
+        }
+
+        /// Needs page counts or ratings from book pages.
+        var needsBookPages: Bool { self == .short || self == .highlyRated }
+
+        static let shortPages = 250
+        static let highRating = 4.0
+    }
+
     var rating: Rating = .any
     var year: Int?
     var genre: String?
+    var smart: SmartList = .none
 
-    var isActive: Bool { rating != .any || year != nil || genre != nil }
+    var isActive: Bool { rating != .any || year != nil || genre != nil || smart != .none }
 
     func matches(_ entry: ShelfEntry, extras: [String: BookExtras],
+                 favouriteAuthors: Set<String> = [],
                  calendar: Calendar = .current) -> Bool {
+        switch smart {
+        case .none, .waitingLongest:
+            break
+        case .short:
+            guard let pages = extras[entry.bookID]?.pages, pages < SmartList.shortPages else { return false }
+        case .highlyRated:
+            guard let average = extras[entry.bookID]?.rating, average >= SmartList.highRating else { return false }
+        case .favouriteAuthors:
+            guard favouriteAuthors.contains(Self.authorKey(entry.author)) else { return false }
+        }
         guard rating.matches(entry.rating) else { return false }
         if let year {
             guard let date = Suggestions.parseDate(entry.dateRead ?? ""),
@@ -47,6 +81,44 @@ struct ShelfFilters: Equatable {
             guard extras[entry.bookID]?.genres.contains(genre) == true else { return false }
         }
         return true
+    }
+
+    /// The smart list's own order, when it has one.
+    func ordered(_ entries: [ShelfEntry], extras: [String: BookExtras]) -> [ShelfEntry]? {
+        switch smart {
+        case .highlyRated:
+            return entries.sorted { (extras[$0.bookID]?.rating ?? 0) > (extras[$1.bookID]?.rating ?? 0) }
+        case .waitingLongest:
+            return entries.sorted {
+                (Suggestions.parseDate($0.dateAdded ?? "") ?? .distantFuture)
+                    < (Suggestions.parseDate($1.dateAdded ?? "") ?? .distantFuture)
+            }
+        case .short:
+            return entries.sorted { (extras[$0.bookID]?.pages ?? .max) < (extras[$1.bookID]?.pages ?? .max) }
+        case .none, .favouriteAuthors:
+            return nil
+        }
+    }
+
+    /// Authors you've read at least three books by, or rated two or more
+    /// four stars and up.
+    static func favouriteAuthors(in read: [ShelfEntry]) -> Set<String> {
+        var count: [String: Int] = [:]
+        var loved: [String: Int] = [:]
+        for entry in read where !entry.author.isEmpty {
+            let key = authorKey(entry.author)
+            count[key, default: 0] += 1
+            if (entry.rating ?? 0) >= 4 { loved[key, default: 0] += 1 }
+        }
+        return Set(count.filter { $0.value >= 3 }.keys).union(loved.filter { $0.value >= 2 }.keys)
+    }
+
+    static func authorKey(_ author: String) -> String {
+        author.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
+            .sorted()
+            .joined(separator: " ")
     }
 
     /// Years something on this shelf was read, newest first.

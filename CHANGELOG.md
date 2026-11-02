@@ -11,6 +11,21 @@ added in that diff, meaning `v1.0.0` predates all of it.
 
 ### Added
 
+- **Pages** — Home shows which page you're on, how many are left and your
+  pages a day; the progress window and the widget show pages too.
+- **Friends reading it too** — on Home, the friends who have the same book on
+  Currently Reading.
+- **Smart lists** in a shelf's Filter menu: short books, highest rated on
+  Goodreads, waiting the longest, and by authors you love.
+- **Where to Get It** in Book Details: searches at Amazon, AbeBooks and
+  libraries (OverDrive/Libby), plus Wook and Bertrand in Portugal.
+- **Quotes** — a new pane with every quote and highlight you've saved,
+  searchable, to copy or share as an image.
+- **Automatic backups** — Settings → Backup can back up every week to iCloud
+  Drive (or a folder you choose), keeping the last eight.
+- **Text size** — the app follows the Mac's text size where macOS passes it
+  on, and View → Bigger Text / Smaller Text (⌘+ / ⌘−) works everywhere.
+
 - **Book Details** shows much more: the synopsis, Goodreads' average rating
   and star spread, genres, publisher, publication dates, format, ISBN,
   original title, illustrators and translators, awards, characters and

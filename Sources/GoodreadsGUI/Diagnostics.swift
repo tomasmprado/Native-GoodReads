@@ -48,9 +48,9 @@ struct DiagnosticsSheet: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Diagnostics")
-                    .font(.system(size: 13, weight: .semibold))
+                    .appFont(size: 13, weight: .semibold)
                 Text("\(log.entries.count) entries")
-                    .font(.system(size: 11))
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
 
                 Spacer()
@@ -87,7 +87,7 @@ struct DiagnosticsSheet: View {
 
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(entry.label)
-                                            .font(.system(size: 11, weight: .medium))
+                                            .appFont(size: 11, weight: .medium)
                                         Text(entry.detail)
                                             .font(.system(size: 11).monospaced())
                                             .foregroundStyle(.secondary)
