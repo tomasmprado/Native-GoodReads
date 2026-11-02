@@ -7,6 +7,26 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
+## [Unreleased]
+
+### Added
+
+- **Book Details** shows much more: the synopsis, Goodreads' average rating
+  and star spread, genres, publisher, publication dates, format, ISBN,
+  original title, illustrators and translators, awards, characters and
+  setting.
+
+### Changed
+
+- Clicking a book anywhere — shelves, search, suggestions, friends' shelves
+  and updates — opens its details.
+- The README is now a user guide; the technical notes moved to
+  DEVELOPMENT.md.
+
+### Removed
+
+- The ⌥Space quick-add panel, and the menu bar's Quick Add item.
+
 ## [2.5.0] — 2026-11-02
 
 ### Added

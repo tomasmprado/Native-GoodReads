@@ -16,6 +16,9 @@ struct BookDetailView: View {
     @State private var pageLanguage: String?
     @State private var authorURL: URL?
     @State private var series: GoodreadsSeries.Ref?
+    @State private var about: GoodreadsBookPage.About?
+    @State private var genres: [String] = []
+    @State private var pageCount: Int?
     @State private var note = BookNote()
     @State private var noteLoaded = false
     @State private var savedNote = BookNote()
@@ -51,11 +54,8 @@ struct BookDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    if let description = book.description, !description.isEmpty {
-                        Text(plainDescription(description))
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                    }
+                    BookAboutView(about: about, genres: genres, book: book,
+                                  pages: pageCount, language: pageLanguage)
                     friendsSection
                     Divider()
                     composeBox
@@ -67,7 +67,7 @@ struct BookDetailView: View {
                 .padding(16)
             }
         }
-        .frame(width: 700, height: 680)
+        .frame(width: 720, height: 720)
         .background(alignment: .top) { CoverBackdrop(url: book.coverURL) }
         .task { await resolveAndLoad() }
         .task(id: series) { await loadNextInSeries() }
@@ -116,12 +116,13 @@ struct BookDetailView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(book.title)
                     .font(.system(size: 17, weight: .semibold))
+                    .textSelection(.enabled)
                 if let authorURL {
-                    Button(book.author) { model.showAuthorPage(authorURL) }
+                    Button(authorName) { model.showAuthorPage(authorURL) }
                         .font(.system(size: 13))
                         .buttonStyle(.link)
                 } else {
-                    Text(book.author)
+                    Text(authorName)
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
@@ -202,13 +203,21 @@ struct BookDetailView: View {
         nextInSeries = GoodreadsSeries.next(after: series.position, in: volumes)
     }
 
+    /// A short line under the title; the full list is under Details.
     private var metaBits: [String] {
         var bits: [String] = []
-        if let publisher = book.publisher { bits.append(publisher) }
-        if let date = book.publishedDate { bits.append(date) }
-        if let pages = book.pageCount { bits.append(String(localized: "\(pages) pages")) }
-        if let language = pageLanguage ?? book.language { bits.append(language.capitalized) }
+        if let format = about?.format { bits.append(format) }
+        if let pages = pageCount ?? book.pageCount { bits.append(String(localized: "\(pages) pages")) }
+        if let year = (about?.firstPublished ?? about?.published).map({ $0.formatted(.dateTime.year()) })
+            ?? book.publishedDate.map({ String($0.prefix(4)) }) {
+            bits.append(year)
+        }
         return bits
+    }
+
+    /// Books opened from a friend's update arrive without an author.
+    private var authorName: String {
+        book.author.isEmpty ? (about?.authorName ?? "") : book.author
     }
 
     private var coverPlaceholder: some View {
@@ -454,19 +463,31 @@ struct BookDetailView: View {
             try await DataCache.load("book-page", bookID, ttl: DataCache.TTL.bookPage) {
                 try await GoodreadsBookPage.fetch(bookID: bookID)
             } show: { detail, _ in
-                reviews = detail.reviews
-                pageLanguage = detail.language
-                authorURL = detail.authorURL
-                series = detail.series
-                reviewsError = nil
+                apply(detail)
+            }
+            // Pages saved before the app read synopses and publishers get
+            // fetched again once, so those show up straight away.
+            if about == nil {
+                try await DataCache.load("book-page", bookID, ttl: DataCache.TTL.bookPage, force: true) {
+                    try await GoodreadsBookPage.fetch(bookID: bookID)
+                } show: { detail, _ in
+                    apply(detail)
+                }
             }
         } catch {
             reviewsError = String(localized: "Couldn't load reviews: \(error.localizedDescription)")
         }
     }
 
-    private func plainDescription(_ html: String) -> String {
-        html.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+    private func apply(_ detail: GoodreadsBookPage.Detail) {
+        reviews = detail.reviews
+        pageLanguage = detail.language
+        authorURL = detail.authorURL
+        series = detail.series
+        about = detail.about
+        genres = detail.genres ?? []
+        pageCount = detail.pageCount
+        reviewsError = nil
     }
 }
 

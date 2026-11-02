@@ -7,13 +7,9 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUserNotificationCenterDelegate {
 
     private var statusItem: NSStatusItem?
-    private var panel: QuickPanel?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setUpStatusItem()
-
-        HotKeyCenter.shared.onTrigger = { [weak self] in self?.togglePanel() }
-        HotKeyCenter.shared.register()
 
         UNUserNotificationCenter.current().delegate = self
         ReadingReminder.registerCategory()
@@ -55,10 +51,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUser
         return true
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
-        HotKeyCenter.shared.unregister()
-    }
-
     // MARK: - Menu bar
 
     private func setUpStatusItem() {
@@ -70,13 +62,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUser
 
         let menu = NSMenu()
         menu.delegate = self
-
-        // No key equivalent here — ⌥Space is already handled system-wide by
-        // the Carbon hotkey in HotKeyCenter, and having both meant the menu
-        // item's own equivalent raced it whenever the app was frontmost.
-        let quick = NSMenuItem(title: String(localized: "Quick Add"), action: #selector(togglePanel), keyEquivalent: "")
-        quick.target = self
-        menu.addItem(quick)
 
         let library = NSMenuItem(title: String(localized: "Library Window"), action: #selector(showLibrary), keyEquivalent: "")
         library.target = self
@@ -157,22 +142,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUser
     @objc private func showLibrary() {
         NSApp.activate(ignoringOtherApps: true)
         // The SwiftUI scene owns the window; bring back whatever exists.
-        for window in NSApp.windows where !(window is QuickPanel) && window.canBecomeMain {
+        for window in NSApp.windows where window.canBecomeMain {
             window.makeKeyAndOrderFront(nil)
             return
         }
         // Nothing to re-front — the window was closed, not just backgrounded.
         WindowManager.shared.openMain?()
-    }
-
-    // MARK: - Quick panel
-
-    @objc private func togglePanel() {
-        if panel == nil {
-            panel = QuickPanel(content: QuickSearchView(onEscape: { [weak self] in
-                self?.panel?.orderOut(nil)
-            }))
-        }
-        panel?.toggle()
     }
 }

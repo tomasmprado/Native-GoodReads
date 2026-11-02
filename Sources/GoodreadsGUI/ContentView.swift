@@ -362,7 +362,8 @@ private struct SuggestionsPane: View {
             cover: suggestion.book.coverURL,
             detail: detail,
             stars: nil,
-            isBusy: model.busyBookID == suggestion.book.id
+            isBusy: model.busyBookID == suggestion.book.id,
+            onOpen: { model.showBookDetail(suggestion.book) }
         ) {
             ForEach(model.shelves) { shelf in
                 Button {
@@ -635,7 +636,21 @@ private struct FriendSection: View {
 private struct FriendActivityRow: View {
     let item: GoodreadsFriends.Activity
 
+    /// The book this update is about, for its details.
+    private var book: Book? {
+        guard let title = item.bookTitle,
+              let id = item.bookURL.flatMap({ GoodreadsLookup.bookID(fromURL: $0.absoluteString) }) else { return nil }
+        return Book(id: "gr:\(id)", title: title, author: "", coverURL: item.coverURL, rating: nil, goodreadsID: id)
+    }
+
     var body: some View {
+        content
+            .contentShape(Rectangle())
+            .onTapGesture { if let book { LibraryModel.shared.showBookDetail(book) } }
+            .help(book == nil ? "" : String(localized: "View Details"))
+    }
+
+    private var content: some View {
         HStack(alignment: .top, spacing: 10) {
             Group {
                 if let cover = item.coverURL {
@@ -846,7 +861,8 @@ private struct FriendShelfContent: View {
                             cover: entry.coverURL,
                             detail: entry.dateRead.map { String(localized: "read \($0)") },
                             stars: entry.rating,
-                            isBusy: false
+                            isBusy: false,
+                            onOpen: { model.showBookDetail(entry.asBook) }
                         ) {
                             Button("View Details…") { model.showBookDetail(entry.asBook) }
                             Button("Open on Goodreads") { model.openOnGoodreads(bookID: entry.bookID) }
@@ -1074,7 +1090,8 @@ private struct SearchPane: View {
                                     cover: match.entry.coverURL,
                                     detail: match.shelves.joined(separator: " · "),
                                     stars: match.entry.rating,
-                                    isBusy: model.busyBookID == match.entry.bookID
+                                    isBusy: model.busyBookID == match.entry.bookID,
+                                    onOpen: { model.showBookDetail(match.entry.asBook) }
                                 ) {
                                     Button("View Details…") { model.showBookDetail(match.entry.asBook) }
                                     Button("Open on Goodreads") { model.openOnGoodreads(bookID: match.entry.bookID) }
@@ -1091,7 +1108,8 @@ private struct SearchPane: View {
                                     cover: book.coverURL,
                                     detail: detailLine(book.rating.map { "★ \($0)" }, publisher: book.publisher),
                                     stars: nil,
-                                    isBusy: model.busyBookID == book.id
+                                    isBusy: model.busyBookID == book.id,
+                                    onOpen: { model.showBookDetail(book) }
                                 ) {
                                     ForEach(model.shelves) { shelf in
                                         Button {
@@ -1159,7 +1177,8 @@ private struct ShelfPane: View {
                             cover: entry.coverURL,
                             detail: detailLine(entry),
                             stars: entry.rating,
-                            isBusy: model.busyBookID == entry.bookID
+                            isBusy: model.busyBookID == entry.bookID,
+                            onOpen: { model.showBookDetail(entry.asBook) }
                         ) {
                             rowActions(entry)
                         }
@@ -1545,6 +1564,8 @@ private struct BookRow<Actions: View>: View {
     let detail: String?
     let stars: Int?
     let isBusy: Bool
+    /// Clicking the row opens the book's details.
+    var onOpen: (() -> Void)? = nil
     @ViewBuilder let actions: () -> Actions
 
     var body: some View {
@@ -1589,7 +1610,10 @@ private struct BookRow<Actions: View>: View {
             }
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture { onOpen?() }
         .contextMenu { actions() }
+        .accessibilityAction(named: Text("View Details")) { onOpen?() }
     }
 
     @ViewBuilder
