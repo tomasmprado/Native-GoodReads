@@ -115,3 +115,32 @@ final class TextSizeTests: XCTestCase {
         XCTAssertGreaterThan(TextZoom.systemFactor(.accessibility1), TextZoom.systemFactor(.xxxLarge))
     }
 }
+
+final class GoogleFallbackTests: XCTestCase {
+
+    private func book(_ title: String, description: String? = nil) -> Book {
+        Book(id: title, title: title, author: "A", coverURL: nil, rating: nil, description: description)
+    }
+
+    func testBestMatchPrefersSameTitleWithDescription() {
+        let candidates = [book("Dune Messiah", description: "x"), book("Dune"), book("Dune", description: "Spice.")]
+        XCTAssertEqual(GoogleBooksClient.bestMatch(candidates, title: "Dune")?.description, "Spice.")
+        XCTAssertEqual(GoogleBooksClient.bestMatch([book("Dune: Deluxe Edition")], title: "Dune")?.title, "Dune: Deluxe Edition")
+        XCTAssertNil(GoogleBooksClient.bestMatch([book("Something Else")], title: "Dune"))
+    }
+
+    func testFilledKeepsWhatIsThere() {
+        var mine = book("Dune")
+        mine.publisher = "Mine"
+        var google = book("Dune", description: "Spice.")
+        google.publisher = "Theirs"
+        google.pageCount = 600
+        google.categories = ["Fiction / Science Fiction / General", "Fiction / General"]
+        let merged = mine.filled(from: google)
+        XCTAssertEqual(merged.publisher, "Mine")
+        XCTAssertEqual(merged.description, "Spice.")
+        XCTAssertEqual(merged.pageCount, 600)
+        XCTAssertEqual(merged.genresFromCategories, ["Science Fiction", "Fiction"])
+        XCTAssertEqual(mine.filled(from: nil), mine)
+    }
+}

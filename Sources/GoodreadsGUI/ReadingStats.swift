@@ -17,6 +17,21 @@ struct BookExtras: Codable, Sendable, Equatable {
         await DataCache.shared.read([String: BookExtras].self, namespace, key, ttl: .infinity)?.value ?? [:]
     }
 
+    /// Page count and genres for one book: from its Goodreads page, or from
+    /// Google Books when Goodreads won't give them. The Goodreads rating is
+    /// never filled from Google, since the smart list says "on Goodreads".
+    static func fetch(_ entry: ShelfEntry) async {
+        _ = try? await GoodreadsBookPage.fetch(bookID: entry.bookID)
+        let current = await all()[entry.bookID]
+        guard current?.pages == nil || current?.genres.isEmpty != false else { return }
+        guard let google = await GoogleBooksClient.details(isbn: entry.isbn13 ?? entry.isbn,
+                                                           title: entry.title, author: entry.author) else { return }
+        let genres = current?.genres.isEmpty == false ? current!.genres : google.genresFromCategories
+        let pages = current?.pages ?? google.pageCount
+        guard pages != nil || !genres.isEmpty else { return }
+        await save(BookExtras(pages: pages, genres: genres, rating: current?.rating), for: entry.bookID)
+    }
+
     static func save(_ extras: BookExtras, for bookID: String) async {
         await DataCache.shared.modify([String: BookExtras].self, namespace, key, default: [:]) {
             $0[bookID] = extras

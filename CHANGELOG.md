@@ -33,6 +33,10 @@ added in that diff, meaning `v1.0.0` predates all of it.
 
 ### Changed
 
+- Book pages that Goodreads' bot protection blocks are fetched again through
+  your signed-in session, and whatever's still missing — synopsis,
+  publisher, pages, genres, date, language — comes from Google Books. Page
+  counts and genres for Home, smart lists and Stats use the same fallback.
 - Clicking a book anywhere — shelves, search, suggestions, friends' shelves
   and updates — opens its details.
 - The README is now a user guide; the technical notes moved to

@@ -67,6 +67,44 @@ enum GoogleBooksClient {
         return books
     }
 
+    /// One book's Google Books record, for details Goodreads didn't give:
+    /// by ISBN when there is one, otherwise by title and author. Cached for a
+    /// week; nil when nothing matches closely enough.
+    static func details(isbn: String?, title: String, author: String) async -> Book? {
+        let cleanTitle = title.replacingOccurrences(of: #"\s*\([^()]*#[^()]*\)\s*$"#, with: "", options: .regularExpression)
+        let key = isbn.map { "isbn:\($0)" } ?? "\(cleanTitle)|\(author)".lowercased()
+        if let hit = await DataCache.shared.read(Book?.self, "google-book", key, ttl: 7 * 24 * 3600), !hit.isStale {
+            return hit.value
+        }
+        var found: Book?
+        if let isbn, !isbn.isEmpty {
+            found = try? await volumes(q: "isbn:\(isbn)", maxResults: 3).first
+        }
+        if found == nil {
+            let byline = author.isEmpty ? "" : " inauthor:\"\(author.split(separator: ",").first.map(String.init) ?? author)\""
+            let candidates = (try? await volumes(q: "intitle:\"\(cleanTitle)\"\(byline)", maxResults: 10)) ?? []
+            found = bestMatch(candidates, title: cleanTitle)
+        }
+        await DataCache.shared.write(found, "google-book", key)
+        return found
+    }
+
+    /// The candidate whose title matches, preferring one with a description.
+    static func bestMatch(_ candidates: [Book], title: String) -> Book? {
+        let wanted = Suggestions.normalizedTitle(title)
+        let exact = candidates.filter { Suggestions.normalizedTitle($0.title) == wanted }
+        // A longer title only counts as a subtitle ("Dune: Deluxe Edition"),
+        // never as another book that starts the same ("Dune Messiah").
+        let subtitled = candidates.filter { candidate in
+            guard let cut = candidate.title.firstIndex(where: { ":(—–".contains($0) }) else { return false }
+            return Suggestions.normalizedTitle(String(candidate.title[..<cut])) == wanted
+        }
+        for group in [exact, subtitled] where !group.isEmpty {
+            return group.first { !($0.description ?? "").isEmpty } ?? group.first
+        }
+        return nil
+    }
+
     private static func volumes(q: String,
                                 langRestrict: String? = nil,
                                 sortNewest: Bool = false,
@@ -137,7 +175,8 @@ enum GoogleBooksClient {
             language: info.language,
             description: info.description,
             pageCount: info.pageCount,
-            publishedDate: info.publishedDate
+            publishedDate: info.publishedDate,
+            categories: info.categories
         )
     }
 
@@ -177,6 +216,7 @@ enum GoogleBooksClient {
         let description: String?
         let pageCount: Int?
         let publishedDate: String?
+        let categories: [String]?
     }
 
     private struct Identifier: Decodable {

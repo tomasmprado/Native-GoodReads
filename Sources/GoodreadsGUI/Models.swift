@@ -20,6 +20,34 @@ struct Book: Identifiable, Hashable, Codable {
     var description: String? = nil
     var pageCount: Int? = nil
     var publishedDate: String? = nil
+    /// Google Books' subjects, e.g. "Fiction / Science Fiction".
+    var categories: [String]? = nil
+
+    /// This book with whatever it's missing taken from `other`.
+    func filled(from other: Book?) -> Book {
+        guard let other else { return self }
+        var book = self
+        if book.description?.isEmpty ?? true { book.description = other.description }
+        if book.publisher?.isEmpty ?? true { book.publisher = other.publisher }
+        if book.pageCount == nil { book.pageCount = other.pageCount }
+        if book.publishedDate?.isEmpty ?? true { book.publishedDate = other.publishedDate }
+        if book.language?.isEmpty ?? true { book.language = other.language }
+        if book.isbn?.isEmpty ?? true { book.isbn = other.isbn }
+        if book.categories?.isEmpty ?? true { book.categories = other.categories }
+        return book
+    }
+
+    /// Google's subjects as plain genres: "Fiction / Science Fiction" gives
+    /// "Science Fiction", without repeats or the generic "General".
+    var genresFromCategories: [String] {
+        var seen: [String] = []
+        for category in categories ?? [] {
+            let parts = category.split(separator: "/").map { $0.trimmingCharacters(in: .whitespaces) }
+            guard let last = parts.last(where: { !$0.isEmpty && $0 != "General" }) ?? parts.first else { continue }
+            if !seen.contains(last) { seen.append(last) }
+        }
+        return seen
+    }
 }
 
 /// A shelf is just a name to Goodreads — the endpoints take arbitrary strings.
@@ -104,7 +132,7 @@ struct ShelfEntry: Identifiable, Hashable, Codable {
 
     var asBook: Book {
         Book(id: bookID, title: title, author: author, coverURL: coverURL, rating: nil,
-             goodreadsID: bookID)
+             isbn: isbn13 ?? isbn, goodreadsID: bookID)
     }
 
     /// Substring match across title and author, for the filter field.

@@ -19,6 +19,8 @@ struct BookDetailView: View {
     @State private var about: GoodreadsBookPage.About?
     @State private var genres: [String] = []
     @State private var pageCount: Int?
+    /// Google Books' record, for what the Goodreads page didn't have.
+    @State private var google: Book?
     @State private var note = BookNote()
     @State private var noteLoaded = false
     @State private var savedNote = BookNote()
@@ -54,7 +56,8 @@ struct BookDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    BookAboutView(about: about, genres: genres, book: book,
+                    BookAboutView(about: about, genres: genres.isEmpty ? book.filled(from: google).genresFromCategories : genres,
+                                  book: book.filled(from: google),
                                   pages: pageCount, language: pageLanguage)
                     // Without the "(Series, #1)" Goodreads adds, which shops don't know.
                     StoreLinksView(title: book.title.replacingOccurrences(of: #"\s*\([^()]*#[^()]*\)\s*$"#, with: "",
@@ -456,6 +459,18 @@ struct BookDetailView: View {
         } catch {
             resolveError = String(localized: "Couldn't find this book on Goodreads.")
         }
+        await fillFromGoogle()
+    }
+
+    /// Whatever Goodreads didn't give — synopsis first of all — from Google Books.
+    private func fillFromGoogle() async {
+        let missing = (about?.synopsis == nil && (book.description ?? "").isEmpty)
+            || (about?.publisher == nil && book.publisher == nil)
+            || (pageCount == nil && book.pageCount == nil)
+            || genres.isEmpty
+        guard missing else { return }
+        google = await GoogleBooksClient.details(isbn: about?.isbn13 ?? about?.isbn ?? book.isbn,
+                                                 title: book.title, author: authorName)
     }
 
     private func loadReviews(bookID: String) async {

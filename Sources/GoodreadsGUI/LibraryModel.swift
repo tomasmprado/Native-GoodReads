@@ -215,7 +215,7 @@ final class LibraryModel: ObservableObject {
 
     /// Fetches the book pages the smart lists need, for the shelf on screen.
     func fillShelfExtras() async {
-        let missing = shelfEntriesMissingPages.map(\.bookID)
+        let missing = shelfEntriesMissingPages
         guard !isFillingExtras, !missing.isEmpty else { return }
         isFillingExtras = true
         extrasDone = 0
@@ -227,8 +227,8 @@ final class LibraryModel: ObservableObject {
         await withTaskGroup(of: Void.self) { group in
             var queue = missing.makeIterator()
             func addNext() {
-                guard let bookID = queue.next() else { return }
-                group.addTask { _ = try? await GoodreadsBookPage.fetch(bookID: bookID) }
+                guard let entry = queue.next() else { return }
+                group.addTask { await BookExtras.fetch(entry) }
             }
             for _ in 0..<3 { addNext() }
             while await group.next() != nil {
@@ -694,7 +694,7 @@ final class LibraryModel: ObservableObject {
         var extras = await BookExtras.all()
         let missing = currentlyReading.filter { extras[$0.bookID]?.pages == nil }.prefix(8)
         for entry in missing {
-            _ = try? await GoodreadsBookPage.fetch(bookID: entry.bookID)
+            await BookExtras.fetch(entry)
         }
         if !missing.isEmpty { extras = await BookExtras.all() }
         bookExtras = extras
@@ -769,15 +769,15 @@ final class LibraryModel: ObservableObject {
         }
 
         let known = await BookExtras.all()
-        let missing = entries.map(\.bookID).filter { known[$0] == nil }
+        let missing = entries.filter { known[$0.bookID] == nil }
         extrasDone = 0
         extrasTotal = missing.count
 
         await withTaskGroup(of: Void.self) { group in
             var queue = missing.makeIterator()
             func addNext() {
-                guard let bookID = queue.next() else { return }
-                group.addTask { _ = try? await GoodreadsBookPage.fetch(bookID: bookID) }
+                guard let entry = queue.next() else { return }
+                group.addTask { await BookExtras.fetch(entry) }
             }
             for _ in 0..<3 { addNext() }
             while await group.next() != nil {
