@@ -1291,7 +1291,7 @@ private struct ShelfPane: View {
             if !genres.isEmpty {
                 Picker("Genre", selection: $model.filters.genre) {
                     Text("Any genre").tag(String?.none)
-                    ForEach(genres, id: \.self) { Text($0).tag(String?.some($0)) }
+                    ForEach(genres, id: \.self) { Text(GenreNames.display($0)).tag(String?.some($0)) }
                 }
             } else {
                 Text("Genres appear once books have been opened, or after Stats → Fill In.")

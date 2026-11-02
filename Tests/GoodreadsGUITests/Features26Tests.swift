@@ -144,3 +144,77 @@ final class GoogleFallbackTests: XCTestCase {
         XCTAssertEqual(mine.filled(from: nil), mine)
     }
 }
+
+final class GoogleFirstTests: XCTestCase {
+
+    private func book(_ title: String, language: String? = nil, description: String? = nil) -> Book {
+        Book(id: title, title: title, author: "A", coverURL: nil, rating: nil, language: language, description: description)
+    }
+
+    func testPrefersTheAppsLanguage() {
+        let candidates = [book("Dune", language: "en", description: "Spice."), book("Dune", language: "pt-BR", description: "Especiaria.")]
+        XCTAssertEqual(GoogleBooksClient.bestMatch(candidates, title: "Dune", language: "pt")?.description, "Especiaria.")
+        XCTAssertEqual(GoogleBooksClient.bestMatch(candidates, title: "Dune", language: "en")?.description, "Spice.")
+    }
+
+    func testPreferringTakesGooglesDetails() {
+        var mine = Book(id: "1", title: "The Hobbit", author: "J.R.R. Tolkien", coverURL: URL(string: "https://a/b.jpg"),
+                        rating: nil, publisher: "Houghton", goodreadsID: "5907", description: "English.")
+        mine.pageCount = 300
+        var google = book("O Hobbit", language: "pt", description: "Num buraco no chão…")
+        google.publisher = "Europa-América"
+        let shown = mine.preferring(google)
+        XCTAssertEqual(shown.title, "O Hobbit")
+        XCTAssertEqual(shown.description, "Num buraco no chão…")
+        XCTAssertEqual(shown.publisher, "Europa-América")
+        XCTAssertEqual(shown.pageCount, 300, "kept when Google has none")
+        XCTAssertEqual(shown.author, "J.R.R. Tolkien")
+        XCTAssertEqual(shown.goodreadsID, "5907")
+        XCTAssertEqual(shown.coverURL, mine.coverURL)
+        XCTAssertEqual(mine.preferring(nil), mine)
+    }
+
+    func testGoogleDates() {
+        XCTAssertEqual(BookAboutView.readableDate("2002"), "2002")
+        XCTAssertNotEqual(BookAboutView.readableDate("2002-08-15"), "2002-08-15")
+        XCTAssertTrue(BookAboutView.readableDate("2002-08-15").contains("2002"))
+        XCTAssertEqual(BookAboutView.readableDate("soon"), "soon")
+    }
+}
+
+final class ShelfTitleTests: XCTestCase {
+
+    func testTidiesTitlesCarryingTheAuthor() {
+        XCTAssertEqual(ShelfTitles.tidy("Feliz ano velho de Marcelo Rubens Paiva pela Mandarim 1996 E",
+                                        author: "Marcelo Rubens Paiva"), "Feliz ano velho")
+        XCTAssertEqual(ShelfTitles.tidy("Os Maias - Eça de Queirós", author: "Eça de Queirós"), "Os Maias")
+        XCTAssertEqual(ShelfTitles.tidy("Conversations with Kafka by Gustav Janouch", author: "Janouch, Gustav"),
+                       "Conversations with Kafka")
+    }
+
+    func testLeavesRealTitlesAlone() {
+        XCTAssertEqual(ShelfTitles.tidy("Cartas de Fernando Pessoa", author: "Fernando Pessoa"), "Cartas de Fernando Pessoa")
+        XCTAssertEqual(ShelfTitles.tidy("Dune (Dune, #1)", author: "Frank Herbert"), "Dune (Dune, #1)")
+        XCTAssertEqual(ShelfTitles.tidy("O Evangelho segundo Jesus Cristo", author: "José Saramago"), "O Evangelho segundo Jesus Cristo")
+        XCTAssertEqual(ShelfTitles.tidy("It", author: "Stephen King"), "It")
+    }
+
+    func testWithTitleKeepsEverythingElse() {
+        let entry = makeEntry(id: "7", title: "Old", author: "A", rating: 4, isbn13: "9780000000001", progress: 30)
+        let renamed = entry.withTitle("New")
+        XCTAssertEqual(renamed.title, "New")
+        XCTAssertEqual(renamed.bookID, entry.bookID)
+        XCTAssertEqual(renamed.rating, 4)
+        XCTAssertEqual(renamed.isbn13, "9780000000001")
+        XCTAssertEqual(renamed.progress, 30)
+    }
+}
+
+final class ArticleTests: XCTestCase {
+    func testMovesTrailingArticleToTheFront() {
+        XCTAssertEqual(ShelfTitles.frontArticle("Gato Malhado E a Andorinha Sinha, O"), "O Gato Malhado E a Andorinha Sinha")
+        XCTAssertEqual(ShelfTitles.frontArticle("Great Gatsby, The"), "The Great Gatsby")
+        XCTAssertEqual(ShelfTitles.frontArticle("Crime and Punishment"), "Crime and Punishment")
+        XCTAssertEqual(ShelfTitles.frontArticle("Love, Actually"), "Love, Actually")
+    }
+}

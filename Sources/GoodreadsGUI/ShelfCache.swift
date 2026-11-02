@@ -40,8 +40,9 @@ enum ShelfCache {
     }
 
     static func read(_ shelf: Shelf) -> Cached? {
-        guard let data = try? Data(contentsOf: file(for: shelf)) else { return nil }
-        return try? JSONDecoder().decode(Cached.self, from: data)
+        guard let data = try? Data(contentsOf: file(for: shelf)),
+              let cached = try? JSONDecoder().decode(Cached.self, from: data) else { return nil }
+        return Cached(entries: ShelfTitles.apply(cached.entries), fetched: cached.fetched)
     }
 
     static func write(_ entries: [ShelfEntry], for shelf: Shelf) {
@@ -53,6 +54,7 @@ enum ShelfCache {
 
     static func clear() {
         try? FileManager.default.removeItem(at: folder)
+        ShelfTitles.clear()
         SpotlightIndex.removeAll()
     }
 
@@ -64,7 +66,7 @@ enum ShelfCache {
             guard let data = try? Data(contentsOf: file),
                   let cached = try? JSONDecoder().decode(Cached.self, from: data),
                   let hit = cached.entries.first(where: { $0.bookID == bookID }) else { continue }
-            return hit
+            return ShelfTitles.apply([hit])[0]
         }
         return nil
     }

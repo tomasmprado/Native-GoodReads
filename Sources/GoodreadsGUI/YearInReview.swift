@@ -189,7 +189,7 @@ struct YearCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    if let genre = summary.topGenre { fact("sparkles", String(localized: "Most read genre: \(genre)")) }
+                    if let genre = summary.topGenre { fact("sparkles", String(localized: "Most read genre: \(GenreNames.display(genre))")) }
                     if let author = summary.topAuthor { fact("person", String(localized: "Favourite author: \(author)")) }
                     if let month = summary.busiestMonth {
                         fact("calendar", String(localized: "Busiest month: \(Calendar.current.monthSymbols[month])"))
