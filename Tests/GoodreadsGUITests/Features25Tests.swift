@@ -198,3 +198,21 @@ final class WidgetSnapshotTests: XCTestCase {
         XCTAssertFalse(WidgetStore.folder.path.contains("/Containers/"))
     }
 }
+
+final class SigningTests: XCTestCase {
+
+    func testReadsTheCertificateName() {
+        let signed = """
+        Executable=/Applications/Goodreads.app/Contents/MacOS/Goodreads
+        Identifier=local.goodreads.gui
+        Authority=Goodreads Local Signing
+        Signed Time=2 Nov 2026
+        """
+        XCTAssertEqual(SelfUpdater.signingAuthority(fromCodesignOutput: signed), "Goodreads Local Signing")
+        let adHoc = """
+        Identifier=local.goodreads.gui
+        Signature=adhoc
+        """
+        XCTAssertNil(SelfUpdater.signingAuthority(fromCodesignOutput: adHoc))
+    }
+}

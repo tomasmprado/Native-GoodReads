@@ -25,6 +25,14 @@ added in that diff, meaning `v1.0.0` predates all of it.
 - **Stop reading** a book: keeps why and how far you got, moves it on
   Goodreads, and lists it in Stats with Resume Reading. It doesn't count as
   read.
+- **install.sh** — installs the app from the `.dmg`, clears the
+  downloaded-from-the-internet flag and signs it on your Mac, so the Keychain
+  stops asking for your password after every update.
+
+### Changed
+
+- In-app updates are signed with the same certificate as the copy they
+  replace, when it has one.
 
 ## [2.4.0] — 2026-11-01
 

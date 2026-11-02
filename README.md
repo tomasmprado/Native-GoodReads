@@ -4,6 +4,50 @@ A small native macOS front end for [`yareeh/goodreads-cli`](https://github.com/y
 SwiftUI, no dependencies. Search a book, shelve it, see what your friends are
 reading — done.
 
+## Install
+
+1. Download `Goodreads.dmg` and `install.sh` from the [latest release](../../releases/latest)
+   into your Downloads folder.
+2. Open Terminal and run:
+
+   ```sh
+   bash ~/Downloads/install.sh
+   ```
+
+That's it — the app opens. The script:
+
+- copies `Goodreads.app` from the `.dmg` into `/Applications` (quitting the
+  app first if it's running);
+- removes the "downloaded from the internet" flag, so macOS doesn't refuse an
+  app that isn't notarised by Apple (no more *"Goodreads" can't be opened* or
+  trips to System Settings → Privacy & Security → Open Anyway);
+- signs the app on your Mac with a certificate it makes the first time —
+  "Goodreads Local Signing", self-signed, kept in your login keychain and used
+  for nothing else.
+
+Why the signing matters: the app keeps your Google Books key in the Keychain,
+and macOS asks for your password whenever an app with a *different* signature
+wants it. Downloaded builds aren't signed with a fixed certificate, so every
+update looked new and the prompt kept coming back. Signed by the script, it
+asks once — choose **Always Allow** — and never again, including after
+updates from inside the app, which re-sign themselves with the same
+certificate.
+
+Other options:
+
+```sh
+bash install.sh ~/Somewhere/Goodreads.dmg   # a .dmg (or .app) somewhere else
+bash install.sh --resign                    # re-sign /Applications/Goodreads.app only
+bash install.sh --remove-certificate        # delete the certificate again
+SIGN_IDENTITY="Apple Development: …" bash install.sh   # use a certificate you already have
+```
+
+Nothing is sent anywhere and no administrator password is needed. Prefer not
+to run a script? Drag the app from the `.dmg` to Applications, then
+right-click it → Open the first time (or System Settings → Privacy &
+Security → Open Anyway); the Keychain prompt will just come back after each
+update.
+
 ## How it's wired
 
 Everything is native. There's no CLI, no Go, no Homebrew, no Chromium, and no
@@ -46,9 +90,9 @@ WebKit does what rod did, but it's part of macOS. Practical differences:
 
 ## Build
 
-Prebuilt releases — a `.dmg`, drag to Applications — are on the
-[Releases](../../releases) page. That's the easiest way to get the app, and
-what most people want.
+Prebuilt releases are on the [Releases](../../releases) page — see
+[Install](#install). That's the easiest way to get the app, and what most
+people want.
 
 To build from source instead:
 
