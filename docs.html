@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Native GoodReads Guide</title>
+<meta name="description" content="How to use every feature of Native GoodReads, the Mac app for your Goodreads library.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238a5a33'/%3E%3Cpath d='M18 16h12a6 6 0 0 1 6 6v28a5 5 0 0 0-5-5H18z M46 16H34a6 6 0 0 0-6 6v28a5 5 0 0 1 5-5h13z' fill='%23fbf6ee'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #fbf7f1; --bg-2: #f3ebdf; --card: #ffffff; --ink: #2b211a; --ink-2: #6b5a4c; --ink-3: #9a8878;
+  --line: #e6dccf; --accent: #8a5a33; --accent-2: #b5763f; --accent-ink: #ffffff;
+  --tip: #eef5ee; --tip-line: #cfe3cf; --tip-ink: #2f6b40;
+  --serif: "New York", "Iowan Old Style", "Charter", Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17120e; --bg-2: #201913; --card: #241c16; --ink: #f3ebe1; --ink-2: #c3b3a3; --ink-3: #8f7f70;
+    --line: #3a2f26; --accent: #d39a62; --accent-2: #e3b37f; --accent-ink: #1b140f;
+    --tip: #1d2a20; --tip-line: #2f4535; --tip-ink: #9bd4ab;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17120e; --bg-2: #201913; --card: #241c16; --ink: #f3ebe1; --ink-2: #c3b3a3; --ink-3: #8f7f70;
+  --line: #3a2f26; --accent: #d39a62; --accent-2: #e3b37f; --accent-ink: #1b140f;
+  --tip: #1d2a20; --tip-line: #2f4535; --tip-ink: #9bd4ab;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 76px; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16.5px/1.65 var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-underline-offset: 3px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
+
+.top {
+  position: sticky; top: 0; z-index: 10;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+.top .wrap { display: flex; align-items: center; gap: 20px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--ink); text-decoration: none; white-space: nowrap; flex: none; }
+.mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; }
+.mark svg { width: 18px; height: 18px; }
+.top nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; align-items: center; }
+.top nav a { color: var(--ink-2); text-decoration: none; }
+.top nav a:hover, .top nav a.here { color: var(--ink); }
+.cta-small { color: var(--accent-ink) !important; background: var(--accent); padding: 6px 14px; border-radius: 999px; font-weight: 600; }
+@media (max-width: 720px) { .top nav a:not(.cta-small):not(.keep) { display: none; } }
+
+.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 56px; padding-top: 40px; padding-bottom: 80px; }
+.toc { position: sticky; top: 84px; align-self: start; max-height: calc(100vh - 100px); overflow-y: auto; font-size: 14px; }
+.toc p { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; }
+.toc ol { list-style: none; margin: 0 0 18px; padding: 0; }
+.toc li a { display: block; padding: 4px 10px; border-radius: 7px; color: var(--ink-2); text-decoration: none; }
+.toc li a:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--ink); }
+.toc li a.on { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--ink); font-weight: 600; }
+.toc-mobile { display: none; }
+
+article { max-width: 720px; }
+.intro h1 { font-family: var(--serif); font-size: clamp(34px, 5vw, 48px); line-height: 1.08; letter-spacing: -.015em; margin: 0 0 12px; }
+.intro p { color: var(--ink-2); font-size: 18px; margin: 0 0 32px; }
+section { padding-top: 8px; margin-bottom: 44px; }
+h2 { font-family: var(--serif); font-size: 30px; line-height: 1.15; margin: 0 0 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+section:first-of-type h2 { border-top: 0; padding-top: 0; }
+h3 { font-size: 17px; margin: 26px 0 6px; }
+p, li { color: var(--ink-2); }
+strong { color: var(--ink); font-weight: 600; }
+ul, ol.steps { padding-left: 22px; margin: 8px 0 14px; }
+li { margin: 4px 0; }
+.kicker { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+kbd {
+  font: 600 13px var(--sans); padding: 1px 7px; border-radius: 6px; white-space: nowrap;
+  background: var(--card); border: 1px solid var(--line); box-shadow: 0 1px 0 var(--line); color: var(--ink);
+}
+code { font: 14px var(--mono); background: color-mix(in srgb, var(--ink) 7%, transparent); padding: 1px 6px; border-radius: 5px; }
+.path { font-weight: 600; color: var(--ink); }
+.tip {
+  background: var(--tip); border: 1px solid var(--tip-line); border-radius: 12px; padding: 12px 16px; margin: 16px 0;
+  color: var(--tip-ink); font-size: 15px;
+}
+.tip strong { color: inherit; }
+.code {
+  margin: 12px 0; display: flex; align-items: center; gap: 10px;
+  background: #1d1611; color: #f3e6d6; border-radius: 10px; padding: 12px 12px 12px 16px; font: 14px/1.4 var(--mono); overflow: hidden;
+}
+.code code { background: none; padding: 0; color: inherit; white-space: nowrap; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.code button { flex: none; font: 600 12px var(--sans); color: #1d1611; background: #f3e6d6; border: 0; border-radius: 7px; padding: 6px 10px; cursor: pointer; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 15px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+th { color: var(--ink); font-weight: 600; background: color-mix(in srgb, var(--ink) 4%, transparent); }
+td:first-child { color: var(--ink); white-space: nowrap; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.table-wrap table { margin: 0; }
+.table-wrap tr:last-child td { border-bottom: 0; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+.mini { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.mini h4 { margin: 0 0 4px; font-size: 15px; }
+.mini p { margin: 0; font-size: 14.5px; }
+.back { display: inline-block; margin-top: 8px; font-size: 14px; }
+
+footer { padding: 40px 0 56px; color: var(--ink-3); font-size: 14px; border-top: 1px solid var(--line); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; }
+footer a { color: var(--ink-2); }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; gap: 0; padding-top: 24px; }
+  .toc { display: none; }
+  .toc-mobile { display: block; margin: 0 0 28px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+  .toc-mobile summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
+  .toc-mobile summary::-webkit-details-marker { display: none; }
+  .toc-mobile summary::after { content: "+"; color: var(--accent); font-size: 20px; line-height: 1; }
+  .toc-mobile[open] summary::after { content: "–"; }
+  .toc-mobile ol { columns: 2; column-gap: 16px; list-style: none; padding: 0; margin: 10px 0 0; font-size: 14.5px; }
+  .toc-mobile li { break-inside: avoid; margin: 0; }
+  .toc-mobile a { display: block; padding: 4px 0; text-decoration: none; color: var(--ink-2); }
+}
+@media (max-width: 600px) {
+  .wrap { padding-left: 16px; padding-right: 16px; }
+  body { font-size: 16px; }
+  h2 { font-size: 26px; }
+  .grid2 { grid-template-columns: 1fr; }
+  .toc-mobile ol { columns: 1; }
+  .top nav { gap: 14px; }
+  .table-wrap table, .table-wrap tbody, .table-wrap tr, .table-wrap td { display: block; width: 100%; }
+  .table-wrap tr:first-child { display: none; }
+  .table-wrap tr { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .table-wrap tr:last-child { border-bottom: 0; }
+  .table-wrap td { padding: 0; border: 0; }
+  .table-wrap td:first-child { white-space: normal; font-weight: 600; margin-bottom: 2px; }
+  footer .wrap { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="./">
+      <span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h5a3 3 0 0 1 3 3v12a2.5 2.5 0 0 0-2.5-2.5H4z M20 5h-5a3 3 0 0 0-3 3v12a2.5 2.5 0 0 1 2.5-2.5H20z" fill="#fbf6ee"/></svg></span>
+      Native GoodReads
+    </a>
+    <nav>
+      <a href="./#features">Features</a>
+      <a class="here keep" href="docs.html">Guide</a>
+      <a href="./#faq">FAQ</a>
+      <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a>
+      <a class="cta-small" href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">Download</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <aside class="toc" aria-label="Contents">
+    <p>Getting started</p>
+    <ol>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#sign-in">Sign in</a></li>
+      <li><a href="#window">The window</a></li>
+    </ol>
+    <p>Your library</p>
+    <ol>
+      <li><a href="#home">Home</a></li>
+      <li><a href="#shelves">Shelves</a></li>
+      <li><a href="#smart-lists">Smart lists</a></li>
+      <li><a href="#book-actions">Book actions</a></li>
+      <li><a href="#progress">Reading progress</a></li>
+      <li><a href="#stop-reading">Stopping a book</a></li>
+      <li><a href="#book-details">Book details</a></li>
+    </ol>
+    <p>Discover</p>
+    <ol>
+      <li><a href="#search">Search</a></li>
+      <li><a href="#suggestions">Suggestions</a></li>
+      <li><a href="#friends">Friends</a></li>
+    </ol>
+    <p>Your reading</p>
+    <ol>
+      <li><a href="#stats">Stats &amp; goal</a></li>
+      <li><a href="#year">Year in Books</a></li>
+      <li><a href="#notes">Notes &amp; quotes</a></li>
+      <li><a href="#highlights">Importing highlights</a></li>
+    </ol>
+    <p>Around your Mac</p>
+    <ol>
+      <li><a href="#widgets">Widgets</a></li>
+      <li><a href="#shortcuts">Shortcuts &amp; Siri</a></li>
+      <li><a href="#menu-bar">Menu bar</a></li>
+      <li><a href="#notifications">Notifications</a></li>
+      <li><a href="#spotlight">Spotlight</a></li>
+    </ol>
+    <p>Reference</p>
+    <ol>
+      <li><a href="#backup">Export &amp; backup</a></li>
+      <li><a href="#settings">Settings</a></li>
+      <li><a href="#text-size">Text size</a></li>
+      <li><a href="#keyboard">Keyboard shortcuts</a></li>
+      <li><a href="#updates">Updates</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+    </ol>
+  </aside>
+
+  <article>
+    <div class="intro">
+      <p class="kicker">Guide</p>
+      <h1>Everything Native GoodReads can do</h1>
+      <p>A tour of every feature, in the order you'll probably meet them. Your shelves, ratings and friends stay on Goodreads — anything you change here shows up there too.</p>
+    </div>
+
+    <details class="toc-mobile">
+      <summary>Contents</summary>
+      <ol>
+        <li><a href="#install">Install</a></li><li><a href="#sign-in">Sign in</a></li><li><a href="#window">The window</a></li>
+        <li><a href="#home">Home</a></li><li><a href="#shelves">Shelves</a></li><li><a href="#smart-lists">Smart lists</a></li>
+        <li><a href="#book-actions">Book actions</a></li><li><a href="#progress">Reading progress</a></li><li><a href="#stop-reading">Stopping a book</a></li>
+        <li><a href="#book-details">Book details</a></li><li><a href="#search">Search</a></li><li><a href="#suggestions">Suggestions</a></li>
+        <li><a href="#friends">Friends</a></li><li><a href="#stats">Stats &amp; goal</a></li><li><a href="#year">Year in Books</a></li>
+        <li><a href="#notes">Notes &amp; quotes</a></li><li><a href="#highlights">Importing highlights</a></li><li><a href="#widgets">Widgets</a></li>
+        <li><a href="#shortcuts">Shortcuts &amp; Siri</a></li><li><a href="#menu-bar">Menu bar</a></li><li><a href="#notifications">Notifications</a></li>
+        <li><a href="#spotlight">Spotlight</a></li><li><a href="#backup">Export &amp; backup</a></li><li><a href="#settings">Settings</a></li>
+        <li><a href="#text-size">Text size</a></li><li><a href="#keyboard">Keyboard shortcuts</a></li><li><a href="#updates">Updates</a></li>
+        <li><a href="#privacy">Privacy</a></li><li><a href="#troubleshooting">Troubleshooting</a></li>
+      </ol>
+    </details>
+
+    <!-- ============ Getting started ============ -->
+    <section id="install">
+      <h2>Install</h2>
+      <p>You need a Mac with macOS 13 Ventura or later — Apple silicon or Intel.</p>
+      <ol class="steps">
+        <li>From the <a href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">latest release</a>, download <strong>Goodreads.dmg</strong> and <strong>install.sh</strong> into your Downloads folder.</li>
+        <li>Open <strong>Terminal</strong> (Applications → Utilities), paste this and press Return:</li>
+      </ol>
+      <div class="code"><code id="cmd1">bash ~/Downloads/install.sh</code><button type="button" data-copy="cmd1">Copy</button></div>
+      <p>The installer copies the app to Applications, tells macOS it's safe to open, and gives it a signature that stays the same between versions. The app opens when it's done.</p>
+      <div class="tip"><strong>The first time</strong>, your Mac may ask for your login password so the app can use the Keychain. Type it and choose <strong>Always Allow</strong> — it won't ask again.</div>
+      <h3>Without Terminal</h3>
+      <p>Open the .dmg and drag Goodreads to Applications. The first time, right-click the app and choose <strong>Open</strong> (or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>). The Keychain prompt may come back after each update.</p>
+      <h3>Other installer options</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Command</th><th>What it does</th></tr>
+        <tr><td><code>bash install.sh path/to/Goodreads.dmg</code></td><td>Installs from a .dmg (or .app) somewhere else.</td></tr>
+        <tr><td><code>bash install.sh --resign</code></td><td>Re-signs the app already in Applications — useful after updating from 2.5.0.</td></tr>
+        <tr><td><code>bash install.sh --remove-certificate</code></td><td>Removes the signing certificate the installer made.</td></tr>
+      </table></div>
+      <h3>Removing the app</h3>
+      <p>Drag Goodreads from Applications to the Bin, then run <code>bash ~/Downloads/install.sh --remove-certificate</code> if you used the installer.</p>
+    </section>
+
+    <section id="sign-in">
+      <h2>Sign in</h2>
+      <ol class="steps">
+        <li>Click <strong>Log In</strong> at the bottom right of the window.</li>
+        <li>Sign in on Goodreads' own page, exactly as on the website. Your password goes only to Goodreads; the app never sees it.</li>
+        <li>Your shelves appear in the sidebar.</li>
+      </ol>
+      <p>The status bar shows <strong>Signed in</strong> with a green dot. <strong>Sign Out</strong> is in the same place, and clears everything the app saved for that account — except your notes, quotes and progress history.</p>
+      <div class="tip"><strong>Tip:</strong> add a free Google Books key in <a href="#settings">Settings</a>. Search works without one, but the shared free key is almost always busy, and with your own you get more details about each book.</div>
+    </section>
+
+    <section id="window">
+      <h2>The window</h2>
+      <div class="grid2">
+        <div class="mini"><h4>Sidebar</h4><p>Home, Search, Suggestions, Friends, Stats and Quotes, then every shelf you have with how many books it holds.</p></div>
+        <div class="mini"><h4>Toolbar</h4><p>Actions for the pane on screen — layout, sort, filter, export and reload on shelves.</p></div>
+        <div class="mini"><h4>Status bar</h4><p>What just happened (with Undo when you can), whether you're offline, <strong>Log</strong>, <strong>Browser</strong> and your sign-in.</p></div>
+        <div class="mini"><h4>Export Library…</h4><p>At the bottom of the sidebar: saves every shelf to one spreadsheet file. See <a href="#backup">Export &amp; backup</a>.</p></div>
+      </div>
+      <p>Closing the window doesn't quit the app: it keeps running in the <a href="#menu-bar">menu bar</a> so notifications and widgets stay up to date. On macOS 26 the app uses the Liquid Glass look.</p>
+    </section>
+
+    <!-- ============ Your library ============ -->
+    <section id="home">
+      <h2>Home</h2>
+      <p>The first thing you see when the app opens:</p>
+      <ul>
+        <li><strong>Currently Reading</strong> — a card for each book you're reading, with its cover, a progress bar, the page you're on (when the page count is known) and how many pages are left. Once you've updated a book a couple of times, it also shows roughly when you'll finish and how many pages a day you're reading.</li>
+        <li><strong>Friends reading it too</strong> — when friends have the same book on their Currently Reading shelf, their avatars appear on its card.</li>
+        <li><strong>Read Next</strong> — one suggestion picked from the authors you've read recently.</li>
+        <li><strong>Up Next</strong> — the first book on Want to Read, if you've put that shelf in <a href="#shelves">your own order</a>.</li>
+      </ul>
+      <p>Click a cover for its details, or <strong>Update Progress…</strong> under it. Right-click a card for Update Progress, Mark Read &amp; Rate, Stop Reading and View Details.</p>
+    </section>
+
+    <section id="shelves">
+      <h2>Shelves</h2>
+      <p>Click a shelf in the sidebar. Saved shelves appear instantly and refresh in the background; the reload button in the toolbar fetches it again now.</p>
+      <h3>List or covers</h3>
+      <p>The first toolbar control switches between a <strong>list</strong> (with title, author, your stars and dates) and a <strong>wall of covers</strong>.</p>
+      <h3>Sorting</h3>
+      <p>The sort button orders the shelf by <strong>As Shelved</strong> (Goodreads' order), <strong>Title</strong>, <strong>Author</strong>, <strong>Rating</strong>, <strong>Date Read</strong> or <strong>Date Added</strong>.</p>
+      <h3>Your own order for Want to Read</h3>
+      <p>On Want to Read there's also <strong>My Order</strong>: drag books into the order you'll read them. The first one shows on Home as Up Next. Clear any filters first — you can only drag when every book is showing.</p>
+      <h3>Filtering</h3>
+      <p>Type in the toolbar's search field to narrow the shelf by title or author. The <strong>filter</strong> button narrows it by your <strong>rating</strong>, the <strong>year you read it</strong>, or <strong>genre</strong>, and holds the <a href="#smart-lists">smart lists</a>. Genres appear for books whose details the app has seen — open a few, or use Stats → Fill In.</p>
+      <h3>Moving books</h3>
+      <p>Drag a book onto another shelf in the sidebar to move it there. Want to Read, Currently Reading and Read are exclusive — a book is on one of them at a time. Your own shelves stack: adding a book to one keeps it where it was.</p>
+    </section>
+
+    <section id="smart-lists">
+      <h2>Smart lists</h2>
+      <p>Ready-made views of any shelf, most useful on Want to Read. Open the <strong>filter</strong> button and choose under <strong>Show</strong>:</p>
+      <div class="table-wrap"><table>
+        <tr><th>List</th><th>Shows</th></tr>
+        <tr><td>Short books</td><td>Books under 250 pages, shortest first.</td></tr>
+        <tr><td>Highest rated on Goodreads</td><td>Books with a Goodreads average of 4 stars or more, best first.</td></tr>
+        <tr><td>Waiting the longest</td><td>Everything, oldest addition first.</td></tr>
+        <tr><td>By authors you love</td><td>Books by authors you've read three or more books by, or rated two of four stars or more.</td></tr>
+      </table></div>
+      <p>Short books and highest rated need page counts and ratings. If some are missing, the same menu offers <strong>Get page counts and ratings</strong>, which looks them up for the whole shelf (from Goodreads, or Google Books when Goodreads won't say).</p>
+    </section>
+
+    <section id="book-actions">
+      <h2>Book actions</h2>
+      <p><strong>Click a book</strong> anywhere — a shelf, search, suggestions, a friend's shelf or update — to open its <a href="#book-details">details</a>. Its <strong>•••</strong> button (or a right-click) has everything else:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Action</th><th>What it does</th></tr>
+        <tr><td>Update Progress…</td><td>On Currently Reading: set a percentage or a page. See <a href="#progress">Reading progress</a>.</td></tr>
+        <tr><td>Stop Reading…</td><td>On Currently Reading: see <a href="#stop-reading">Stopping a book</a>.</td></tr>
+        <tr><td>Mark Read &amp; Rate…</td><td>Stars, the date you finished and an optional review, all at once. The best way to finish a book.</td></tr>
+        <tr><td>Rate</td><td>Just the stars, for a book already on a shelf.</td></tr>
+        <tr><td>Move to</td><td>Any of your shelves.</td></tr>
+        <tr><td>View Details…</td><td>The book's page in the app.</td></tr>
+        <tr><td>Open on Goodreads</td><td>The book's page on the website.</td></tr>
+        <tr><td>Share…</td><td>Its Goodreads link, through Messages, Mail and so on.</td></tr>
+        <tr><td>Remove from Shelf</td><td>Takes it off this shelf.</td></tr>
+      </table></div>
+      <div class="tip"><strong>Undo:</strong> after moving or removing a book, an <strong>Undo</strong> button appears in the status bar for a few seconds.</div>
+    </section>
+
+    <section id="progress">
+      <h2>Reading progress</h2>
+      <p>Choose <strong>Update Progress…</strong> on a Currently Reading book — on Home, a shelf, the menu bar or a reminder notification.</p>
+      <ul>
+        <li><strong>Percent</strong> — drag the slider. When the page count is known, it shows which page that is.</li>
+        <li><strong>Page</strong> — type the page you're on; the app shows the percentage.</li>
+        <li><strong>Note</strong> — optional, posted with your update on Goodreads.</li>
+      </ul>
+      <p>The app remembers every update (Goodreads only keeps the latest). That history is what the finish date and pages a day on Home come from, and it stays on your Mac even if you clear the cache.</p>
+    </section>
+
+    <section id="stop-reading">
+      <h2>Stopping a book</h2>
+      <p>Not enjoying it? Choose <strong>Stop Reading…</strong> from the book's menu or its card on Home.</p>
+      <ol class="steps">
+        <li>Write why, if you want to remember.</li>
+        <li>Choose where it goes on Goodreads: back to <strong>Want to Read</strong>, or off your shelves.</li>
+        <li>If you have a shelf called <em>dnf</em>, <em>did-not-finish</em>, <em>abandoned</em> or similar, it's added there too.</li>
+      </ol>
+      <p>The app keeps how far you got. Stopped books are listed at the bottom of <a href="#stats">Stats</a> with <strong>Resume Reading</strong> (back to Currently Reading) and <strong>Forget</strong>. They never count as read.</p>
+    </section>
+
+    <section id="book-details">
+      <h2>Book details</h2>
+      <p>Everything about a book on one page:</p>
+      <ul>
+        <li><strong>Rating</strong> — Goodreads' average, how many ratings and reviews, and how the stars are spread.</li>
+        <li><strong>Synopsis</strong> — with Show More for long ones.</li>
+        <li><strong>Genres</strong>, and <strong>details</strong>: publisher, publication date, first published, pages, format, language, ISBN, original title, and who edited, illustrated or translated it.</li>
+        <li><strong>Awards</strong>, the main <strong>characters</strong>, and where it's <strong>set</strong>.</li>
+        <li><strong>Series</strong> — the series and the book's number in it, with the next book and a one-click <strong>Want to Read</strong>.</li>
+        <li><strong>Where to Get It</strong> — one click searches for the book at Amazon (for your country), AbeBooks (second-hand) and Libby/OverDrive (libraries). In Portugal, Wook and Bertrand too.</li>
+        <li><strong>Friends Who Read This</strong> — with the stars they gave, or "Reading now". Click one for their profile.</li>
+        <li><strong>Your rating and review</strong> — post them right there. Like everywhere in the app, rating a book marks it as read.</li>
+        <li><strong>My Notes</strong> — see <a href="#notes">Notes &amp; quotes</a>.</li>
+        <li><strong>Reviews</strong> — a few from other readers.</li>
+      </ul>
+      <p>Click the <strong>author's name</strong> for their bio, stats and other books. <strong>Share</strong> at the top sends the book's link.</p>
+      <div class="tip">Details come from the book's Goodreads page. When Goodreads doesn't have something — or won't send it — the app fills the gaps from Google Books.</div>
+    </section>
+
+    <!-- ============ Discover ============ -->
+    <section id="search">
+      <h2>Search</h2>
+      <p>Type a title, author or ISBN. Results appear as you pause typing; Return searches straight away.</p>
+      <ul>
+        <li><strong>On Your Shelves</strong> comes first: books you already have, with the shelves they're on.</li>
+        <li>Then other books — add one to a shelf or mark it read from its <strong>•••</strong> menu.</li>
+        <li>Filters under the search field narrow by <strong>language</strong>, sort by <strong>newest</strong>, or restrict to a <strong>subject</strong> (like "history" or "poetry").</li>
+      </ul>
+    </section>
+
+    <section id="suggestions">
+      <h2>Suggestions</h2>
+      <ul>
+        <li><strong>More by Authors You've Read</strong> — books by writers you've finished recently that aren't on any of your shelves.</li>
+        <li><strong>New from Your Authors</strong> — books out in the last year or coming in the next, by authors you've read more than once. Checked once a day.</li>
+      </ul>
+      <p>Settings controls which language suggested books should be in, and how far back "recently" goes. The reload button rebuilds the list.</p>
+    </section>
+
+    <section id="friends">
+      <h2>Friends</h2>
+      <p>What your Goodreads friends are reading and their latest updates. Click a book for its details, or a friend to open their <strong>profile</strong>:</p>
+      <ul>
+        <li>Their stats and recent activity.</li>
+        <li><strong>Collections</strong> — browse their Want to Read, Currently Reading and Read shelves, with their stars.</li>
+        <li><strong>Compare Tastes</strong> — how many books you've both read, how often your stars agree, where you disagree most, and the books they loved that you haven't read yet.</li>
+      </ul>
+      <p>The app also reads your friends' Read and Currently Reading shelves now and then, which is what powers <strong>Friends Who Read This</strong> in book details and the avatars on Home. Friends with private shelves won't appear.</p>
+    </section>
+
+    <!-- ============ Your reading ============ -->
+    <section id="stats">
+      <h2>Stats &amp; goal</h2>
+      <ul>
+        <li><strong>Reading goal</strong> for this year: how many books you've read, whether you're ahead or behind, and a chart by month. If you've joined the <strong>Goodreads Reading Challenge</strong>, its goal is used automatically; otherwise set it right there.</li>
+        <li>Books read, average rating, books you're reading, and <strong>pages this year</strong>.</li>
+        <li>Books per year, how you rate, and your most-read authors.</li>
+        <li><strong>Pages and genres</strong>: pages per year and your top genres. <strong>Fill In</strong> looks up the books the app doesn't know yet.</li>
+        <li><strong>Stopped Reading</strong>: books you set aside, with how far you got.</li>
+      </ul>
+    </section>
+
+    <section id="year">
+      <h2>Your Year in Books</h2>
+      <p>The gift button in Stats. Pick a year to see a card with how many books and pages you read, your average rating, top genre and author, busiest month, longest book and favourites. <strong>Save Image…</strong> keeps it as a picture to share.</p>
+    </section>
+
+    <section id="notes">
+      <h2>Notes &amp; quotes</h2>
+      <p>Every book has a private <strong>My Notes</strong> box in its details: write your thoughts, and add favourite passages as <strong>quotes</strong>. Notes save as you type and stay only on your Mac (they're included in <a href="#backup">backups</a> and CSV exports).</p>
+      <h3>The Quotes pane</h3>
+      <p><strong>Quotes</strong> in the sidebar gathers every quote and highlight you've saved, grouped by book, newest first.</p>
+      <ul>
+        <li>Search by words in the quote, the title or the author.</li>
+        <li>Click a book's name for its details.</li>
+        <li>Each quote's <strong>•••</strong> menu: <strong>Copy</strong> (with the title and author), or <strong>Share as Image…</strong> for a card you can save or send.</li>
+      </ul>
+    </section>
+
+    <section id="highlights">
+      <h2>Importing highlights</h2>
+      <p>Choose <span class="path">File → Import Highlights…</span>, then where they come from:</p>
+      <ul>
+        <li><strong>Apple Books</strong> — what you highlighted in the Books app on this Mac. macOS will ask to let the app read them; if it doesn't, choose <strong>Choose Apple Books Folder…</strong> and click Open.</li>
+        <li><strong>Kindle</strong> — connect the Kindle by USB and pick <code>documents/My Clippings.txt</code>.</li>
+      </ul>
+      <p>The app matches each book to your shelves by title and author and lists what it found. Untick anything you don't want, then <strong>Import</strong>. Highlights become quotes and notes are added to the book's notes. Importing again never creates duplicates.</p>
+    </section>
+
+    <!-- ============ Around your Mac ============ -->
+    <section id="widgets">
+      <h2>Widgets</h2>
+      <p>Right-click the desktop → <strong>Edit Widgets</strong> → search for <strong>Goodreads</strong>. They also work in Notification Center.</p>
+      <div class="grid2">
+        <div class="mini"><h4>Currently Reading</h4><p>Small, medium or large: your books with covers, progress, pages and finish dates.</p></div>
+        <div class="mini"><h4>Reading Goal</h4><p>A ring with books read this year against your goal, and whether you're ahead.</p></div>
+      </div>
+      <p>Widgets show what the app last saw, and refresh whenever something changes in the app.</p>
+    </section>
+
+    <section id="shortcuts">
+      <h2>Shortcuts &amp; Siri</h2>
+      <p>In the Shortcuts app, search for <strong>Goodreads</strong>:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Action</th><th>What it does</th></tr>
+        <tr><td>What Am I Reading</td><td>Lists your current books with progress and finish dates.</td></tr>
+        <tr><td>Update Reading Progress</td><td>Sets a book's percentage.</td></tr>
+        <tr><td>Mark Book as Read</td><td>Moves a book to Read, with optional stars.</td></tr>
+        <tr><td>Reading Goal Status</td><td>Books this year against your goal.</td></tr>
+      </table></div>
+      <p>You can also ask Siri, in English — for example <em>"What am I reading in Goodreads"</em> or <em>"Update my reading progress in Goodreads"</em>.</p>
+    </section>
+
+    <section id="menu-bar">
+      <h2>Menu bar</h2>
+      <p>The books icon in the menu bar lists what you're reading, with a progress bar and finish date for each. Choose a book to update its progress. <strong>Library Window</strong> brings the main window back, and <strong>Quit</strong> closes the app completely.</p>
+    </section>
+
+    <section id="notifications">
+      <h2>Notifications</h2>
+      <p>All optional, in <a href="#settings">Settings</a>. They're checked while the app is running (it stays in the menu bar).</p>
+      <ul>
+        <li><strong>Friends</strong> — when a friend starts or finishes a book. Checked every hour.</li>
+        <li><strong>New books</strong> — when an author you read has a new book. Checked once a day.</li>
+        <li><strong>Reading reminder</strong> — a daily nudge at the time you choose, about the book you're reading. Type a percentage straight into the notification to update your progress.</li>
+      </ul>
+    </section>
+
+    <section id="spotlight">
+      <h2>Spotlight</h2>
+      <p>The books on your shelves show up when you search with <kbd>⌘</kbd> <kbd>Space</kbd>. Choosing one opens it in the app. Turn it off in Settings to remove them.</p>
+    </section>
+
+    <!-- ============ Reference ============ -->
+    <section id="backup">
+      <h2>Export &amp; backup</h2>
+      <h3>Export to a spreadsheet</h3>
+      <p><strong>Export Library…</strong> at the bottom of the sidebar saves every shelf to one CSV file, close to Goodreads' own export format, including your notes. The export button in a shelf's toolbar saves just that shelf.</p>
+      <h3>Backup</h3>
+      <p>Your notes, quotes, progress history and stopped books exist only on your Mac — Goodreads has nowhere to keep them. Back them up:</p>
+      <ul>
+        <li><strong>By hand</strong> — <span class="path">Settings → Backup → Back Up…</span> (or <span class="path">File → Back Up Notes &amp; Progress…</span>) saves a <code>.goodreadsbackup</code> file. <strong>Restore…</strong> puts one back, replacing what's on the Mac.</li>
+        <li><strong>Automatically</strong> — turn on <strong>Back up automatically every week</strong>. Backups go to <span class="path">iCloud Drive › Goodreads Backups</span> (or a folder you choose with <strong>Change…</strong>), and the last eight are kept. <strong>Back Up Now</strong> makes one straight away.</li>
+      </ul>
+    </section>
+
+    <section id="settings">
+      <h2>Settings</h2>
+      <p>Open with <kbd>⌘</kbd> <kbd>,</kbd> or Goodreads → Settings.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Setting</th><th>What it does</th></tr>
+        <tr><td>Book language</td><td>Which language suggested books should be in, and whether to include books of unknown language.</td></tr>
+        <tr><td>Look back</td><td>How far "recently read" reaches for suggestions: 30, 90 or 180 days, or a year.</td></tr>
+        <tr><td>Google Books API key</td><td>A free key for better search and details. Get one at <a href="https://console.cloud.google.com/">console.cloud.google.com</a>: enable the <em>Books API</em>, then <em>Credentials → Create Credentials → API key</em>. Kept in your Keychain.</td></tr>
+        <tr><td>Notifications</td><td>Friends starting and finishing books; new books by your authors.</td></tr>
+        <tr><td>Reading Reminder</td><td>A daily reminder, at the time you choose.</td></tr>
+        <tr><td>Reading Goal</td><td>Use your Goodreads Reading Challenge goal, or set your own in Stats.</td></tr>
+        <tr><td>Spotlight</td><td>Show or hide your books in ⌘Space search.</td></tr>
+        <tr><td>Backup</td><td>Back up and restore by hand, or automatically every week. See <a href="#backup">Export &amp; backup</a>.</td></tr>
+        <tr><td>Cache</td><td>How much space the app uses to stay fast, and <strong>Clear Cache</strong>. Safe: everything is fetched again, and your notes and progress are kept.</td></tr>
+      </table></div>
+      <p>The app's language follows your Mac's: English or European Portuguese. To change it for this app only, go to System Settings → General → Language &amp; Region → Applications.</p>
+    </section>
+
+    <section id="text-size">
+      <h2>Text size</h2>
+      <p>Make text bigger or smaller anywhere in the app with <span class="path">View → Bigger Text</span> (<kbd>⌘</kbd> <kbd>+</kbd>) and <span class="path">Smaller Text</span> (<kbd>⌘</kbd> <kbd>−</kbd>). <strong>Actual Text Size</strong> (<kbd>⌘</kbd> <kbd>0</kbd>) goes back to normal. The app also follows your Mac's text size (System Settings → Accessibility → Display → Text size) where macOS passes it on to apps.</p>
+    </section>
+
+    <section id="keyboard">
+      <h2>Keyboard shortcuts</h2>
+      <div class="table-wrap"><table>
+        <tr><th>Keys</th><th>Does</th></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>,</kbd></td><td>Settings</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>+</kbd> / <kbd>⌘</kbd> <kbd>−</kbd> / <kbd>⌘</kbd> <kbd>0</kbd></td><td>Bigger, smaller, actual text size</td></tr>
+        <tr><td><kbd>Return</kbd></td><td>In Search: search now. In a sheet: its main button.</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close a sheet or cancel</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>Q</kbd></td><td>Quit (the app otherwise keeps running in the menu bar)</td></tr>
+      </table></div>
+    </section>
+
+    <section id="updates">
+      <h2>Updates</h2>
+      <p>The app checks for new versions on its own. When one is out, an <strong>Update</strong> button appears in the status bar. Click it to read what's new, then install: the app downloads the update, replaces itself and reopens, keeping its signature so the Keychain doesn't ask again.</p>
+    </section>
+
+    <section id="privacy">
+      <h2>Privacy</h2>
+      <ul>
+        <li>You sign in on Goodreads' own page; the app never sees or stores your password.</li>
+        <li>Shelves, ratings and reviews live on Goodreads. The app keeps a copy on your Mac so it opens instantly.</li>
+        <li>Notes, quotes, progress history and stopped books are only on your Mac (and in backups you make).</li>
+        <li>Your Google Books key is kept in the Keychain.</li>
+        <li>The app only talks to Goodreads, Google Books and GitHub (for updates). No tracking, no ads, no account of its own.</li>
+      </ul>
+    </section>
+
+    <section id="troubleshooting">
+      <h2>Troubleshooting</h2>
+      <h3>The Mac keeps asking for my Keychain password</h3>
+      <p>Run <code>bash ~/Downloads/install.sh --resign</code> and choose <strong>Always Allow</strong> once.</p>
+      <h3>"Goodreads" can't be opened</h3>
+      <p>Use the installer, or right-click the app → <strong>Open</strong>, or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>.</p>
+      <h3>Search finds little, or says the quota is used up</h3>
+      <p>Add a Google Books key in <a href="#settings">Settings</a>.</p>
+      <h3>A shelf or friends look empty or out of date</h3>
+      <p>Click the reload button in the toolbar. If it's still wrong, Goodreads may have changed its website: click <strong>Log</strong> in the status bar, copy it, and <a href="https://github.com/tomasmprado/Native-GoodReads/issues">open an issue</a> with it. <strong>Browser</strong> shows the Goodreads page the app is using behind the scenes.</p>
+      <h3>A book has no synopsis or details</h3>
+      <p>Close it and open it again — the app retries Goodreads and fills the gaps from Google Books. A Google Books key helps here too.</p>
+      <h3>The widget is empty</h3>
+      <p>Open the app once; widgets show what it last saw.</p>
+      <h3>I'm offline</h3>
+      <p>The app shows what it saved last time and says so in the status bar. It refreshes by itself when you're back online.</p>
+      <a class="back" href="#install">↑ Back to the top</a>
+    </section>
+  </article>
+</div>
+
+<footer>
+  <div class="wrap">
+    <span>Native GoodReads is an independent, unofficial app. It isn't made by or affiliated with Goodreads or Amazon. Goodreads is a trademark of Goodreads, LLC.</span>
+    <span><a href="./">Home</a> · <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Report a problem</a></span>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('[data-copy]').forEach(function (button) {
+  button.addEventListener('click', function () {
+    var text = document.getElementById(button.dataset.copy).textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () {
+      button.textContent = 'Copied'; setTimeout(function () { button.textContent = 'Copy'; }, 1600);
+    }, function () {});
+  });
+});
+// Highlight the section in view in the sidebar.
+(function () {
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  if (!('IntersectionObserver' in window) || !links.length) return;
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) return;
+      links.forEach(function (a) { a.classList.remove('on'); });
+      var link = byId[entry.target.id];
+      if (link) link.classList.add('on');
+    });
+  }, { rootMargin: '-80px 0px -70% 0px' });
+  document.querySelectorAll('article section[id]').forEach(function (s) { observer.observe(s); });
+  // Close the phone contents after choosing a section.
+  document.querySelectorAll('.toc-mobile a').forEach(function (a) {
+    a.addEventListener('click', function () { a.closest('details').removeAttribute('open'); });
+  });
+})();
+</script>
+</body>
+</html>
