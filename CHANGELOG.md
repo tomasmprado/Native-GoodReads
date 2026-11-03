@@ -7,7 +7,7 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
-## [Unreleased]
+## [3.0.0] — 2026-11-03
 
 ### Added
 
@@ -39,7 +39,6 @@ added in that diff, meaning `v1.0.0` predates all of it.
 - **Add to Goodreads** in Safari's Share menu: finds the book on the page by
   its ISBN and adds it to Want to Read.
 - **Notes and quotes in Spotlight.**
-
 - **Profiles** — click a reviewer's name or picture (or a friend's) for their
   profile, now with much more: details and activity, their reading challenge,
   favourite genres and books, what they're reading, every shelf, quotes,
