@@ -105,11 +105,15 @@ enum StoreLinks {
 struct StoreLinksView: View {
     let title: String
     let author: String
+    var isbn: String? = nil
 
     @State private var appleBooks: URL?
 
     var body: some View {
-        let links = StoreLinks.links(title: title, author: author)
+        let custom = CustomStores.all.compactMap { store in
+            store.url(title: title, author: author, isbn: isbn).map { StoreLinks.Link(name: store.name, symbol: "storefront", url: $0) }
+        }
+        let links = custom + StoreLinks.links(title: title, author: author).filter { link in !custom.contains { $0.name == link.name } }
         Group {
         if !links.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
@@ -144,5 +148,92 @@ struct StoreLinksView: View {
         }
         }
         .task(id: title) { appleBooks = await StoreLinks.appleBooks(title: title, author: author) }
+    }
+}
+
+/// Your own shops and libraries, as search addresses with placeholders:
+/// {title} (or {bookname}), {author} and {isbn}.
+struct CustomStore: Codable, Identifiable, Equatable, Sendable {
+    var id = UUID()
+    var name: String
+    var template: String
+
+    static let placeholders = ["{title}", "{bookname}", "{author}", "{isbn}"]
+
+    /// The search address for one book, or nil when the template isn't a web address.
+    func url(title: String, author: String, isbn: String?) -> URL? {
+        func encode(_ text: String) -> String {
+            text.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(["&", "+", "=", "#", "?"])) ?? text
+        }
+        let filled = template
+            .replacingOccurrences(of: "{title}", with: encode(title))
+            .replacingOccurrences(of: "{bookname}", with: encode(title))
+            .replacingOccurrences(of: "{author}", with: encode(author))
+            .replacingOccurrences(of: "{isbn}", with: encode(isbn ?? title))
+        guard let url = URL(string: filled), ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { return nil }
+        return url
+    }
+
+    var isValid: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
+            && Self.placeholders.contains(where: template.contains)
+            && url(title: "x", author: "y", isbn: "9780000000000") != nil
+    }
+}
+
+enum CustomStores {
+    private static let key = "customStores"
+
+    static var all: [CustomStore] {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: key) else { return [] }
+            return (try? JSONDecoder().decode([CustomStore].self, from: data)) ?? []
+        }
+        set { UserDefaults.standard.set(try? JSONEncoder().encode(newValue), forKey: key) }
+    }
+}
+
+/// Settings → Reading Apps → Stores.
+struct StoresSection: View {
+    @State private var stores = CustomStores.all
+    @State private var name = ""
+    @State private var template = ""
+
+    var body: some View {
+        Section {
+            ForEach(stores) { store in
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(store.name)
+                        Text(store.template).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    }
+                    Spacer()
+                    Button(role: .destructive) {
+                        stores.removeAll { $0.id == store.id }
+                        CustomStores.all = stores
+                    } label: { Image(systemName: "minus.circle") }
+                    .buttonStyle(.borderless)
+                    .help("Remove \(store.name)")
+                }
+            }
+            TextField("Name", text: $name, prompt: Text("e.g. Wook"))
+            TextField("Search address", text: $template,
+                      prompt: Text(verbatim: "https://www.wook.pt/pesquisa?keyword={bookname}"))
+            Button("Add Store") {
+                let store = CustomStore(name: name.trimmingCharacters(in: .whitespaces),
+                                        template: template.trimmingCharacters(in: .whitespaces))
+                stores.append(store)
+                CustomStores.all = stores
+                name = ""
+                template = ""
+            }
+            .disabled(!CustomStore(name: name, template: template).isValid)
+        } header: {
+            Text("Stores")
+        } footer: {
+            Text("Your own shops and libraries show in Book Details under Where to Get It. In the address, {bookname} (or {title}), {author} and {isbn} are replaced by the book's.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+        }
     }
 }

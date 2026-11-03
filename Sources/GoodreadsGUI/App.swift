@@ -33,6 +33,12 @@ struct GoodreadsGUIApp: App {
         WindowGroup("Goodreads", id: "main") {
             ContentView()
                 .onAppear { WindowManager.shared.openMain = { openWindow(id: "main") } }
+                // goodreads-gui:// links go to the open window rather than a new one.
+                .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
+                .onOpenURL { url in
+                    guard url.scheme == ShareIntake.scheme else { return }
+                    Task { await ShareIntake.handle(url) }
+                }
         }
         .defaultSize(width: 820, height: 680)
         .commands {
@@ -42,6 +48,10 @@ struct GoodreadsGUIApp: App {
                 Button("Reading Apps…") {
                     WindowManager.shared.openMain?()
                     LibraryModel.shared.activeSheet = .readingApps
+                }
+                Button("Sync Kobo…") {
+                    WindowManager.shared.openMain?()
+                    LibraryModel.shared.activeSheet = .koboSync
                 }
                 Button("Import Highlights…") {
                     WindowManager.shared.openMain?()

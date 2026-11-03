@@ -62,8 +62,11 @@ struct BookDetailView: View {
                     // Without the "(Series, #1)" Goodreads adds, which shops don't know.
                     StoreLinksView(title: book.title.replacingOccurrences(of: #"\s*\([^()]*#[^()]*\)\s*$"#, with: "",
                                                                           options: .regularExpression),
-                                   author: authorName)
+                                   author: authorName, isbn: about?.isbn13 ?? about?.isbn ?? book.isbn)
                     friendsSection
+                    if let id = goodreadsID ?? (resolveError != nil ? book.id : nil) {
+                        BookFileSection(bookID: id)
+                    }
                     Divider()
                     composeBox
                     Divider()

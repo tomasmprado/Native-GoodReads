@@ -98,9 +98,14 @@ final class QuoteLibraryTests: XCTestCase {
             "3": BookNote(text: "just a note", quotes: [], updated: newer),
         ]
         let shelves = [makeEntry(id: "1", title: "The Fellowship of the Ring", author: "J.R.R. Tolkien")]
-        let books = QuoteLibrary.books(notes: notes, shelves: shelves, titles: ["2": ("Moby-Dick", "Herman Melville")])
-        XCTAssertEqual(books.map(\.title), ["Moby-Dick", "The Fellowship of the Ring"], "newest first, notes without quotes left out")
-        XCTAssertEqual(books.first?.quotes.count, 2)
+        let books = QuoteLibrary.books(notes: notes, shelves: shelves,
+                                       titles: ["2": ("Moby-Dick", "Herman Melville"), "3": ("Persuasion", "Jane Austen")])
+            .filter { $0.bookID != "3" || $0.note == "just a note" }
+        XCTAssertEqual(Set(books.prefix(2).map(\.title)), ["Moby-Dick", "Persuasion"], "newest first")
+        XCTAssertEqual(books.last?.title, "The Fellowship of the Ring")
+        XCTAssertEqual(books.first { $0.bookID == "3" }?.note, "just a note", "notes without quotes are kept too")
+        XCTAssertEqual(QuoteLibrary.filter(books, "just a").map(\.bookID), ["3"], "searching finds note text")
+        XCTAssertEqual(books.first { $0.bookID == "2" }?.quotes.count, 2)
         XCTAssertEqual(QuoteLibrary.filter(books, "map").flatMap(\.quotes).map(\.text), ["It is not down on any map"])
         XCTAssertEqual(QuoteLibrary.filter(books, "tolkien").first?.quotes.count, 1, "matching the author keeps all its quotes")
     }

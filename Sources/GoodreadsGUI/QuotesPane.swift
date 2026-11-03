@@ -16,6 +16,8 @@ struct QuoteBook: Identifiable, Equatable, Sendable {
     let coverURL: URL?
     let quotes: [SavedQuote]
     let updated: Date
+    /// What you wrote in the book's notes, if anything.
+    var note: String = ""
     var id: String { bookID }
 }
 
@@ -26,7 +28,7 @@ enum QuoteLibrary {
                       titles: [String: (String, String)] = [:]) -> [QuoteBook] {
         let entries = Dictionary(shelves.map { ($0.bookID, $0) }, uniquingKeysWith: { first, _ in first })
         return notes.compactMap { bookID, note -> QuoteBook? in
-            guard !note.quotes.isEmpty else { return nil }
+            guard !note.isEmpty else { return nil }
             let entry = entries[bookID]
             let fallback = titles[bookID]
             return QuoteBook(
@@ -35,7 +37,8 @@ enum QuoteLibrary {
                 author: entry?.author ?? fallback?.1 ?? "",
                 coverURL: entry?.coverURL,
                 quotes: note.quotes.enumerated().map { SavedQuote(bookID: bookID, index: $0.offset, text: $0.element) },
-                updated: note.updated
+                updated: note.updated,
+                note: note.text.trimmingCharacters(in: .whitespacesAndNewlines)
             )
         }
         .sorted { $0.updated > $1.updated }
@@ -49,9 +52,11 @@ enum QuoteLibrary {
                 return book
             }
             let quotes = book.quotes.filter { $0.text.localizedCaseInsensitiveContains(needle) }
-            guard !quotes.isEmpty else { return nil }
+            let noteMatches = book.note.localizedCaseInsensitiveContains(needle)
+            guard !quotes.isEmpty || noteMatches else { return nil }
             return QuoteBook(bookID: book.bookID, title: book.title, author: book.author,
-                             coverURL: book.coverURL, quotes: quotes, updated: book.updated)
+                             coverURL: book.coverURL, quotes: quotes, updated: book.updated,
+                             note: noteMatches ? book.note : "")
         }
     }
 }
@@ -75,6 +80,13 @@ struct QuotesPane: View {
                 List {
                     ForEach(shown) { book in
                         Section {
+                            if !book.note.isEmpty {
+                                Text(book.note)
+                                    .appFont(size: 12)
+                                    .textSelection(.enabled)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .padding(.vertical, 2)
+                            }
                             ForEach(book.quotes) { quote in
                                 quoteRow(quote, in: book)
                             }
@@ -86,9 +98,9 @@ struct QuotesPane: View {
                 .listStyle(.inset)
             }
         }
-        .navigationTitle("Quotes")
+        .navigationTitle("Notes")
         .navigationSubtitle(books.isEmpty ? "" : String(localized: "\(books.reduce(0) { $0 + $1.quotes.count }) quotes from \(books.count) books"))
-        .searchable(text: $search, placement: .toolbar, prompt: "Search quotes")
+        .searchable(text: $search, placement: .toolbar, prompt: "Search notes and quotes")
         .task { await load() }
         .sheet(item: Binding(
             get: { sharing.map { QuoteShare(book: $0.0, quote: $0.1) } },
@@ -103,7 +115,7 @@ struct QuotesPane: View {
         let shelfEntries = model.shelves.flatMap { ShelfCache.read($0)?.entries ?? [] }
         var titles: [String: (String, String)] = [:]
         let known = Set(shelfEntries.map(\.bookID))
-        for (bookID, note) in notes where !note.quotes.isEmpty && !known.contains(bookID) {
+        for (bookID, note) in notes where !note.isEmpty && !known.contains(bookID) {
             if let detail = await DataCache.shared.read(GoodreadsBookPage.Detail.self, "book-page", bookID, ttl: .infinity)?.value,
                let title = detail.about?.title {
                 titles[bookID] = (title, detail.about?.authorName ?? "")

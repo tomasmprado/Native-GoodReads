@@ -27,6 +27,52 @@ enum SpotlightIndex {
         }
     }
 
+    /// Your notes and quotes, so ⌘Space finds what you wrote too. One
+    /// item per quote and one for each book's note text.
+    static func indexNotes(_ notes: [String: BookNote], titles: [String: (title: String, author: String)]) {
+        guard isEnabled else { return }
+        let domain = "notes"
+        CSSearchableIndex.default().deleteSearchableItems(withDomainIdentifiers: [domain]) { _ in
+            CSSearchableIndex.default().indexSearchableItems(noteItems(notes, titles: titles, domain: domain)) { _ in }
+        }
+    }
+
+    private static func noteItems(_ notes: [String: BookNote], titles: [String: (title: String, author: String)],
+                                  domain: String) -> [CSSearchableItem] {
+        var items: [CSSearchableItem] = []
+        for (bookID, note) in notes {
+            let title = titles[bookID]?.title ?? String(localized: "A book")
+            let author = titles[bookID]?.author ?? ""
+            func make(_ text: String, _ suffix: String, kind: String) -> CSSearchableItem {
+                let attributes = CSSearchableItemAttributeSet(contentType: .text)
+                attributes.title = "\(kind) — \(title)"
+                attributes.displayName = attributes.title
+                attributes.contentDescription = text
+                attributes.textContent = text
+                attributes.authorNames = author.isEmpty ? nil : [author]
+                attributes.keywords = [title, author, kind, "Goodreads"].filter { !$0.isEmpty }
+                return CSSearchableItem(uniqueIdentifier: "\(idPrefix)\(bookID)@notes-\(suffix)", domainIdentifier: domain,
+                                        attributeSet: attributes)
+            }
+            let text = note.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty { items.append(make(text, "text", kind: String(localized: "Note"))) }
+            for (index, quote) in note.quotes.enumerated() {
+                items.append(make(quote, "quote\(index)", kind: String(localized: "Quote")))
+            }
+        }
+        return items
+    }
+
+    /// Re-indexes every note, named from your saved shelves.
+    static func refreshNotes() async {
+        let notes = await BookNotes.all()
+        var titles: [String: (title: String, author: String)] = [:]
+        for shelf in Shelf.builtIn {
+            for entry in ShelfCache.read(shelf)?.entries ?? [] { titles[entry.bookID] = (entry.title, entry.author) }
+        }
+        indexNotes(notes, titles: titles)
+    }
+
     static func removeAll() {
         CSSearchableIndex.default().deleteAllSearchableItems { _ in }
     }

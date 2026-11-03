@@ -102,7 +102,8 @@ enum GoodreadsBookPage {
         }
         guard let detail else { throw firstError ?? AppError("Couldn't read the book page.") }
         await BookExtras.save(BookExtras(pages: detail.pageCount, genres: detail.genres ?? [],
-                                           rating: detail.about?.averageRating), for: bookID)
+                                           rating: detail.about?.averageRating,
+                                           ratingsCount: detail.about?.ratingsCount), for: bookID)
         return detail
     }
 

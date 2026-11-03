@@ -109,6 +109,14 @@ final class SelfUpdater: ObservableObject {
                                                           "--entitlements", entitlements.path,
                                                           "--generate-entitlement-der", widget.path])
             }
+            let share = staged.appendingPathComponent("Contents/PlugIns/GoodreadsShare.appex")
+            if FileManager.default.fileExists(atPath: share.path) {
+                let shareEntitlements = work.appendingPathComponent("share.entitlements")
+                try Self.sandboxOnly.write(to: shareEntitlements, atomically: true, encoding: .utf8)
+                try await Self.shell("/usr/bin/codesign", ["--force", "--sign", authority,
+                                                          "--entitlements", shareEntitlements.path,
+                                                          "--generate-entitlement-der", share.path])
+            }
             try await Self.shell("/usr/bin/codesign", ["--force", "--sign", authority, staged.path])
         } catch {
             Diagnostics.shared.log("update", "couldn’t sign the update like this copy: \(error.localizedDescription)", ok: false)
@@ -121,6 +129,16 @@ final class SelfUpdater: ObservableObject {
             .first { $0.hasPrefix("Authority=") }
             .map { String($0.dropFirst("Authority=".count)) }
     }
+
+    nonisolated static let sandboxOnly = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+        <key>com.apple.security.app-sandbox</key><true/>
+    </dict>
+    </plist>
+    """
 
     nonisolated static let widgetEntitlements = """
     <?xml version="1.0" encoding="UTF-8"?>

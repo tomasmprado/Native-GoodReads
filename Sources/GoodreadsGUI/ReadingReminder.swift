@@ -24,7 +24,7 @@ enum ReadingReminder {
         )
         let category = UNNotificationCategory(identifier: category, actions: [update],
                                               intentIdentifiers: [], options: [])
-        UNUserNotificationCenter.current().setNotificationCategories([category])
+        UNUserNotificationCenter.current().setNotificationCategories([category, KoboSync.categoryObject])
     }
 
     static func reschedule() {
@@ -42,6 +42,10 @@ enum ReadingReminder {
         content.title = String(localized: "Time to read?")
         content.body = book.progress.map { String(localized: "You're \($0)% into \(book.title). Update your progress?") }
             ?? String(localized: "How far are you into \(book.title)?")
+        if let plan = FinishPlans.date(for: book.bookID), let total = LibraryModel.shared.bookExtras[book.bookID]?.pages,
+           let needed = FinishPlans.pagesPerDay(left: total - total * (book.progress ?? 0) / 100, by: plan) {
+            content.body += " " + String(localized: "\(needed) pages today keeps you on track to finish by \(LibraryModel.shortDate(plan)).")
+        }
         content.sound = .default
         content.categoryIdentifier = category
         content.userInfo = ["entryID": book.id]

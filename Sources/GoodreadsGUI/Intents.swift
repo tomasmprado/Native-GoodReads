@@ -143,7 +143,7 @@ struct ReadingGoalIntent: AppIntent {
     func perform() async throws -> some IntentResult & ReturnsValue<Int> & ProvidesDialog {
         let model = LibraryModel.shared
         if model.readingStats == nil { await model.loadStats() }
-        let read = model.readingStats?.readThisYear ?? 0
+        let read = model.readThisYear
         let goal = Preferences.shared.yearlyGoal
         let ahead = read - ReadingStats.expectedByToday(goal: goal)
         let pace = read >= goal

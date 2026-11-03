@@ -94,6 +94,19 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(showBrowserButton, forKey: Keys.browserButton) }
     }
 
+    /// A notification offering to sync when a Kobo is plugged in.
+    @Published var notifyKoboConnected: Bool {
+        didSet { defaults.set(notifyKoboConnected, forKey: Keys.koboConnected) }
+    }
+
+    /// A notification when a Want to Read ebook gets cheaper in Apple Books.
+    @Published var notifyPriceDrops: Bool {
+        didSet {
+            defaults.set(notifyPriceDrops, forKey: Keys.priceDrops)
+            if notifyPriceDrops { Task { await PriceWatch.check() } }
+        }
+    }
+
     /// Progress and finished books from Apple Books and Kobo go to Goodreads by themselves.
     @Published var syncReadingApps: Bool {
         didSet {
@@ -159,6 +172,8 @@ final class Preferences: ObservableObject {
         static let useChallenge = "useGoodreadsChallenge"
         static let browserButton = "showBrowserButton"
         static let syncReadingApps = "syncReadingApps"
+        static let priceDrops = "notifyPriceDrops"
+        static let koboConnected = "notifyKoboConnected"
         static let importReadingApps = "importReadingAppsLibrary"
         static let notify   = "notifyFriendActivity"
         static let reminder = "readingReminder"
@@ -180,6 +195,8 @@ final class Preferences: ObservableObject {
         useGoodreadsChallenge = defaults.object(forKey: Keys.useChallenge) as? Bool ?? true
         showBrowserButton = defaults.bool(forKey: Keys.browserButton)
         syncReadingApps = defaults.bool(forKey: Keys.syncReadingApps)
+        notifyPriceDrops = defaults.bool(forKey: Keys.priceDrops)
+        notifyKoboConnected = defaults.object(forKey: Keys.koboConnected) as? Bool ?? true
         importReadingAppsLibrary = defaults.bool(forKey: Keys.importReadingApps)
         notifyFriendActivity = defaults.bool(forKey: Keys.notify)
         indexInSpotlight = SpotlightIndex.isEnabled
@@ -200,6 +217,7 @@ final class Preferences: ObservableObject {
 
 struct PreferencesView: View {
     @ObservedObject private var prefs = Preferences.shared
+    @ObservedObject private var model = LibraryModel.shared
     @State private var cacheBytes: Int?
     @State private var isClearing = false
     @State private var backupMessage: LibraryModel.Status?
@@ -209,7 +227,8 @@ struct PreferencesView: View {
     @State private var isBackingUp = false
 
     var body: some View {
-        Form {
+        TabView {
+            Form {
             Section {
                 Picker("Book language", selection: $prefs.bookLanguage) {
                     ForEach(BookLanguage.allCases) { language in
@@ -247,11 +266,38 @@ struct PreferencesView: View {
             }
 
             Section {
+                Toggle("Use my Goodreads Reading Challenge goal", isOn: Binding(
+                    get: { prefs.useGoodreadsChallenge },
+                    set: { wanted in
+                        prefs.useGoodreadsChallenge = wanted
+                        if wanted { Task { await LibraryModel.shared.loadChallenge(force: true) } }
+                    }
+                ))
+            } header: {
+                Text("Reading Goal")
+            } footer: {
+                Text("When you’ve joined this year’s Reading Challenge on Goodreads, Stats uses its goal. Otherwise you set the goal in Stats.")
+                    .appFont(size: 11)
+                    .foregroundStyle(.secondary)
+            }
+
+            }
+            .formStyle(.grouped)
+            .tabItem { Label("General", systemImage: "gearshape") }
+            Form {
+            Section {
                 Toggle("Notify me when friends start or finish a book", isOn: Binding(
                     get: { prefs.notifyFriendActivity },
                     set: { wanted in
                         guard wanted else { prefs.notifyFriendActivity = false; return }
                         Task { prefs.notifyFriendActivity = await FriendNotifier.requestPermission() }
+                    }
+                ))
+                Toggle("Notify me when a Want to Read ebook gets cheaper in Apple Books", isOn: Binding(
+                    get: { prefs.notifyPriceDrops },
+                    set: { wanted in
+                        guard wanted else { prefs.notifyPriceDrops = false; return }
+                        Task { prefs.notifyPriceDrops = await FriendNotifier.requestPermission() }
                     }
                 ))
                 Toggle("Notify me about new books from authors I read", isOn: Binding(
@@ -296,9 +342,19 @@ struct PreferencesView: View {
                     .foregroundStyle(.secondary)
             }
 
+            }
+            .formStyle(.grouped)
+            .tabItem { Label("Notifications", systemImage: "bell") }
+            Form {
             Section {
                 Toggle("Sync progress and finished books", isOn: $prefs.syncReadingApps)
                 Toggle("Add books that aren’t on my shelves", isOn: $prefs.importReadingAppsLibrary)
+                Toggle("Offer to sync when a Kobo is plugged in", isOn: $prefs.notifyKoboConnected)
+                Button("Sync Kobo…") {
+                    WindowManager.shared.openMain?()
+                    NSApp.activate(ignoringOtherApps: true)
+                    LibraryModel.shared.activeSheet = .koboSync
+                }
                 Button("Review Reading Apps…") {
                     WindowManager.shared.openMain?()
                     NSApp.activate(ignoringOtherApps: true)
@@ -312,29 +368,34 @@ struct PreferencesView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Section {
-                Toggle("Use my Goodreads Reading Challenge goal", isOn: Binding(
-                    get: { prefs.useGoodreadsChallenge },
-                    set: { wanted in
-                        prefs.useGoodreadsChallenge = wanted
-                        if wanted { Task { await LibraryModel.shared.loadChallenge(force: true) } }
-                    }
-                ))
-            } header: {
-                Text("Reading Goal")
-            } footer: {
-                Text("When you’ve joined this year’s Reading Challenge on Goodreads, Stats uses its goal. Otherwise you set the goal in Stats.")
-                    .appFont(size: 11)
-                    .foregroundStyle(.secondary)
-            }
+            StoresSection()
 
+            }
+            .formStyle(.grouped)
+            .tabItem { Label("Reading Apps", systemImage: "books.vertical") }
+            Form {
             Section {
-                Toggle("Show my books in Spotlight", isOn: $prefs.indexInSpotlight)
+                LabeledContent("Goodreads") {
+                    Text(model.loggedIn ? String(localized: "Signed in") : String(localized: "Not signed in"))
+                        .foregroundStyle(.secondary)
+                }
+                if model.loggedIn {
+                    Button("Sign Out", role: .destructive) { Task { await LibraryModel.shared.signOut() } }
+                } else {
+                    Button("Log In…") {
+                        WindowManager.shared.openMain?()
+                        LibraryModel.shared.startSignIn()
+                    }
+                }
+                Button(model.isExporting ? String(localized: "Exporting…") : String(localized: "Export Library…")) {
+                    Task { await LibraryModel.shared.exportEverything() }
+                }
+                .disabled(model.isExporting)
             } header: {
-                Text("Spotlight")
+                Text("Account")
             } footer: {
-                Text("Search your shelves from ⌘Space. Choosing a book opens its details here.")
-                    .appFont(size: 11)
+                Text("Export Library saves every shelf to one spreadsheet file, close to Goodreads' own export. Signing out keeps your notes and progress history.")
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
 
@@ -406,20 +467,12 @@ struct PreferencesView: View {
             }
 
             Section {
-                Button("Show Log…") {
-                    WindowManager.shared.openMain?()
-                    NSApp.activate(ignoringOtherApps: true)
-                    for window in NSApp.windows where window.canBecomeMain && window.identifier?.rawValue.contains("main") == true {
-                        window.makeKeyAndOrderFront(nil)
-                    }
-                    LibraryModel.shared.activeSheet = .diagnostics
-                }
-                Toggle("Show the Browser button in the status bar", isOn: $prefs.showBrowserButton)
+                Toggle("Show my books in Spotlight", isOn: $prefs.indexInSpotlight)
             } header: {
-                Text("Troubleshooting")
+                Text("Spotlight")
             } footer: {
-                Text("The log lists every request the app makes — copy it into a report when something breaks. The browser shows the Goodreads page the app works in.")
-                    .font(.system(size: 11))
+                Text("Search your shelves from ⌘Space. Choosing a book opens its details here.")
+                    .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
 
@@ -444,9 +497,34 @@ struct PreferencesView: View {
                     .appFont(size: 11)
                     .foregroundStyle(.secondary)
             }
+
+            }
+            .formStyle(.grouped)
+            .tabItem { Label("Library", systemImage: "tray.full") }
+            Form {
+            Section {
+                Button("Show Log…") {
+                    WindowManager.shared.openMain?()
+                    NSApp.activate(ignoringOtherApps: true)
+                    for window in NSApp.windows where window.canBecomeMain && window.identifier?.rawValue.contains("main") == true {
+                        window.makeKeyAndOrderFront(nil)
+                    }
+                    LibraryModel.shared.activeSheet = .diagnostics
+                }
+                Toggle("Show the Browser button in the status bar", isOn: $prefs.showBrowserButton)
+            } header: {
+                Text("Troubleshooting")
+            } footer: {
+                Text("The log lists every request the app makes — copy it into a report when something breaks. The browser shows the Goodreads page the app works in.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            }
+            .formStyle(.grouped)
+            .tabItem { Label("Troubleshooting", systemImage: "wrench.and.screwdriver") }
         }
-        .formStyle(.grouped)
-        .frame(width: 480, height: 860)
+        .frame(width: 520, height: 600)
         .task { cacheBytes = DataCache.diskUsage() }
     }
 

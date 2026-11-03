@@ -155,6 +155,7 @@ final class ReadingAppsSync: ObservableObject {
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(3))
                 guard ReadingApps.koboDatabase != nil else { return }
+                await KoboSync.announce()
                 await ReadingAppsSync.shared.runAutomatically()
             }
         }

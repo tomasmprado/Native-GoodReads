@@ -11,6 +11,28 @@ added in that diff, meaning `v1.0.0` predates all of it.
 
 ### Added
 
+- **A new Home** that fits the window: what you're reading, this year's goal,
+  **the race** — you and your friends running to your reading-challenge
+  goals, with a finish line and where an even pace would be — your week
+  (pages, days in a row, books finished this month) and what's next.
+- **Your Year in Books**, redone like a story: one big fact at a time —
+  books, pages, busiest month, top genre and author, shortest and longest,
+  your average against everyone's, most popular and hidden gem, highest
+  rated, first and latest, five-star books — then the card to share.
+- **Your copy of a book**: add an EPUB or PDF to any book and open it in
+  Apple Books.
+- **Kobo sync**: plugging a Kobo in brings a notification to sync — send the
+  books you've added files to, remove finished ones the app sent, bring
+  progress and highlights over.
+- **Custom stores** in Settings → Reading Apps, e.g.
+  `https://www.wook.pt/pesquisa?keyword={bookname}`.
+- **Finish by** a date: Home and the reminder say how many pages a day it takes.
+- **Pick for Me** on Want to Read, and **Rate Unrated** on Read (1–5 keys).
+- **Apple Books price alerts** for ebooks on Want to Read.
+- **Add to Goodreads** in Safari's Share menu: finds the book on the page by
+  its ISBN and adds it to Want to Read.
+- **Notes and quotes in Spotlight.**
+
 - **Profiles** — click a reviewer's name or picture (or a friend's) for their
   profile, now with much more: details and activity, their reading challenge,
   favourite genres and books, what they're reading, every shelf, quotes,
@@ -33,10 +55,21 @@ added in that diff, meaning `v1.0.0` predates all of it.
 
 ### Changed
 
+- Settings are in tabs (General, Notifications, Reading Apps, Library,
+  Troubleshooting); signing out and Export Library moved there.
+- What's happening — results, Undo, offline, updates, Log In — shows at the
+  foot of the sidebar instead of a bar at the bottom.
+- Quotes is now **Notes**, and shows your note text too.
+- Stats' goal counts books as Goodreads' Reading Challenge does.
+- Search falls back to Goodreads when Google Books is down.
 - Book Details, profiles and author pages no longer have a zoom (+) button.
 - The Log moved to Settings → Troubleshooting, and the Browser button is off
   unless you turn it on there.
 - The Reading Challenge goal is also read in the wording profiles use.
+
+### Removed
+
+- The menu bar icon.
 
 ## [2.7.0] — 2026-11-02
 
@@ -96,6 +129,8 @@ added in that diff, meaning `v1.0.0` predates all of it.
   DEVELOPMENT.md.
 
 ### Removed
+
+- The menu bar icon.
 
 - The ⌥Space quick-add panel, and the menu bar's Quick Add item.
 

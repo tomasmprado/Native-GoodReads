@@ -41,7 +41,8 @@ enum GoogleBooksClient {
             // bad key) is a real problem that a silent fallback would hide,
             // and this only catches an HTTP-status failure in the first
             // place — a genuinely malformed response still surfaces directly.
-            guard httpError.apiKeyWasEmpty else { throw httpError }
+            // Google's own outages (5xx) fall back too, key or not.
+            guard httpError.apiKeyWasEmpty || httpError.status >= 500 else { throw httpError }
             return try await SearchClient.search(trimmed)
         }
     }
@@ -181,7 +182,7 @@ enum GoogleBooksClient {
             let message = (try? JSONDecoder().decode(ErrorEnvelope.self, from: data))?.error.message
                 ?? String(localized: "Google Books returned HTTP \(http.statusCode).")
             let hint = apiKey.isEmpty ? String(localized: " Add a free API key in Settings — the shared tier is out of quota.") : ""
-            throw GoogleBooksHTTPError(message: message + hint, apiKeyWasEmpty: apiKey.isEmpty)
+            throw GoogleBooksHTTPError(message: message + hint, apiKeyWasEmpty: apiKey.isEmpty, status: http.statusCode)
         }
 
         let decoded: VolumesResponse
@@ -231,6 +232,7 @@ enum GoogleBooksClient {
     private struct GoogleBooksHTTPError: LocalizedError {
         let message: String
         let apiKeyWasEmpty: Bool
+        var status = 0
         var errorDescription: String? { message }
     }
 

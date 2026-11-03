@@ -37,8 +37,8 @@ enum WidgetBridge {
             ?? ShelfCache.read(.read).map { ReadingStats.compute(from: $0.entries, extras: [:]) }
         let goalCount = Preferences.shared.yearlyGoal
         let goal = stats.map { stats in
-            WidgetSnapshot.Goal(year: year, read: stats.readThisYear, goal: goalCount,
-                                ahead: stats.readThisYear - ReadingStats.expectedByToday(goal: goalCount))
+            WidgetSnapshot.Goal(year: year, read: max(model.readThisYear, stats.readThisYear), goal: goalCount,
+                                ahead: max(model.readThisYear, stats.readThisYear) - ReadingStats.expectedByToday(goal: goalCount))
         }
 
         let snapshot = WidgetSnapshot(reading: books, goal: goal, updated: Date())
