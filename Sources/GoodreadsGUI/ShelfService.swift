@@ -519,26 +519,51 @@ enum ShelfService {
     /// review row already existing (true for anything already shelved).
     private static let rateScript = tokenPrelude + """
     try {
-        const token = await csrfToken();
+        let token = await csrfToken();
         if (!token) return JSON.stringify({ ok: false, error: 'No CSRF token anywhere — are you signed in?' });
 
-        const body = new URLSearchParams();
-        body.append('authenticity_token', token);
-        body.append('book_id', bookId);
-        body.append('review[rating]', String(rating));
-
-        const response = await fetch('/review/create', {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-Requested-With': 'XMLHttpRequest'
+        // /review/create first; for some books Goodreads answers it with 404,
+        // so then the endpoint its own shelf-page stars post to.
+        const attempts = [
+            () => {
+                const body = new URLSearchParams();
+                body.append('authenticity_token', token);
+                body.append('book_id', bookId);
+                body.append('review[rating]', String(rating));
+                return ['/review/create', body];
             },
-            body
-        });
-
-        if (response.ok) return JSON.stringify({ ok: true, via: 'review/create' });
-        return JSON.stringify({ ok: false, error: 'Goodreads rejected the rating (HTTP ' + response.status + ').' });
+            () => {
+                const body = new URLSearchParams();
+                body.append('authenticity_token', token);
+                body.append('rating', String(rating));
+                return ['/review/rate/' + encodeURIComponent(bookId) + '?rating=' + rating + '&stars_click=true', body];
+            }
+        ];
+        const statuses = [];
+        for (const attempt of attempts) {
+            for (let round = 0; round < 2; round++) {
+                const [url, body] = attempt();
+                const response = await fetch(url, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-Token': token
+                    },
+                    body
+                });
+                if (response.ok) return JSON.stringify({ ok: true, via: url.split('?')[0] });
+                statuses.push(response.status);
+                // A stale token: get a fresh one and try this endpoint again.
+                if ([401, 403, 422].includes(response.status) && round === 0) {
+                    token = (await csrfToken(true)) || token;
+                    continue;
+                }
+                break;
+            }
+        }
+        return JSON.stringify({ ok: false, error: 'Goodreads rejected the rating (HTTP ' + statuses.join(', ') + ').' });
     } catch (e) {
         return JSON.stringify({ ok: false, error: String(e) });
     }
