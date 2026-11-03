@@ -39,6 +39,10 @@ struct GoodreadsGUIApp: App {
             TextSizeCommands()
             CommandGroup(replacing: .newItem) { }
             CommandGroup(after: .importExport) {
+                Button("Reading Apps…") {
+                    WindowManager.shared.openMain?()
+                    LibraryModel.shared.activeSheet = .readingApps
+                }
                 Button("Import Highlights…") {
                     WindowManager.shared.openMain?()
                     LibraryModel.shared.activeSheet = .importHighlights

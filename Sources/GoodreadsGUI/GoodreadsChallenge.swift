@@ -39,6 +39,7 @@ enum GoodreadsChallenge {
     /// "12/40 books" — what the script does in the page, testable here.
     static func parse(text: String) -> (read: Int, goal: Int)? {
         let patterns = [
+            #"read\s+(\d[\d,.]*)\s+books?\s+of\s+(?:their|his|her|your)\s+goal\s+of\s+(\d[\d,.]*)"#,
             #"(\d[\d,.]*)\s*(?:of|out of|/|de)\s*(\d[\d,.]*)\s*(?:books|livros)"#,
             #"(?:read|lido|leu)\s*(\d[\d,.]*)\s*(?:of|de)\s*(\d[\d,.]*)"#,
         ]
@@ -107,6 +108,8 @@ enum GoodreadsChallenge {
 
         function fromText() {
             const text = (document.body && document.body.innerText) || '';
+            const goalText = text.match(/read\\s+(\\d[\\d,.]*)\\s+books?\\s+of\\s+(?:their|his|her|your)\\s+goal\\s+of\\s+(\\d[\\d,.]*)/i);
+            if (goalText) return { read: Number(goalText[1].replace(/\\D/g, '')), goal: Number(goalText[2].replace(/\\D/g, '')) };
             let m = text.match(/(\\d[\\d,.]*)\\s*(?:of|out of|\\/|de)\\s*(\\d[\\d,.]*)\\s*(?:books|livros)/i);
             if (m) return { read: Number(m[1].replace(/\\D/g, '')), goal: Number(m[2].replace(/\\D/g, '')) };
             m = text.match(/(?:goal|meta)[^\\d]{0,20}(\\d[\\d,.]*)\\s*(?:books|livros)/i);

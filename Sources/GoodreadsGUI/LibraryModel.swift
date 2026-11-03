@@ -72,6 +72,7 @@ final class LibraryModel: ObservableObject {
         case finishBook(Book)
         case abandon(ShelfEntry)
         case importHighlights
+        case readingApps
         case detail(Book)
         case friendProfile
         case authorPage
@@ -86,6 +87,7 @@ final class LibraryModel: ObservableObject {
             case .finishBook(let book): return "finishBook-\(book.id)"
             case .abandon(let entry):   return "abandon-\(entry.id)"
             case .importHighlights:     return "importHighlights"
+            case .readingApps:          return "readingApps"
             case .detail(let book):     return "detail-\(book.id)"
             case .friendProfile:        return "friendProfile"
             case .authorPage:           return "authorPage"
@@ -889,7 +891,10 @@ final class LibraryModel: ObservableObject {
         defer { isLoadingFriendProfile = false }
 
         do {
+            // Profiles saved before the app read their other sections come again.
+            let saved = await DataCache.shared.read(GoodreadsFriends.Profile.self, "profile", url.absoluteString, ttl: .infinity)
             try await DataCache.load("profile", url.absoluteString, ttl: DataCache.TTL.profile,
+                                     force: saved != nil && saved?.value.details == nil,
                                      accept: { !$0.name.isEmpty }) {
                 try await GoodreadsFriends.fetchProfile(url: url)
             } show: { [weak self] profile, _ in
@@ -980,7 +985,10 @@ final class LibraryModel: ObservableObject {
         defer { isLoadingAuthorPage = false }
 
         do {
-            try await DataCache.load("author", url.absoluteString, ttl: DataCache.TTL.authorPage) {
+            // Author pages saved before the app read series, quotes and the rest come again.
+            let saved = await DataCache.shared.read(GoodreadsAuthorPage.Detail.self, "author", url.absoluteString, ttl: .infinity)
+            let outdated = saved.map { ($0.value.version ?? 0) < GoodreadsAuthorPage.Detail.currentVersion } ?? false
+            try await DataCache.load("author", url.absoluteString, ttl: DataCache.TTL.authorPage, force: outdated) {
                 try await GoodreadsAuthorPage.fetch(url: url)
             } show: { [weak self] page, _ in
                 guard let self, self.authorPageURL == url else { return }

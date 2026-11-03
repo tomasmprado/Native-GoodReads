@@ -143,3 +143,36 @@ struct GlassHeader<Content: View>: View {
         }
     }
 }
+
+// MARK: - Fixed-size sheets
+
+/// Newer macOS gives sheets window buttons and lets them be resized and
+/// zoomed (the green +). Sheets here have a designed size, so the zoom button
+/// goes and the window keeps its size.
+private struct FixedSheetWindow: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { Self.fix(view.window) }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async { Self.fix(view.window) }
+    }
+
+    private static func fix(_ window: NSWindow?) {
+        guard let window else { return }
+        window.styleMask.remove(.resizable)
+        window.collectionBehavior.insert(.fullScreenNone)
+        for kind in [NSWindow.ButtonType.zoomButton, .miniaturizeButton] {
+            window.standardWindowButton(kind)?.isHidden = true
+        }
+    }
+}
+
+extension View {
+    /// No zoom button or resizing for a sheet with a designed size.
+    func fixedSheetWindow() -> some View {
+        background(FixedSheetWindow().frame(width: 0, height: 0))
+    }
+}

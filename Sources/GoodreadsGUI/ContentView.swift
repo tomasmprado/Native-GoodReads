@@ -89,6 +89,8 @@ struct ContentView: View {
                 }
             case .importHighlights:
                 HighlightsImportSheet(model: model)
+            case .readingApps:
+                ReadingAppsSheet()
             case .detail(let book):
                 BookDetailView(book: book)
             case .friendProfile:
@@ -753,6 +755,12 @@ private struct FriendProfileSheet: View {
                             }
                         }
 
+                        if let details = profile.details, !details.isEmpty, model.friendShelf == nil, model.tasteComparison == nil {
+                            ProfileSections(model: model, details: details,
+                                            firstName: profile.name.split(separator: " ").first.map(String.init) ?? profile.name)
+                            Divider()
+                        }
+
                         FriendCollectionsPicker(model: model)
 
                         HStack(spacing: 8) {
@@ -795,7 +803,8 @@ private struct FriendProfileSheet: View {
                 }
             }
         }
-        .frame(width: 480, height: 620)
+        .frame(width: 640, height: 760)
+        .fixedSheetWindow()
     }
 }
 
@@ -918,7 +927,13 @@ private struct AuthorPageSheet: View {
                                 Text(author.name)
                                     .appFont(size: 17, weight: .semibold)
                                 if let born = author.born {
-                                    Text("Born \(born)")
+                                    Text(author.birthplace.map { String(localized: "Born \(born) in \($0)") } ?? String(localized: "Born \(born)"))
+                                        .appFont(size: 12)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                if let died = author.died {
+                                    Text("Died \(died)")
                                         .appFont(size: 12)
                                         .foregroundStyle(.secondary)
                                 }
@@ -932,18 +947,54 @@ private struct AuthorPageSheet: View {
                                         .appFont(size: 12)
                                         .foregroundStyle(.secondary)
                                 }
-                                if let website = author.website {
-                                    Button("Website") { NSWorkspace.shared.open(website) }
+                                let counts = [author.reviewsCount.map { String(localized: "\($0) reviews") },
+                                              author.distinctWorks.map { String(localized: "\($0) works") },
+                                              author.followers.map { String(localized: "\($0) followers") }].compactMap { $0 }
+                                if !counts.isEmpty {
+                                    Text(counts.joined(separator: " · "))
                                         .appFont(size: 11)
-                                        .buttonStyle(.link)
+                                        .foregroundStyle(.secondary)
+                                }
+                                HStack(spacing: 12) {
+                                    if let website = author.website {
+                                        Button("Website") { NSWorkspace.shared.open(website) }
+                                            .appFont(size: 11)
+                                            .buttonStyle(.link)
+                                    }
+                                    if let url = model.authorPageURL {
+                                        Button("Open on Goodreads") { NSWorkspace.shared.open(url) }
+                                            .appFont(size: 11)
+                                            .buttonStyle(.link)
+                                    }
+                                    WikipediaLink(name: author.name)
                                 }
                             }
                         }
 
                         if let bio = author.bio, !bio.isEmpty {
-                            Text(bio)
-                                .appFont(size: 12)
-                                .foregroundStyle(.secondary)
+                            ExpandableText(text: bio)
+                        }
+
+                        if let influences = author.influences, !influences.isEmpty {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Influences").appFont(size: 12, weight: .semibold).foregroundStyle(.secondary)
+                                Text(influences).appFont(size: 12).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        if let series = author.series, !series.isEmpty {
+                            AuthorSeriesList(model: model, series: series, author: author.name)
+                        }
+
+                        if let quotes = author.quotes, !quotes.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Quotes").appFont(size: 12, weight: .semibold).foregroundStyle(.secondary)
+                                ForEach(quotes, id: \.self) { quote in
+                                    Text(quote).appFont(size: 12, italic: true).textSelection(.enabled)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
                         }
 
                         if !author.books.isEmpty {
@@ -998,7 +1049,8 @@ private struct AuthorPageSheet: View {
                 }
             }
         }
-        .frame(width: 480, height: 560)
+        .frame(width: 600, height: 720)
+        .fixedSheetWindow()
     }
 }
 
@@ -1722,6 +1774,7 @@ private struct BookRow<Actions: View>: View {
 private struct StatusBar: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject var session: WebSession
+    @ObservedObject private var prefs = Preferences.shared
     @ObservedObject private var connectivity = Connectivity.shared
 
     var body: some View {
@@ -1766,15 +1819,12 @@ private struct StatusBar: View {
 
             if session.isBusy { ProgressView().controlSize(.small) }
 
-            Button("Log") { model.activeSheet = .diagnostics }
-                .controlSize(.small)
-                .glassButton()
-                .help("Every request this app has made — copyable when something breaks.")
-
-            Button("Browser") { model.startBrowser() }
-                .controlSize(.small)
-                .glassButton()
-                .help("Watch what the app is doing in the page — for troubleshooting.")
+            if prefs.showBrowserButton {
+                Button("Browser") { model.startBrowser() }
+                    .controlSize(.small)
+                    .glassButton()
+                    .help("Watch what the app is doing in the page — for troubleshooting.")
+            }
 
             Button(model.loggedIn ? String(localized: "Sign Out") : String(localized: "Log In")) {
                 if model.loggedIn {

@@ -26,6 +26,7 @@ enum GoodreadsBookPage {
     struct About: Codable, Equatable {
         var title: String?
         var authorName: String?
+        var authorURL: URL?
         /// The synopsis, as plain text with paragraph breaks.
         var synopsis: String?
         var publisher: String?
@@ -66,6 +67,10 @@ enum GoodreadsBookPage {
         let rating: Int?
         let text: String
         let likeCount: Int?
+        /// The reviewer's profile — or their author page, for authors. Absent before 2.8.
+        var reviewerURL: URL? = nil
+        var reviewerIsAuthor: Bool? = nil
+        var reviewerFollowers: Int? = nil
     }
 
     static func fetch(bookID: String) async throws -> Detail {
@@ -162,6 +167,10 @@ enum GoodreadsBookPage {
         about.title = text(book["titleComplete"]) ?? text(book["title"])
         about.authorName = contributorName(book["primaryContributorEdge"] as? [String: Any], in: apollo)
             ?? authorName(fromJSONLD: html)
+        if let ref = ((book["primaryContributorEdge"] as? [String: Any])?["node"] as? [String: Any])?["__ref"] as? String,
+           let link = (apollo[ref] as? [String: Any])?["webUrl"] as? String {
+            about.authorURL = URL(string: link)
+        }
         about.synopsis = text(book["description"]).map(plainText(fromHTML:)).flatMap { $0.isEmpty ? nil : $0 }
         about.publisher = text(details["publisher"])
         about.format = text(details["format"])
@@ -297,10 +306,16 @@ enum GoodreadsBookPage {
 
         var name = String(localized: "A reader")
         var avatar: URL?
+        var profile: URL?
+        var isAuthor: Bool?
+        var followers: Int?
         if let creatorRef = (entry["creator"] as? [String: Any])?["__ref"] as? String,
            let user = apollo[creatorRef] as? [String: Any] {
             name = user["name"] as? String ?? name
             avatar = (user["imageUrlSquare"] as? String).flatMap(URL.init(string:))
+            profile = (user["webUrl"] as? String).flatMap(URL.init(string:))
+            isAuthor = user["isAuthor"] as? Bool
+            followers = (user["followersCount"] as? NSNumber)?.intValue
         }
 
         let rating = entry["rating"] as? Int
@@ -313,7 +328,10 @@ enum GoodreadsBookPage {
             reviewerAvatarURL: avatar,
             rating: (rating ?? 0) > 0 ? rating : nil,
             text: plainText(fromHTML: html),
-            likeCount: likeCount
+            likeCount: likeCount,
+            reviewerURL: profile,
+            reviewerIsAuthor: isAuthor,
+            reviewerFollowers: followers
         )
     }
 

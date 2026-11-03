@@ -47,6 +47,8 @@ enum GoodreadsFriends {
         let avatarURL: URL?
         let stats: String?          // e.g. "90 ratings · 4.08 avg · 4 reviews", already-joined text
         let activity: [Activity]
+        /// Everything else on the page. Absent from profiles cached before 2.8.
+        var details: ProfileDetails? = nil
     }
 
     /// `/friend/user/<id>` (used elsewhere in this file, and what a friend's
@@ -98,15 +100,16 @@ enum GoodreadsFriends {
 
         // The load and both evaluates read the same live document, so they
         // all need to share one lock across the whole sequence.
-        let (raw, activityRaw) = try await session.exclusive { () -> (String, String) in
+        let (raw, activityRaw, detailsRaw) = try await session.exclusive { () -> (String, String, String) in
             try await session.load(url, timeout: 20)
-            let profileRaw = try await session.evaluate(profileScript, label: "friend profile")
+            let profileRaw = try await session.evaluate(profileScript, label: "profile")
             let activity = try await session.evaluate(
                 activityTableScript,
                 arguments: ["extraActivityRow": SelectorOverrides.current.activityRow],
-                label: "friend profile activity"
+                label: "profile activity"
             )
-            return (profileRaw, activity)
+            let details = (try? await session.evaluate(ProfileDetails.script, label: "profile details")) ?? ""
+            return (profileRaw, activity, details)
         }
         guard let data = raw.data(using: .utf8),
               let result = try? JSONDecoder().decode(ProfileResult.self, from: data),
@@ -118,7 +121,8 @@ enum GoodreadsFriends {
             name: result.name ?? String(localized: "Goodreads member"),
             avatarURL: result.avatar.flatMap(URL.init(string:)),
             stats: result.stats,
-            activity: decodeActivity(activityRaw)
+            activity: decodeActivity(activityRaw),
+            details: ProfileDetails.decode(detailsRaw)
         )
     }
 
