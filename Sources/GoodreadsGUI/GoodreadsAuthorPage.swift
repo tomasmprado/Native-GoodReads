@@ -16,6 +16,24 @@ enum GoodreadsAuthorPage {
         let averageRating: String?
         let ratingsCount: String?
         let books: [Book]
+        // Absent from author pages cached before 2.8.
+        var version: Int? = nil
+        var birthplace: String? = nil
+        var died: String? = nil
+        var influences: String? = nil
+        var reviewsCount: String? = nil
+        var distinctWorks: String? = nil
+        var followers: Int? = nil
+        var series: [SeriesLink]? = nil
+        var quotes: [String]? = nil
+
+        static let currentVersion = 2
+    }
+
+    struct SeriesLink: Identifiable, Hashable, Codable {
+        let title: String
+        let url: URL
+        var id: String { url.absoluteString }
     }
 
     struct Book: Identifiable, Hashable, Codable {
@@ -54,7 +72,21 @@ enum GoodreadsAuthorPage {
                 guard !row.id.isEmpty, !row.title.isEmpty else { return nil }
                 return Book(id: row.id, title: row.title,
                            coverURL: row.cover.flatMap(URL.init(string:)), ratingLine: row.ratingLine)
-            }
+            },
+            version: Detail.currentVersion,
+            birthplace: result.birthplace,
+            died: result.died,
+            influences: result.influences,
+            reviewsCount: result.reviews,
+            distinctWorks: result.works,
+            followers: result.followers,
+            series: (result.series ?? []).compactMap { link in
+                guard let title = link.title, !title.isEmpty,
+                      let url = link.url.flatMap({ URL(string: $0, relativeTo: URL(string: "https://www.goodreads.com"))?.absoluteURL })
+                else { return nil }
+                return SeriesLink(title: title, url: url)
+            },
+            quotes: result.quotes
         )
     }
 
@@ -69,6 +101,19 @@ enum GoodreadsAuthorPage {
         let averageRating: String?
         let ratingsCount: String?
         let books: [BookRow]?
+        let birthplace: String?
+        let died: String?
+        let influences: String?
+        let reviews: String?
+        let works: String?
+        let followers: Int?
+        let series: [SeriesRow]?
+        let quotes: [String]?
+    }
+
+    private struct SeriesRow: Decodable {
+        let title: String?
+        let url: String?
     }
 
     private struct BookRow: Decodable {
@@ -124,8 +169,45 @@ enum GoodreadsAuthorPage {
             if (books.length >= 30) break;
         }
 
+        const clean = (s) => (s || '').replace(/\\s+/g, ' ').trim();
+        // Long values show a short version and keep the full one in a hidden span.
+        const fullText = (el) => {
+            if (!el) return null;
+            const hidden = el.querySelector('span[id^="freeText"]:not([id^="freeTextContainer"])');
+            return clean((hidden || el).textContent).replace(/\\s*\\.\\.\\.more$/, '') || null;
+        };
+        let birthplace = null;
+        const bornTitle = [...document.querySelectorAll('.dataTitle')].find(t => clean(t.textContent) === 'Born');
+        if (bornTitle && bornTitle.nextSibling && bornTitle.nextSibling.nodeType === 3) {
+            birthplace = clean(bornTitle.nextSibling.textContent).replace(/^in\\s+/i, '') || null;
+        }
+        const aggregate = clean((document.querySelector('.hreview-aggregate') || {}).textContent || '');
+        const reviews = (aggregate.match(/([\\d,]+)\\s+reviews/i) || [])[1] || null;
+        const works = (aggregate.match(/([\\d,]+)\\s+distinct works/i) || [])[1] || null;
+        let followers = null;
+        for (const h of document.querySelectorAll('h2')) {
+            const m = clean(h.textContent).match(/followers\\s*\\(([\\d,]+)\\)/i);
+            if (m) { followers = Number(m[1].replace(/,/g, '')); break; }
+        }
+        const seriesBox = [...document.querySelectorAll('.bigBox')].find(b => /series by/i.test(clean((b.querySelector('h2') || {}).textContent)));
+        const seen = {};
+        const series = seriesBox ? [...seriesBox.querySelectorAll('a[href*="/series/"]')]
+            .filter(a => !/\\/series\\/list/.test(a.getAttribute('href')) && clean(a.textContent))
+            .filter(a => { const h = a.getAttribute('href'); if (seen[h]) return false; seen[h] = 1; return true; })
+            .map(a => ({ title: clean(a.textContent), url: a.getAttribute('href') })).slice(0, 12) : [];
+        const quotes = [...document.querySelectorAll('.quoteText')].slice(0, 5)
+            .map(q => (q.innerText || q.textContent || '').replace(/[ \\t]+/g, ' ').replace(/\\s*―[^―]*$/, '').trim()).filter(Boolean);
+
         return JSON.stringify({
             ok: true,
+            birthplace: birthplace,
+            died: dataItemFor('Died') ? clean(dataItemFor('Died').textContent) : null,
+            influences: fullText(dataItemFor('Influences')),
+            reviews: reviews,
+            works: works,
+            followers: followers,
+            series: series,
+            quotes: quotes,
             name: nameEl ? (nameEl.textContent || '').trim() : null,
             photo: photoImg ? photoImg.getAttribute('src') : null,
             born: bornEl ? (bornEl.textContent || '').trim() : null,

@@ -14,11 +14,12 @@ struct ImportedBook: Identifiable, Equatable, Sendable {
 }
 
 enum HighlightSource: String, CaseIterable, Identifiable {
-    case appleBooks, kindle
+    case appleBooks, kobo, kindle
     var id: String { rawValue }
     var title: String {
         switch self {
         case .appleBooks: return String(localized: "Apple Books")
+        case .kobo:       return String(localized: "Kobo (plugged in by USB)")
         case .kindle:     return String(localized: "Kindle (My Clippings.txt)")
         }
     }
@@ -157,7 +158,7 @@ enum Highlights {
         return order.compactMap { books[$0] }.filter { !$0.highlights.isEmpty || !$0.notes.isEmpty }
     }
 
-    private static func query(_ url: URL, _ sql: String) throws -> [[String?]] {
+    static func query(_ url: URL, _ sql: String) throws -> [[String?]] {
         var db: OpaquePointer?
         guard sqlite3_open_v2(url.path, &db, SQLITE_OPEN_READONLY, nil) == SQLITE_OK else {
             sqlite3_close(db)
@@ -284,7 +285,9 @@ struct HighlightsImportSheet: View {
                 }
                 Text(source == .kindle
                      ? String(localized: "Connect your Kindle and pick documents/My Clippings.txt.")
-                     : String(localized: "Highlights and notes you made in Apple Books on this Mac. macOS may ask to let the app read them."))
+                     : source == .kobo
+                        ? String(localized: "Connect your Kobo by USB; its highlights and notes are read straight from it.")
+                        : String(localized: "Highlights and notes you made in Apple Books on this Mac. macOS may ask to let the app read them."))
                     .appFont(size: 11)
                     .foregroundStyle(.secondary)
                 if let message {
@@ -377,13 +380,15 @@ struct HighlightsImportSheet: View {
                     panel.canChooseDirectories = true
                     panel.canChooseFiles = false
                     panel.directoryURL = folder
-                    panel.message = String(localized: "Choose Apple Books’ Documents folder, then Open.")
+                    panel.message = String(localized: "Apple Books’ folder is hidden: press ⌘⇧G, paste ~/Library/Containers/com.apple.iBooksX/Data/Documents, then click Open.")
                     guard panel.runModal() == .OK, let url = panel.url else { return }
                     folder = url
                 }
                 let target = folder
                 books = try await Task.detached { try Highlights.readAppleBooks(folder: target) }.value
                 needsFolder = false
+            case .kobo:
+                books = try await Task.detached { try ReadingApps.koboHighlights() }.value
             }
         } catch {
             let denied = (error as NSError).domain == NSCocoaErrorDomain

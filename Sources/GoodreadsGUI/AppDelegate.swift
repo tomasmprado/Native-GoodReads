@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, UNUser
     func applicationDidFinishLaunching(_ notification: Notification) {
         setUpStatusItem()
         AutoBackup.start()
+        ReadingAppsSync.shared.start()
 
         UNUserNotificationCenter.current().delegate = self
         ReadingReminder.registerCategory()

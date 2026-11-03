@@ -25,11 +25,62 @@ enum StoreLinks {
             links.append(make("Bertrand", "cart", { "https://www.bertrand.pt/pesquisa/\($0)" }))
         }
         links.append(make("Amazon", "shippingbox", { "https://\(amazonDomain(region))/s?k=\($0)&i=stripbooks" }))
+        links.append(make("Kindle", "ipad", { "https://\(amazonDomain(region))/s?k=\($0)&i=digital-text" }))
+        links.append(make("Kobo", "rectangle.portrait", { "https://www.kobo.com/\(koboStore(region))/search?query=\($0)" }))
         links.append(make(String(localized: "Second-hand (AbeBooks)"), "arrow.3.trianglepath",
                           { "https://www.abebooks.com/servlet/SearchResults?kn=\($0)" }))
         links.append(make(String(localized: "Library (Libby / OverDrive)"), "building.columns",
                           { "https://www.overdrive.com/search?q=\($0)" }))
         return links.compactMap { $0 }
+    }
+
+    /// Kobo's store path: country and language, e.g. "pt/pt" or "us/en".
+    static func koboStore(_ region: String?) -> String {
+        switch region {
+        case "PT": return "pt/pt"
+        case "BR": return "br/pt"
+        case "ES": return "es/es"
+        case "FR": return "fr/fr"
+        case "DE": return "de/de"
+        case "IT": return "it/it"
+        case "NL": return "nl/nl"
+        case "GB": return "gb/en"
+        case "IE": return "ie/en"
+        case "CA": return "ca/en"
+        case "AU": return "au/en"
+        default: return "us/en"
+        }
+    }
+
+    /// The book in the Apple Books store, through Apple's free search: the
+    /// best title match among ebooks. Cached for a week.
+    static func appleBooks(title: String, author: String,
+                           region: String? = Locale.current.region?.identifier) async -> URL? {
+        let country = (region ?? "US").lowercased()
+        let key = "\(country)|\(title)|\(author)".lowercased()
+        if let hit = await DataCache.shared.read(URL?.self, "apple-books-store", key, ttl: 7 * 24 * 3600), !hit.isStale {
+            return hit.value
+        }
+        var components = URLComponents(string: "https://itunes.apple.com/search")!
+        components.queryItems = [
+            URLQueryItem(name: "term", value: [title, author].filter { !$0.isEmpty }.joined(separator: " ")),
+            URLQueryItem(name: "media", value: "ebook"), URLQueryItem(name: "entity", value: "ebook"),
+            URLQueryItem(name: "limit", value: "10"), URLQueryItem(name: "country", value: country),
+        ]
+        var found: URL?
+        if let url = components.url, let (data, _) = try? await URLSession.shared.data(from: url),
+           let result = try? JSONDecoder().decode(ITunesResult.self, from: data) {
+            let books = result.results.map { Book(id: $0.trackViewUrl?.absoluteString ?? "", title: $0.trackName ?? "",
+                                                  author: $0.artistName ?? "", coverURL: nil, rating: nil) }
+            found = GoogleBooksClient.bestMatch(books, title: title).flatMap { URL(string: $0.id) }
+        }
+        await DataCache.shared.write(found, "apple-books-store", key)
+        return found
+    }
+
+    private struct ITunesResult: Decodable {
+        struct Item: Decodable { let trackName: String?; let artistName: String?; let trackViewUrl: URL? }
+        let results: [Item]
     }
 
     static func amazonDomain(_ region: String?) -> String {
@@ -55,14 +106,27 @@ struct StoreLinksView: View {
     let title: String
     let author: String
 
+    @State private var appleBooks: URL?
+
     var body: some View {
         let links = StoreLinks.links(title: title, author: author)
+        Group {
         if !links.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Where to Get It")
                     .appFont(size: 12, weight: .semibold)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
+                        if let appleBooks {
+                            Button {
+                                NSWorkspace.shared.open(appleBooks)
+                            } label: {
+                                Label("Apple Books", systemImage: "book").appFont(size: 11)
+                            }
+                            .glassButton()
+                            .controlSize(.small)
+                            .help("Open this book in Apple Books")
+                        }
                         ForEach(links) { link in
                             Button {
                                 NSWorkspace.shared.open(link.url)
@@ -78,5 +142,7 @@ struct StoreLinksView: View {
                 }
             }
         }
+        }
+        .task(id: title) { appleBooks = await StoreLinks.appleBooks(title: title, author: author) }
     }
 }

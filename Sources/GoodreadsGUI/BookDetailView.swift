@@ -75,6 +75,7 @@ struct BookDetailView: View {
             }
         }
         .frame(width: 720, height: 720)
+        .fixedSheetWindow()
         .background(alignment: .top) { CoverBackdrop(url: book.coverURL) }
         .task { await resolveAndLoad() }
         .task(id: series) { await loadNextInSeries() }
@@ -520,7 +521,7 @@ struct BookDetailView: View {
     private func apply(_ detail: GoodreadsBookPage.Detail) {
         reviews = detail.reviews
         pageLanguage = detail.language
-        authorURL = detail.authorURL
+        authorURL = detail.authorURL ?? detail.about?.authorURL
         series = detail.series
         about = detail.about
         genres = detail.genres ?? []
@@ -531,9 +532,28 @@ struct BookDetailView: View {
 
 private struct ReviewRow: View {
     let review: GoodreadsBookPage.Review
+    @State private var expanded = false
+
+    private func openReviewer() {
+        guard let url = review.reviewerURL else { return }
+        if review.reviewerIsAuthor == true {
+            LibraryModel.shared.showAuthorPage(url)
+        } else {
+            Task { await LibraryModel.shared.openFriendProfile(url) }
+        }
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
+            Button(action: openReviewer) { avatar }
+                .buttonStyle(.plain)
+                .disabled(review.reviewerURL == nil)
+                .accessibilityLabel(Text("\(review.reviewerName)’s profile"))
+            content
+        }
+    }
+
+    private var avatar: some View {
             CachedAsyncImage(url: review.reviewerAvatarURL) { phase in
                 if case .success(let image) = phase {
                     image.resizable().aspectRatio(contentMode: .fill)
@@ -543,11 +563,26 @@ private struct ReviewRow: View {
             }
             .frame(width: 32, height: 32)
             .clipShape(Circle())
+    }
 
+    @ViewBuilder
+    private var content: some View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(review.reviewerName)
-                        .appFont(size: 12, weight: .medium)
+                    if review.reviewerURL != nil {
+                        Button(review.reviewerName, action: openReviewer)
+                            .appFont(size: 12, weight: .medium)
+                            .buttonStyle(.link)
+                            .help("See \(review.reviewerName)’s profile")
+                    } else {
+                        Text(review.reviewerName)
+                            .appFont(size: 12, weight: .medium)
+                    }
+                    if review.reviewerIsAuthor == true {
+                        Text("Author").appFont(size: 9, weight: .semibold)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Capsule().fill(Color.accentColor.opacity(0.2)))
+                    }
                     if let rating = review.rating {
                         Text(String(repeating: "★", count: rating))
                             .appFont(size: 11)
@@ -558,15 +593,21 @@ private struct ReviewRow: View {
                 Text(review.text)
                     .appFont(size: 12)
                     .foregroundStyle(.secondary)
-                    .lineLimit(6)
+                    .lineLimit(expanded ? nil : 6)
                     .textSelection(.enabled)
-                if let likes = review.likeCount, likes > 0 {
-                    Text("\(likes) likes")
-                        .appFont(size: 10)
-                        .foregroundStyle(.tertiary)
+                HStack(spacing: 10) {
+                    if review.text.count > 350 {
+                        Button(expanded ? String(localized: "Show Less") : String(localized: "Show More")) { expanded.toggle() }
+                            .buttonStyle(.link)
+                            .appFont(size: 10)
+                    }
+                    if let likes = review.likeCount, likes > 0 {
+                        Text("\(likes) likes")
+                            .appFont(size: 10)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
             }
-        }
     }
 }
 

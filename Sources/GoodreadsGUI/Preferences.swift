@@ -89,6 +89,27 @@ final class Preferences: ObservableObject {
         didSet { defaults.set(useGoodreadsChallenge, forKey: Keys.useChallenge) }
     }
 
+    /// The status bar's Browser button, for troubleshooting. Off unless wanted.
+    @Published var showBrowserButton: Bool {
+        didSet { defaults.set(showBrowserButton, forKey: Keys.browserButton) }
+    }
+
+    /// Progress and finished books from Apple Books and Kobo go to Goodreads by themselves.
+    @Published var syncReadingApps: Bool {
+        didSet {
+            defaults.set(syncReadingApps, forKey: Keys.syncReadingApps)
+            if syncReadingApps { Task { await ReadingAppsSync.shared.runAutomatically() } }
+        }
+    }
+
+    /// Books in Apple Books or on a Kobo that aren't on a shelf get added by themselves.
+    @Published var importReadingAppsLibrary: Bool {
+        didSet {
+            defaults.set(importReadingAppsLibrary, forKey: Keys.importReadingApps)
+            if importReadingAppsLibrary { Task { await ReadingAppsSync.shared.runAutomatically() } }
+        }
+    }
+
     /// Post a notification when a friend starts or finishes a book.
     @Published var notifyFriendActivity: Bool {
         didSet { defaults.set(notifyFriendActivity, forKey: Keys.notify) }
@@ -136,6 +157,9 @@ final class Preferences: ObservableObject {
         static let apiKey   = "googleBooksAPIKey"
         static let goal     = "yearlyGoal"
         static let useChallenge = "useGoodreadsChallenge"
+        static let browserButton = "showBrowserButton"
+        static let syncReadingApps = "syncReadingApps"
+        static let importReadingApps = "importReadingAppsLibrary"
         static let notify   = "notifyFriendActivity"
         static let reminder = "readingReminder"
         static let newReleases = "notifyNewReleases"
@@ -154,6 +178,9 @@ final class Preferences: ObservableObject {
         let goal = defaults.integer(forKey: Keys.goal)
         yearlyGoal = goal > 0 ? goal : 24
         useGoodreadsChallenge = defaults.object(forKey: Keys.useChallenge) as? Bool ?? true
+        showBrowserButton = defaults.bool(forKey: Keys.browserButton)
+        syncReadingApps = defaults.bool(forKey: Keys.syncReadingApps)
+        importReadingAppsLibrary = defaults.bool(forKey: Keys.importReadingApps)
         notifyFriendActivity = defaults.bool(forKey: Keys.notify)
         indexInSpotlight = SpotlightIndex.isEnabled
         readingReminder = defaults.bool(forKey: Keys.reminder)
@@ -270,6 +297,22 @@ struct PreferencesView: View {
             }
 
             Section {
+                Toggle("Sync progress and finished books", isOn: $prefs.syncReadingApps)
+                Toggle("Add books that aren’t on my shelves", isOn: $prefs.importReadingAppsLibrary)
+                Button("Review Reading Apps…") {
+                    WindowManager.shared.openMain?()
+                    NSApp.activate(ignoringOtherApps: true)
+                    LibraryModel.shared.activeSheet = .readingApps
+                }
+            } header: {
+                Text("Apple Books and Kobo")
+            } footer: {
+                Text("Reads Apple Books on this Mac and a Kobo plugged in by USB. Progress only ever goes forward, and anything you change back on Goodreads stays changed. Books added automatically go to Read, Currently Reading or Want to Read, depending on how far you got.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 Toggle("Use my Goodreads Reading Challenge goal", isOn: Binding(
                     get: { prefs.useGoodreadsChallenge },
                     set: { wanted in
@@ -363,6 +406,24 @@ struct PreferencesView: View {
             }
 
             Section {
+                Button("Show Log…") {
+                    WindowManager.shared.openMain?()
+                    NSApp.activate(ignoringOtherApps: true)
+                    for window in NSApp.windows where window.canBecomeMain && window.identifier?.rawValue.contains("main") == true {
+                        window.makeKeyAndOrderFront(nil)
+                    }
+                    LibraryModel.shared.activeSheet = .diagnostics
+                }
+                Toggle("Show the Browser button in the status bar", isOn: $prefs.showBrowserButton)
+            } header: {
+                Text("Troubleshooting")
+            } footer: {
+                Text("The log lists every request the app makes — copy it into a report when something breaks. The browser shows the Goodreads page the app works in.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
+            Section {
                 LabeledContent("Saved data") {
                     Text(cacheBytes.map { ByteCountFormatter.string(fromByteCount: Int64($0), countStyle: .file) } ?? "…")
                         .foregroundStyle(.secondary)
@@ -385,7 +446,7 @@ struct PreferencesView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 820)
+        .frame(width: 480, height: 860)
         .task { cacheBytes = DataCache.diskUsage() }
     }
 

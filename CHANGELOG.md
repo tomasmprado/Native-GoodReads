@@ -7,6 +7,37 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
+## [Unreleased]
+
+### Added
+
+- **Profiles** — click a reviewer's name or picture (or a friend's) for their
+  profile, now with much more: details and activity, their reading challenge,
+  favourite genres and books, what they're reading, every shelf, quotes,
+  friends, who they follow and their Year in Books.
+- **Author pages** show birthplace and death, influences, reviews, works and
+  followers, the full bio, their series (with the books in each), quotes and a
+  link to their Wikipedia article (in Portuguese when there is one).
+- **Apple Books and Kobo** — Reading Apps (File menu, or Settings) brings
+  progress, finished books and books you started over to Goodreads, from
+  Apple Books on this Mac and a Kobo plugged in by USB. It can run by itself,
+  and can add books that aren't on your shelves. Kobo highlights can be
+  imported too.
+- **Where to Get It** adds Apple Books, Kindle and Kobo.
+
+### Fixed
+
+- Searching for an ISBN (with or without hyphens) finds the book: Google
+  Books is asked for that ISBN, and Goodreads too when Google has nothing.
+  Books on your shelves with that ISBN come first.
+
+### Changed
+
+- Book Details, profiles and author pages no longer have a zoom (+) button.
+- The Log moved to Settings → Troubleshooting, and the Browser button is off
+  unless you turn it on there.
+- The Reading Challenge goal is also read in the wording profiles use.
+
 ## [2.7.0] — 2026-11-02
 
 ### Changed

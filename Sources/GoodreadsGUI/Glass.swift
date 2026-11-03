@@ -143,3 +143,57 @@ struct GlassHeader<Content: View>: View {
         }
     }
 }
+
+// MARK: - Fixed-size sheets
+
+/// Newer macOS gives sheets window buttons and lets them be resized and
+/// zoomed (the green + and yellow −). Sheets here have a designed size, so
+/// those buttons go. They're removed when the view lands in its window, and
+/// again whenever the window updates, since AppKit can put them back.
+private final class FixedSheetWindowView: NSView {
+    nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers = []
+        guard let window else { return }
+        Self.fix(window)
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didUpdateNotification, NSWindow.didResizeNotification] {
+            observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak window] _ in
+                MainActor.assumeIsolated {
+                    if let window { Self.fix(window) }
+                }
+            })
+        }
+    }
+
+    deinit {
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
+    static func fix(_ window: NSWindow) {
+        // Never the library window itself (its id starts with the scene's "main").
+        guard !(window.identifier?.rawValue.hasPrefix("main") ?? false) else { return }
+        if window.styleMask.contains(.resizable) { window.styleMask.remove(.resizable) }
+        if window.styleMask.contains(.miniaturizable) { window.styleMask.remove(.miniaturizable) }
+        window.collectionBehavior.insert(.fullScreenNone)
+        for kind in [NSWindow.ButtonType.zoomButton, .miniaturizeButton] {
+            if let button = window.standardWindowButton(kind), !button.isHidden { button.isHidden = true }
+        }
+    }
+}
+
+private struct FixedSheetWindow: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { FixedSheetWindowView() }
+    func updateNSView(_ view: NSView, context: Context) {
+        if let window = view.window { FixedSheetWindowView.fix(window) }
+    }
+}
+
+extension View {
+    /// No zoom button or resizing for a sheet with a designed size.
+    func fixedSheetWindow() -> some View {
+        background(FixedSheetWindow().frame(width: 0, height: 0))
+    }
+}
