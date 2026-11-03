@@ -76,6 +76,7 @@ struct QuickRateSheet: View {
     @ObservedObject var model: LibraryModel
     @State private var queue: [ShelfEntry]
     @State private var rated = 0
+    @State private var failure: String?
 
     init(model: LibraryModel, unrated: [ShelfEntry]) {
         self.model = model
@@ -119,6 +120,10 @@ struct QuickRateSheet: View {
                         .help(StarPicker.phrase(stars))
                     }
                 }
+                if let failure {
+                    Text(failure).appFont(size: 11).foregroundStyle(.orange)
+                        .multilineTextAlignment(.center).lineLimit(3)
+                }
                 HStack {
                     Button("Skip") { skip() }.keyboardShortcut("s", modifiers: [])
                     Text("Press 1–5 to rate, S to skip.").appFont(size: 10).foregroundStyle(.tertiary)
@@ -135,7 +140,15 @@ struct QuickRateSheet: View {
     }
 
     private func rate(_ entry: ShelfEntry, _ stars: Int) {
-        Task { await model.rate(entry, stars: stars) }
+        Task {
+            // A book Goodreads wouldn't take goes back in the queue, with why.
+            if let error = await model.rate(entry, stars: stars) {
+                rated -= 1
+                failure = String(localized: "Couldn’t rate “\(entry.title)”: \(error)")
+                withAnimation(.easeInOut(duration: 0.25)) { queue.append(entry) }
+            }
+        }
+        failure = nil
         rated += 1
         withAnimation(.easeInOut(duration: 0.25)) { _ = queue.removeFirst() }
     }

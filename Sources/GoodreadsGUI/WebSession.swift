@@ -196,6 +196,7 @@ final class WebSession: NSObject, ObservableObject {
                 let pages = object["pages"] as? Int
                 return "\(ms)ms — \(list.count) \(key)" + (pages.map { ", \($0) pages" } ?? "")
             }
+            if let via = object["via"] as? String { return "\(ms)ms — ok via \(via)" }
             return "\(ms)ms — ok"
         }
         return "\(ms)ms — \(text.count) bytes"

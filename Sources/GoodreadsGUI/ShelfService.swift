@@ -189,7 +189,8 @@ enum ShelfService {
             try await session.ensureOnGoodreads()
             return try await session.evaluate(
                 rateScript,
-                arguments: ["bookId": bookID, "rating": stars]
+                arguments: ["bookId": bookID, "rating": stars],
+                label: "rate \(bookID) \(stars)★"
             )
         }
         try check(raw)

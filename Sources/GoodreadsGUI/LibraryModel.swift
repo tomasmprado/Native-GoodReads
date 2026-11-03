@@ -1392,7 +1392,8 @@ final class LibraryModel: ObservableObject {
     }
 
     /// Stars only — doesn't touch shelf membership. See `ShelfService.rate`.
-    func rate(_ entry: ShelfEntry, stars: Int) async {
+    @discardableResult
+    func rate(_ entry: ShelfEntry, stars: Int) async -> String? {
         busyBookID = entry.bookID
         status = nil
         defer { busyBookID = nil }
@@ -1404,9 +1405,11 @@ final class LibraryModel: ObservableObject {
             }
             if let shelf = currentShelf { ShelfCache.write(shelfEntries, for: shelf) }
             status = Status(text: String(localized: "Rated “\(entry.title)” \(stars)★."), isError: false)
+            return nil
         } catch {
             status = Status(text: String(localized: "Couldn’t rate “\(entry.title)”: \(error.localizedDescription)"),
                             isError: true)
+            return error.localizedDescription
         }
     }
 

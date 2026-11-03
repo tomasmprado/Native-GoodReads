@@ -20,8 +20,20 @@ final class Diagnostics: ObservableObject {
 
     private let limit = 400
 
+    /// Also kept in a file (the last few hundred lines), so a problem can be
+    /// looked at after the fact. Holds what scripts returned in short — no
+    /// passwords or page contents.
+    private static let writer = DispatchQueue(label: "diagnostics-log", qos: .utility)
+
+    nonisolated static var file: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("GoodreadsGUI/log.txt")
+    }
+
     func log(_ label: String, _ detail: String, ok: Bool = true) {
         entries.append(Entry(label: label, detail: detail, ok: ok))
+        let text = plainText
+        Self.writer.async { try? text.write(to: Diagnostics.file, atomically: true, encoding: .utf8) }
         if entries.count > limit {
             entries.removeFirst(entries.count - limit)
         }
