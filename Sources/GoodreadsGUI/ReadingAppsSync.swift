@@ -18,7 +18,10 @@ final class ReadingAppsSync: ObservableObject {
     @Published var busy: Set<String> = []
 
     /// A folder chosen by hand when macOS wouldn't let the app read Apple Books.
-    var appleBooksFolder: URL?
+    var appleBooksFolder: URL? {
+        didSet { Self.chosenAppleBooksFolder = appleBooksFolder }
+    }
+    nonisolated(unsafe) static var chosenAppleBooksFolder: URL?
 
     private static let appliedKey = "readerSyncApplied"
     /// What automatic sync already did, so a book you moved back isn't moved again.

@@ -416,6 +416,7 @@ final class LibraryModel: ObservableObject {
         await loadNewReleases()
         Task { await fetchCleanTitles() }
         Task { await SpotlightIndex.refreshNotes() }
+        await loadChallenge()
         friendsBooks = await FriendsBooks.index()
         if FriendsBooks.isStale(friendsBooks) { await syncFriendsBooks() }
     }
@@ -798,8 +799,14 @@ final class LibraryModel: ObservableObject {
     /// Reads this year's Reading Challenge and, when you've joined it, makes
     /// its goal the Stats goal. A page the app can't read changes nothing.
     func loadChallenge(force: Bool = false) async {
-        guard loggedIn, Preferences.shared.useGoodreadsChallenge else { return }
+        guard Preferences.shared.useGoodreadsChallenge else { return }
         let year = Calendar.current.component(.year, from: Date())
+        // The saved count shows straight away, signed in or not yet.
+        if challenge == nil,
+           let saved = await DataCache.shared.read(ReadingChallenge.self, "challenge", String(year), ttl: .infinity) {
+            challenge = saved.value
+        }
+        guard loggedIn else { return }
         try? await DataCache.load("challenge", String(year), ttl: 12 * 3600, force: force) {
             try await GoodreadsChallenge.fetch(year: year)
         } show: { [weak self] challenge, _ in

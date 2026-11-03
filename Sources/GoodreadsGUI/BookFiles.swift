@@ -50,11 +50,61 @@ enum BookFiles {
         if let file = file(for: bookID) { try? FileManager.default.removeItem(at: file) }
     }
 
-    /// Opens the file in Apple Books, which adds it to its library.
-    static func openInAppleBooks(_ file: URL) {
+    // MARK: Apple Books
+
+    private static let assetsKey = "appleBooksAssets"
+
+    /// Which Apple Books book is your copy: book id → Apple Books asset id.
+    static var appleBooksAssets: [String: String] {
+        get { UserDefaults.standard.dictionary(forKey: assetsKey) as? [String: String] ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: assetsKey) }
+    }
+
+    /// Opens your copy in Apple Books where you left off. Opening the file
+    /// itself would import it again — a fresh copy, back at page one — so
+    /// the book already in Apple Books' library is opened instead
+    /// (ibooks://assetid/…), and the file is only imported the first time.
+    @MainActor
+    static func openInAppleBooks(_ file: URL, bookID: String? = nil, title: String = "", author: String = "") {
+        if let bookID, let asset = appleBooksAssets[bookID] ?? findInAppleBooks(title: title, author: author) {
+            remember(asset, for: bookID)
+            if let link = URL(string: "ibooks://assetid/\(asset)") { NSWorkspace.shared.open(link) }
+            return
+        }
         let books = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.iBooksX")
             ?? URL(fileURLWithPath: "/System/Applications/Books.app")
         NSWorkspace.shared.open([file], withApplicationAt: books, configuration: NSWorkspace.OpenConfiguration())
+        // Once Books has taken it in, remember which book it became.
+        guard let bookID else { return }
+        Task { @MainActor in
+            for _ in 0..<6 {
+                try? await Task.sleep(for: .seconds(5))
+                if let asset = findInAppleBooks(title: title, author: author) {
+                    remember(asset, for: bookID)
+                    return
+                }
+            }
+        }
+    }
+
+    private static func remember(_ asset: String, for bookID: String) {
+        var assets = appleBooksAssets
+        assets[bookID] = asset
+        appleBooksAssets = assets
+    }
+
+    /// The Apple Books book matching a title and author, if macOS lets the
+    /// app read Apple Books' library.
+    static func findInAppleBooks(title: String, author: String) -> String? {
+        guard !title.isEmpty,
+              let library = try? ReadingApps.appleBooks(folder: ReadingAppsSync.chosenAppleBooksFolder ?? Highlights.appleBooksFolder)
+        else { return nil }
+        let entry = ShelfEntry(id: "x", bookID: "x", reviewID: nil, title: title, author: author, coverURLString: nil)
+        let matches = ReadingApps.match(library, to: [entry])
+        // Earlier imports may have left several copies: the one read last has your place.
+        return library.filter { matches[$0.id] != nil }
+            .max { ($0.lastOpened ?? .distantPast, $0.percent ?? 0) < ($1.lastOpened ?? .distantPast, $1.percent ?? 0) }?
+            .sourceID
     }
 
     /// Book ids can be "gr:123"; keep file names plain.
@@ -71,6 +121,8 @@ enum BookFiles {
 /// Book Details' "Your Copy": attach a file, open it in Apple Books.
 struct BookFileSection: View {
     let bookID: String
+    var title = ""
+    var author = ""
     @State private var file: URL?
     @State private var message: String?
     @State private var isTargeted = false
@@ -86,7 +138,7 @@ struct BookFileSection: View {
                         .appFont(size: 11).foregroundStyle(.secondary)
                     Spacer()
                     Button {
-                        BookFiles.openInAppleBooks(file)
+                        BookFiles.openInAppleBooks(file, bookID: bookID, title: title, author: author)
                     } label: {
                         Label("Open in Apple Books", systemImage: "book")
                     }

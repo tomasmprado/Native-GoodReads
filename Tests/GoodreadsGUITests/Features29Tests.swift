@@ -122,3 +122,11 @@ final class PriceWatchTests: XCTestCase {
         XCTAssertFalse(PriceWatch.isDrop(from: old, to: .init(amount: 1, formatted: "$1", currency: "USD", url: url)))
     }
 }
+
+final class ProfileStatsTests: XCTestCase {
+    func testDropsBadgeScripts() {
+        let raw = "61 ratings (4.65 avg) 25 reviews #1 most followed //<![CDATA[ var newTip = new Tip($('tl'), \"<table>\"); //]]> #8 best reviewers //<![CDATA[ x = 1; //]]>"
+        XCTAssertEqual(GoodreadsFriends.cleanStats(raw), "61 ratings (4.65 avg) · 25 reviews · #1 most followed · #8 best reviewers")
+        XCTAssertEqual(GoodreadsFriends.cleanStats("92 ratings (4.08 avg) 4 reviews"), "92 ratings (4.08 avg) · 4 reviews")
+    }
+}

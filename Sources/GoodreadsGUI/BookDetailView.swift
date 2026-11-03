@@ -65,7 +65,7 @@ struct BookDetailView: View {
                                    author: authorName, isbn: about?.isbn13 ?? about?.isbn ?? book.isbn)
                     friendsSection
                     if let id = goodreadsID ?? (resolveError != nil ? book.id : nil) {
-                        BookFileSection(bookID: id)
+                        BookFileSection(bookID: id, title: book.title, author: authorName)
                     }
                     Divider()
                     composeBox

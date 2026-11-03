@@ -578,7 +578,7 @@ private struct FriendProfileSheet: View {
                                 Text(profile.name)
                                     .appFont(size: 16, weight: .semibold)
                                 if let stats = profile.stats {
-                                    Text(stats)
+                                    Text(GoodreadsFriends.cleanStats(stats))
                                         .appFont(size: 12)
                                         .foregroundStyle(.secondary)
                                 }
@@ -1281,7 +1281,9 @@ private struct ShelfPane: View {
 
         Button("View Details…") { model.showBookDetail(entry.asBook) }
         if let file = BookFiles.file(for: entry.bookID) {
-            Button("Open in Apple Books") { BookFiles.openInAppleBooks(file) }
+            Button("Open in Apple Books") {
+                BookFiles.openInAppleBooks(file, bookID: entry.bookID, title: entry.title, author: entry.author)
+            }
         }
         Button("Open on Goodreads") { model.openOnGoodreads(bookID: entry.bookID) }
         if let url = LibraryModel.goodreadsURL(bookID: entry.bookID) {
