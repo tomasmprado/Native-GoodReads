@@ -169,25 +169,35 @@ footer a { color: var(--ink-2); }
       <li><a href="#progress">Reading progress</a></li>
       <li><a href="#stop-reading">Stopping a book</a></li>
       <li><a href="#book-details">Book details</a></li>
+      <li><a href="#shelf-helpers">Pick for Me &amp; Rate Unrated</a></li>
     </ol>
     <p>Discover</p>
     <ol>
       <li><a href="#search">Search</a></li>
       <li><a href="#suggestions">Suggestions</a></li>
       <li><a href="#friends">Friends</a></li>
+      <li><a href="#profiles">Profiles &amp; authors</a></li>
+      <li><a href="#stores">Where to get it</a></li>
     </ol>
     <p>Your reading</p>
     <ol>
       <li><a href="#stats">Stats &amp; goal</a></li>
       <li><a href="#year">Year in Books</a></li>
-      <li><a href="#notes">Notes &amp; quotes</a></li>
+      <li><a href="#notes">Notes</a></li>
       <li><a href="#highlights">Importing highlights</a></li>
+    </ol>
+    <p>Reading apps</p>
+    <ol>
+      <li><a href="#copies">Your copy of a book</a></li>
+      <li><a href="#reading-apps">Apple Books, Kobo &amp; Calibre</a></li>
+      <li><a href="#kobo">Syncing a Kobo</a></li>
+      <li><a href="#calibre">Calibre</a></li>
     </ol>
     <p>Around your Mac</p>
     <ol>
       <li><a href="#widgets">Widgets</a></li>
       <li><a href="#shortcuts">Shortcuts &amp; Siri</a></li>
-      <li><a href="#menu-bar">Menu bar</a></li>
+      <li><a href="#share">Safari &amp; Share</a></li>
       <li><a href="#notifications">Notifications</a></li>
       <li><a href="#spotlight">Spotlight</a></li>
     </ol>
@@ -216,10 +226,10 @@ footer a { color: var(--ink-2); }
         <li><a href="#install">Install</a></li><li><a href="#sign-in">Sign in</a></li><li><a href="#window">The window</a></li>
         <li><a href="#home">Home</a></li><li><a href="#shelves">Shelves</a></li><li><a href="#smart-lists">Smart lists</a></li>
         <li><a href="#book-actions">Book actions</a></li><li><a href="#progress">Reading progress</a></li><li><a href="#stop-reading">Stopping a book</a></li>
-        <li><a href="#book-details">Book details</a></li><li><a href="#search">Search</a></li><li><a href="#suggestions">Suggestions</a></li>
-        <li><a href="#friends">Friends</a></li><li><a href="#stats">Stats &amp; goal</a></li><li><a href="#year">Year in Books</a></li>
-        <li><a href="#notes">Notes &amp; quotes</a></li><li><a href="#highlights">Importing highlights</a></li><li><a href="#widgets">Widgets</a></li>
-        <li><a href="#shortcuts">Shortcuts &amp; Siri</a></li><li><a href="#menu-bar">Menu bar</a></li><li><a href="#notifications">Notifications</a></li>
+        <li><a href="#book-details">Book details</a></li><li><a href="#shelf-helpers">Pick for Me &amp; Rate Unrated</a></li><li><a href="#search">Search</a></li><li><a href="#suggestions">Suggestions</a></li>
+        <li><a href="#friends">Friends</a></li><li><a href="#profiles">Profiles &amp; authors</a></li><li><a href="#stores">Where to get it</a></li><li><a href="#stats">Stats &amp; goal</a></li><li><a href="#year">Year in Books</a></li>
+        <li><a href="#notes">Notes</a></li><li><a href="#highlights">Importing highlights</a></li><li><a href="#copies">Your copy of a book</a></li><li><a href="#reading-apps">Apple Books, Kobo &amp; Calibre</a></li><li><a href="#kobo">Syncing a Kobo</a></li><li><a href="#calibre">Calibre</a></li><li><a href="#widgets">Widgets</a></li>
+        <li><a href="#shortcuts">Shortcuts &amp; Siri</a></li><li><a href="#share">Safari &amp; Share</a></li><li><a href="#notifications">Notifications</a></li>
         <li><a href="#spotlight">Spotlight</a></li><li><a href="#backup">Export &amp; backup</a></li><li><a href="#settings">Settings</a></li>
         <li><a href="#text-size">Text size</a></li><li><a href="#keyboard">Keyboard shortcuts</a></li><li><a href="#updates">Updates</a></li>
         <li><a href="#privacy">Privacy</a></li><li><a href="#troubleshooting">Troubleshooting</a></li>
@@ -253,36 +263,37 @@ footer a { color: var(--ink-2); }
     <section id="sign-in">
       <h2>Sign in</h2>
       <ol class="steps">
-        <li>Click <strong>Log In</strong> at the bottom right of the window.</li>
+        <li>Click <strong>Log In</strong> at the bottom of the sidebar.</li>
         <li>Sign in on Goodreads' own page, exactly as on the website. Your password goes only to Goodreads; the app never sees it.</li>
         <li>Your shelves appear in the sidebar.</li>
       </ol>
-      <p>The status bar shows <strong>Signed in</strong> with a green dot. <strong>Sign Out</strong> is in the same place, and clears everything the app saved for that account — except your notes, quotes and progress history.</p>
+      <p>The foot of the sidebar shows <strong>Signed in</strong> with a green dot. <strong>Sign Out</strong> is in <span class="path">Settings → Library</span>, and clears everything the app saved for that account — except your notes and progress history.</p>
       <div class="tip"><strong>Tip:</strong> add a free Google Books key in <a href="#settings">Settings</a>. Search works without one, but the shared free key is almost always busy, and with your own you get more details about each book.</div>
     </section>
 
     <section id="window">
       <h2>The window</h2>
       <div class="grid2">
-        <div class="mini"><h4>Sidebar</h4><p>Home, Search, Suggestions, Friends, Stats and Quotes, then every shelf you have with how many books it holds.</p></div>
+        <div class="mini"><h4>Sidebar</h4><p>Home, Search, Suggestions, Friends, Stats and Notes, then every shelf you have with how many books it holds.</p></div>
         <div class="mini"><h4>Toolbar</h4><p>Actions for the pane on screen — layout, sort, filter, export and reload on shelves.</p></div>
-        <div class="mini"><h4>Status bar</h4><p>What just happened (with Undo when you can), whether you're offline, <strong>Log</strong>, <strong>Browser</strong> and your sign-in.</p></div>
-        <div class="mini"><h4>Export Library…</h4><p>At the bottom of the sidebar: saves every shelf to one spreadsheet file. See <a href="#backup">Export &amp; backup</a>.</p></div>
+        <div class="mini"><h4>Foot of the sidebar</h4><p>What just happened (with Undo when you can), what the app is busy with, whether you're offline, updates and your sign-in.</p></div>
+        <div class="mini"><h4>Settings</h4><p>In tabs — General, Notifications, Reading Apps, Library and Troubleshooting. See <a href="#settings">Settings</a>.</p></div>
       </div>
-      <p>Closing the window doesn't quit the app: it keeps running in the <a href="#menu-bar">menu bar</a> so notifications and widgets stay up to date. On macOS 26 the app uses the Liquid Glass look.</p>
+      <p>Closing the window doesn't quit the app: it keeps running (click its Dock icon to bring the window back) so notifications, syncing and widgets stay up to date. On macOS 26 the app uses the Liquid Glass look.</p>
     </section>
 
     <!-- ============ Your library ============ -->
     <section id="home">
       <h2>Home</h2>
-      <p>The first thing you see when the app opens:</p>
+      <p>The first thing you see when the app opens. It always fits the window — nothing to scroll:</p>
       <ul>
-        <li><strong>Currently Reading</strong> — a card for each book you're reading, with its cover, a progress bar, the page you're on (when the page count is known) and how many pages are left. Once you've updated a book a couple of times, it also shows roughly when you'll finish and how many pages a day you're reading.</li>
-        <li><strong>Friends reading it too</strong> — when friends have the same book on their Currently Reading shelf, their avatars appear on its card.</li>
-        <li><strong>Read Next</strong> — one suggestion picked from the authors you've read recently.</li>
-        <li><strong>Up Next</strong> — the first book on Want to Read, if you've put that shelf in <a href="#shelves">your own order</a>.</li>
+        <li><strong>Currently Reading</strong> — a card for each book you're reading, with its cover, a progress bar and how far you've got. Click a cover for its details; right-click for Update Progress, Mark Read &amp; Rate, Stop Reading and View Details.</li>
+        <li><strong>Your goal</strong> — books read this year against your Reading Challenge goal, counted the way Goodreads counts them.</li>
+        <li><strong>The race</strong> — you and your friends running towards your own reading-challenge goals, with a finish line and a marker for where an even pace would put you today.</li>
+        <li><strong>Your week</strong> — pages read, days in a row and books finished this month.</li>
+        <li><strong>Next</strong> — what to read next: the top of your Want to Read order, or a pick from authors you've read lately.</li>
       </ul>
-      <p>Click a cover for its details, or <strong>Update Progress…</strong> under it. Right-click a card for Update Progress, Mark Read &amp; Rate, Stop Reading and View Details.</p>
+      <div class="tip"><strong>Finish by a date:</strong> in a book's Update Progress, set a date you want to finish by and Home (and the reading reminder) tell you how many pages a day that takes.</div>
     </section>
 
     <section id="shelves">
@@ -328,12 +339,12 @@ footer a { color: var(--ink-2); }
         <tr><td>Share…</td><td>Its Goodreads link, through Messages, Mail and so on.</td></tr>
         <tr><td>Remove from Shelf</td><td>Takes it off this shelf.</td></tr>
       </table></div>
-      <div class="tip"><strong>Undo:</strong> after moving or removing a book, an <strong>Undo</strong> button appears in the status bar for a few seconds.</div>
+      <div class="tip"><strong>Undo:</strong> after moving or removing a book, an <strong>Undo</strong> button appears at the foot of the sidebar for a few seconds.</div>
     </section>
 
     <section id="progress">
       <h2>Reading progress</h2>
-      <p>Choose <strong>Update Progress…</strong> on a Currently Reading book — on Home, a shelf, the menu bar or a reminder notification.</p>
+      <p>Choose <strong>Update Progress…</strong> on a Currently Reading book — on Home, a shelf or a reminder notification.</p>
       <ul>
         <li><strong>Percent</strong> — drag the slider. When the page count is known, it shows which page that is.</li>
         <li><strong>Page</strong> — type the page you're on; the app shows the percentage.</li>
@@ -365,11 +376,19 @@ footer a { color: var(--ink-2); }
         <li><strong>Where to Get It</strong> — one click searches for the book at Amazon (for your country), AbeBooks (second-hand) and Libby/OverDrive (libraries). In Portugal, Wook and Bertrand too.</li>
         <li><strong>Friends Who Read This</strong> — with the stars they gave, or "Reading now". Click one for their profile.</li>
         <li><strong>Your rating and review</strong> — post them right there. Like everywhere in the app, rating a book marks it as read.</li>
-        <li><strong>My Notes</strong> — see <a href="#notes">Notes &amp; quotes</a>.</li>
+        <li><strong>My Notes</strong> — see <a href="#notes">Notes</a>.</li>
         <li><strong>Reviews</strong> — a few from other readers.</li>
       </ul>
       <p>Click the <strong>author's name</strong> for their bio, stats and other books. <strong>Share</strong> at the top sends the book's link.</p>
       <div class="tip">Details come from the book's Goodreads page. When Goodreads doesn't have something — or won't send it — the app fills the gaps from Google Books.</div>
+    </section>
+
+    <section id="shelf-helpers">
+      <h2>Pick for Me &amp; Rate Unrated</h2>
+      <ul>
+        <li><strong>Pick for Me</strong> — in Want to Read's toolbar. Shows one book at a time from what's on screen (so filters and smart lists narrow it down). <strong>Another</strong> (or <kbd>Space</kbd>) shows a different one; <strong>Start Reading</strong> moves it to Currently Reading.</li>
+        <li><strong>Rate Unrated</strong> — in Read's toolbar. Your books without stars, one at a time: press <kbd>1</kbd>–<kbd>5</kbd> to rate, <kbd>S</kbd> to skip.</li>
+      </ul>
     </section>
 
     <!-- ============ Discover ============ -->
@@ -403,6 +422,19 @@ footer a { color: var(--ink-2); }
       <p>The app also reads your friends' Read and Currently Reading shelves now and then, which is what powers <strong>Friends Who Read This</strong> in book details and the avatars on Home. Friends with private shelves won't appear.</p>
     </section>
 
+    <section id="profiles">
+      <h2>Profiles &amp; authors</h2>
+      <p>Click a reviewer's or friend's name or picture — in reviews, comments, friends' updates — for their profile: their details and recent activity, reading challenge, favourite genres and books, what they're reading, every shelf, quotes, friends and their Year in Books.</p>
+      <p>Click an author's name anywhere for their page: where they were born (and died), influences, the full bio, their works and series (with the books in each), quotes, reviews and followers, plus a link to their Wikipedia article — in Portuguese when there is one.</p>
+    </section>
+
+    <section id="stores">
+      <h2>Where to get it</h2>
+      <p>A book's details have a <strong>Where to Get It</strong> menu: Apple Books (with its price, when it has the ebook), Kindle, Kobo and the usual stores.</p>
+      <p>Add your own in <span class="path">Settings → Reading Apps → Stores</span>: a name and a search address with <code>{bookname}</code>, <code>{author}</code> or <code>{isbn}</code> where the book goes — for example <code>https://www.wook.pt/pesquisa?keyword={bookname}</code>.</p>
+      <p>Turn on <strong>Apple Books price drops</strong> in Settings → Notifications to hear when an ebook on Want to Read gets cheaper.</p>
+    </section>
+
     <!-- ============ Your reading ============ -->
     <section id="stats">
       <h2>Stats &amp; goal</h2>
@@ -417,14 +449,15 @@ footer a { color: var(--ink-2); }
 
     <section id="year">
       <h2>Your Year in Books</h2>
-      <p>The gift button in Stats. Pick a year to see a card with how many books and pages you read, your average rating, top genre and author, busiest month, longest book and favourites. <strong>Save Image…</strong> keeps it as a picture to share.</p>
+      <p>The gift button in Stats. Your year plays like a story, one big fact at a time: books and pages, your busiest month, top genre and author, the shortest and longest book, your average rating against everyone's, the most popular book and your hidden gem, the highest rated, the first and latest, and your five-star books.</p>
+      <p>Click, or press <kbd>→</kbd> / <kbd>Space</kbd>, for the next one (<kbd>←</kbd> goes back). It ends on a card with the whole year — <strong>Save Image…</strong> keeps it as a picture to share. Pick another year at the top.</p>
     </section>
 
     <section id="notes">
-      <h2>Notes &amp; quotes</h2>
+      <h2>Notes</h2>
       <p>Every book has a private <strong>My Notes</strong> box in its details: write your thoughts, and add favourite passages as <strong>quotes</strong>. Notes save as you type and stay only on your Mac (they're included in <a href="#backup">backups</a> and CSV exports).</p>
-      <h3>The Quotes pane</h3>
-      <p><strong>Quotes</strong> in the sidebar gathers every quote and highlight you've saved, grouped by book, newest first.</p>
+      <h3>The Notes pane</h3>
+      <p><strong>Notes</strong> in the sidebar gathers your notes, quotes and highlights, grouped by book, newest first. They also show up in Spotlight.</p>
       <ul>
         <li>Search by words in the quote, the title or the author.</li>
         <li>Click a book's name for its details.</li>
@@ -437,9 +470,60 @@ footer a { color: var(--ink-2); }
       <p>Choose <span class="path">File → Import Highlights…</span>, then where they come from:</p>
       <ul>
         <li><strong>Apple Books</strong> — what you highlighted in the Books app on this Mac. macOS will ask to let the app read them; if it doesn't, choose <strong>Choose Apple Books Folder…</strong> and click Open.</li>
+        <li><strong>Kobo</strong> — plug the Kobo in by USB; its highlights and notes are read straight from it.</li>
+        <li><strong>Calibre</strong> — what you highlighted in Calibre's e-book viewer.</li>
         <li><strong>Kindle</strong> — connect the Kindle by USB and pick <code>documents/My Clippings.txt</code>.</li>
       </ul>
       <p>The app matches each book to your shelves by title and author and lists what it found. Untick anything you don't want, then <strong>Import</strong>. Highlights become quotes and notes are added to the book's notes. Importing again never creates duplicates.</p>
+    </section>
+
+    <!-- ============ Reading apps ============ -->
+    <section id="copies">
+      <h2>Your copy of a book</h2>
+      <p>Every book's details have a <strong>Your Copy</strong> box. Click <strong>Add EPUB or PDF…</strong> (or drop a file on it) to keep your own copy with the book.</p>
+      <ul>
+        <li><strong>Open in Apple Books</strong> opens it where you left off. The first time, Apple Books takes the file in; after that the app opens the same book again, so you never start back at page one.</li>
+        <li>Books with a file go to your Kobo when you <a href="#kobo">sync it</a>.</li>
+        <li>Books from <a href="#calibre">Calibre</a> get their file by themselves, without being copied.</li>
+      </ul>
+      <p>The <strong>•••</strong> menu has Show in Finder, Replace… and Remove. Removing a Calibre file only unlinks it — the file stays in Calibre.</p>
+    </section>
+
+    <section id="reading-apps">
+      <h2>Apple Books, Kobo &amp; Calibre</h2>
+      <p><span class="path">File → Reading Apps…</span> (or Settings → Reading Apps) looks at what you've read in Apple Books on this Mac, a Kobo plugged in by USB and your Calibre library, and lists what Goodreads is missing:</p>
+      <ul>
+        <li><strong>Further along</strong> — books on Currently Reading where you've read more in the app.</li>
+        <li><strong>Started</strong> — books on Want to Read that you've begun.</li>
+        <li><strong>Finished</strong> — books you finished that aren't on Read.</li>
+        <li><strong>Not on your shelves</strong> — books you have that Goodreads doesn't know you have.</li>
+      </ul>
+      <p>Click each one's button, or <strong>Do All</strong>. Books are matched to your shelves by Goodreads id, ISBN, then title and author. Progress only ever goes forward, and anything you change back on Goodreads stays changed.</p>
+      <p>In <span class="path">Settings → Reading Apps</span> you can let it run by itself (a minute after the app opens, then every six hours): <strong>Sync progress and finished books</strong>, and <strong>Add books that aren't on my shelves</strong>.</p>
+      <div class="tip">macOS may ask before the app can read Apple Books. If it doesn't, choose <strong>Choose Folder…</strong>, press <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>G</kbd>, paste <code>~/Library/Containers/com.apple.iBooksX/Data/Documents</code> and click Open.</div>
+    </section>
+
+    <section id="kobo">
+      <h2>Syncing a Kobo</h2>
+      <p>Plug your Kobo in by USB and a notification offers to <strong>Sync with Goodreads</strong> (or choose <span class="path">Settings → Reading Apps → Sync Kobo…</span>). You see everything first, and nothing changes until you press <strong>Sync</strong>:</p>
+      <ul>
+        <li><strong>Send to Kobo</strong> — books on Currently Reading or Want to Read that have <a href="#copies">a file</a>, into a <code>Goodreads</code> folder on the Kobo.</li>
+        <li><strong>Remove from Kobo</strong> — books the app sent that you've since finished. Only books the app sent are ever removed.</li>
+        <li><strong>Bring over to Goodreads</strong> — progress, finished books, highlights and notes.</li>
+      </ul>
+      <p><strong>Eject Kobo</strong> lets you unplug it safely. Turn the notification off in Settings → Reading Apps.</p>
+    </section>
+
+    <section id="calibre">
+      <h2>Calibre</h2>
+      <p>If you use <a href="https://calibre-ebook.com">Calibre</a>, the app finds the library Calibre last opened (or choose another in <span class="path">Settings → Reading Apps → Calibre</span>) and:</p>
+      <ul>
+        <li>matches its books to your shelves — by the Goodreads id Calibre's metadata download adds, the ISBN, or title and author;</li>
+        <li>uses each book's EPUB (or PDF) as <a href="#copies">your copy</a>, left where it is in Calibre;</li>
+        <li>brings over where you stopped in Calibre's viewer, and its highlights (in <a href="#highlights">Import Highlights</a>);</li>
+        <li>lists books that aren't on a shelf, to add to Want to Read with a click — never by itself.</li>
+      </ul>
+      <p><strong>Write ratings and shelves back to Calibre</strong> (off unless you turn it on) puts your stars, a tag like <code>Goodreads: Read</code> and the Goodreads id into Calibre, keeping its other tags and identifiers. Calibre can't be changed while it's open, so this waits until it's closed — or click <strong>Update Calibre Now</strong> after quitting it.</p>
     </section>
 
     <!-- ============ Around your Mac ============ -->
@@ -466,33 +550,35 @@ footer a { color: var(--ink-2); }
       <p>You can also ask Siri, in English — for example <em>"What am I reading in Goodreads"</em> or <em>"Update my reading progress in Goodreads"</em>.</p>
     </section>
 
-    <section id="menu-bar">
-      <h2>Menu bar</h2>
-      <p>The books icon in the menu bar lists what you're reading, with a progress bar and finish date for each. Choose a book to update its progress. <strong>Library Window</strong> brings the main window back, and <strong>Quit</strong> closes the app completely.</p>
+    <section id="share">
+      <h2>Safari &amp; Share</h2>
+      <p>On a book's page in Safari — a shop, a review, a library — choose <span class="path">Share → Add to Goodreads</span>. The app finds the book by the ISBN on the page (or its title) and adds it to Want to Read.</p>
     </section>
 
     <section id="notifications">
       <h2>Notifications</h2>
-      <p>All optional, in <a href="#settings">Settings</a>. They're checked while the app is running (it stays in the menu bar).</p>
+      <p>All optional, in <a href="#settings">Settings</a>. They're checked while the app is running, even with its window closed.</p>
       <ul>
         <li><strong>Friends</strong> — when a friend starts or finishes a book. Checked every hour.</li>
         <li><strong>New books</strong> — when an author you read has a new book. Checked once a day.</li>
+        <li><strong>Kobo connected</strong> — offers to <a href="#kobo">sync</a> when you plug a Kobo in. On unless you turn it off.</li>
+        <li><strong>Apple Books price drops</strong> — when an ebook on Want to Read gets cheaper.</li>
         <li><strong>Reading reminder</strong> — a daily nudge at the time you choose, about the book you're reading. Type a percentage straight into the notification to update your progress.</li>
       </ul>
     </section>
 
     <section id="spotlight">
       <h2>Spotlight</h2>
-      <p>The books on your shelves show up when you search with <kbd>⌘</kbd> <kbd>Space</kbd>. Choosing one opens it in the app. Turn it off in Settings to remove them.</p>
+      <p>The books on your shelves, and your notes and quotes, show up when you search with <kbd>⌘</kbd> <kbd>Space</kbd>. Choosing one opens it in the app. Turn it off in Settings to remove them.</p>
     </section>
 
     <!-- ============ Reference ============ -->
     <section id="backup">
       <h2>Export &amp; backup</h2>
       <h3>Export to a spreadsheet</h3>
-      <p><strong>Export Library…</strong> at the bottom of the sidebar saves every shelf to one CSV file, close to Goodreads' own export format, including your notes. The export button in a shelf's toolbar saves just that shelf.</p>
+      <p><span class="path">Settings → Library → Export Library…</span> saves every shelf to one CSV file, close to Goodreads' own export format, including your notes. The export button in a shelf's toolbar saves just that shelf.</p>
       <h3>Backup</h3>
-      <p>Your notes, quotes, progress history and stopped books exist only on your Mac — Goodreads has nowhere to keep them. Back them up:</p>
+      <p>Your notes, progress history and stopped books exist only on your Mac — Goodreads has nowhere to keep them. Back them up:</p>
       <ul>
         <li><strong>By hand</strong> — <span class="path">Settings → Backup → Back Up…</span> (or <span class="path">File → Back Up Notes &amp; Progress…</span>) saves a <code>.goodreadsbackup</code> file. <strong>Restore…</strong> puts one back, replacing what's on the Mac.</li>
         <li><strong>Automatically</strong> — turn on <strong>Back up automatically every week</strong>. Backups go to <span class="path">iCloud Drive › Goodreads Backups</span> (or a folder you choose with <strong>Change…</strong>), and the last eight are kept. <strong>Back Up Now</strong> makes one straight away.</li>
@@ -501,18 +587,14 @@ footer a { color: var(--ink-2); }
 
     <section id="settings">
       <h2>Settings</h2>
-      <p>Open with <kbd>⌘</kbd> <kbd>,</kbd> or Goodreads → Settings.</p>
+      <p>Open with <kbd>⌘</kbd> <kbd>,</kbd> or Goodreads → Settings. It's in tabs:</p>
       <div class="table-wrap"><table>
-        <tr><th>Setting</th><th>What it does</th></tr>
-        <tr><td>Book language</td><td>Which language suggested books should be in, and whether to include books of unknown language.</td></tr>
-        <tr><td>Look back</td><td>How far "recently read" reaches for suggestions: 30, 90 or 180 days, or a year.</td></tr>
-        <tr><td>Google Books API key</td><td>A free key for better search and details. Get one at <a href="https://console.cloud.google.com/">console.cloud.google.com</a>: enable the <em>Books API</em>, then <em>Credentials → Create Credentials → API key</em>. Kept in your Keychain.</td></tr>
-        <tr><td>Notifications</td><td>Friends starting and finishing books; new books by your authors.</td></tr>
-        <tr><td>Reading Reminder</td><td>A daily reminder, at the time you choose.</td></tr>
-        <tr><td>Reading Goal</td><td>Use your Goodreads Reading Challenge goal, or set your own in Stats.</td></tr>
-        <tr><td>Spotlight</td><td>Show or hide your books in ⌘Space search.</td></tr>
-        <tr><td>Backup</td><td>Back up and restore by hand, or automatically every week. See <a href="#backup">Export &amp; backup</a>.</td></tr>
-        <tr><td>Cache</td><td>How much space the app uses to stay fast, and <strong>Clear Cache</strong>. Safe: everything is fetched again, and your notes and progress are kept.</td></tr>
+        <tr><th>Tab</th><th>What's there</th></tr>
+        <tr><td>General</td><td>Book language for suggestions, how far "recently read" reaches, your Google Books API key (a free key for better search and details — get one at <a href="https://console.cloud.google.com/">console.cloud.google.com</a>: enable the <em>Books API</em>, then <em>Credentials → Create Credentials → API key</em>; kept in your Keychain) and the reading goal (your Goodreads Reading Challenge, or your own).</td></tr>
+        <tr><td>Notifications</td><td>Friends starting and finishing books, new books by your authors, Apple Books price drops, the Kobo notification and the daily reading reminder.</td></tr>
+        <tr><td>Reading Apps</td><td>Syncing <a href="#reading-apps">Apple Books, Kobo</a> and <a href="#calibre">Calibre</a>, and your own <a href="#stores">stores</a>.</td></tr>
+        <tr><td>Library</td><td>Your account (Log In, Sign Out, Export Library), <a href="#backup">backup</a>, Spotlight, and the cache — how much space the app uses to stay fast, and <strong>Clear Cache</strong> (safe: your notes and progress are kept).</td></tr>
+        <tr><td>Troubleshooting</td><td>The <strong>Log</strong>, and a <strong>Browser</strong> button (off unless you turn it on) that shows the Goodreads page the app uses behind the scenes.</td></tr>
       </table></div>
       <p>The app's language follows your Mac's: English or European Portuguese. To change it for this app only, go to System Settings → General → Language &amp; Region → Applications.</p>
     </section>
@@ -530,13 +612,13 @@ footer a { color: var(--ink-2); }
         <tr><td><kbd>⌘</kbd> <kbd>+</kbd> / <kbd>⌘</kbd> <kbd>−</kbd> / <kbd>⌘</kbd> <kbd>0</kbd></td><td>Bigger, smaller, actual text size</td></tr>
         <tr><td><kbd>Return</kbd></td><td>In Search: search now. In a sheet: its main button.</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Close a sheet or cancel</td></tr>
-        <tr><td><kbd>⌘</kbd> <kbd>Q</kbd></td><td>Quit (the app otherwise keeps running in the menu bar)</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>Q</kbd></td><td>Quit (closing the window keeps the app running)</td></tr>
       </table></div>
     </section>
 
     <section id="updates">
       <h2>Updates</h2>
-      <p>The app checks for new versions on its own. When one is out, an <strong>Update</strong> button appears in the status bar. Click it to read what's new, then install: the app downloads the update, replaces itself and reopens, keeping its signature so the Keychain doesn't ask again.</p>
+      <p>The app checks for new versions on its own. When one is out, an <strong>Update</strong> button appears at the foot of the sidebar. Click it to read what's new, then install: the app downloads the update, replaces itself and reopens, keeping its signature so the Keychain doesn't ask again.</p>
     </section>
 
     <section id="privacy">
@@ -544,7 +626,7 @@ footer a { color: var(--ink-2); }
       <ul>
         <li>You sign in on Goodreads' own page; the app never sees or stores your password.</li>
         <li>Shelves, ratings and reviews live on Goodreads. The app keeps a copy on your Mac so it opens instantly.</li>
-        <li>Notes, quotes, progress history and stopped books are only on your Mac (and in backups you make).</li>
+        <li>Notes, progress history and stopped books are only on your Mac (and in backups you make).</li>
         <li>Your Google Books key is kept in the Keychain.</li>
         <li>The app only talks to Goodreads, Google Books and GitHub (for updates). No tracking, no ads, no account of its own.</li>
       </ul>
@@ -559,13 +641,13 @@ footer a { color: var(--ink-2); }
       <h3>Search finds little, or says the quota is used up</h3>
       <p>Add a Google Books key in <a href="#settings">Settings</a>.</p>
       <h3>A shelf or friends look empty or out of date</h3>
-      <p>Click the reload button in the toolbar. If it's still wrong, Goodreads may have changed its website: click <strong>Log</strong> in the status bar, copy it, and <a href="https://github.com/tomasmprado/Native-GoodReads/issues">open an issue</a> with it. <strong>Browser</strong> shows the Goodreads page the app is using behind the scenes.</p>
+      <p>Click the reload button in the toolbar. If it's still wrong, Goodreads may have changed its website: open <span class="path">Settings → Troubleshooting → Log</span>, copy it, and <a href="https://github.com/tomasmprado/Native-GoodReads/issues">open an issue</a> with it. Turning on the <strong>Browser</strong> button there shows the Goodreads page the app is using behind the scenes.</p>
       <h3>A book has no synopsis or details</h3>
       <p>Close it and open it again — the app retries Goodreads and fills the gaps from Google Books. A Google Books key helps here too.</p>
       <h3>The widget is empty</h3>
       <p>Open the app once; widgets show what it last saw.</p>
       <h3>I'm offline</h3>
-      <p>The app shows what it saved last time and says so in the status bar. It refreshes by itself when you're back online.</p>
+      <p>The app shows what it saved last time and says so at the foot of the sidebar. It refreshes by itself when you're back online.</p>
       <a class="back" href="#install">↑ Back to the top</a>
     </section>
   </article>
