@@ -155,6 +155,20 @@ if [ -d "$WIDGET" ]; then
     codesign --force --sign "$IDENTITY" --entitlements "$WORK/widget.entitlements" \
         --generate-entitlement-der "$WIDGET" 2>/dev/null || die "couldn't sign the widget"
 fi
+cat > "$WORK/share.entitlements" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key><true/>
+</dict>
+</plist>
+EOF
+SHARE="$TARGET/Contents/PlugIns/GoodreadsShare.appex"
+if [ -d "$SHARE" ]; then
+    codesign --force --sign "$IDENTITY" --entitlements "$WORK/share.entitlements" \
+        --generate-entitlement-der "$SHARE" 2>/dev/null || die "couldn't sign the Share extension"
+fi
 codesign --force --sign "$IDENTITY" "$TARGET" 2>/dev/null || die "couldn't sign the app"
 codesign --verify --deep "$TARGET" || die "the signature doesn't check out"
 info "signed with $(codesign -dvv "$TARGET" 2>&1 | awk -F= '/^Authority/ {print $2; exit}')"

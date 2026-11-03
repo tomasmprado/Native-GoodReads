@@ -6,15 +6,22 @@ import Foundation
 /// against your Goodreads shelves, so progress, finished books and new books
 /// can go to Goodreads without typing them in.
 enum ReaderSource: String, Codable, CaseIterable, Identifiable, Sendable {
-    case appleBooks, kobo
+    case appleBooks, kobo, calibre
     var id: String { rawValue }
     var title: String {
         switch self {
         case .appleBooks: return String(localized: "Apple Books")
         case .kobo:       return String(localized: "Kobo")
+        case .calibre:    return String(localized: "Calibre")
         }
     }
-    var symbol: String { self == .appleBooks ? "book" : "rectangle.portrait" }
+    var symbol: String {
+        switch self {
+        case .appleBooks: return "book"
+        case .kobo:       return "rectangle.portrait"
+        case .calibre:    return "books.vertical"
+        }
+    }
 }
 
 struct ReaderBook: Identifiable, Equatable, Sendable {
@@ -29,6 +36,8 @@ struct ReaderBook: Identifiable, Equatable, Sendable {
     let finished: Bool
     let finishedOn: Date?
     let lastOpened: Date?
+    /// Calibre keeps one when its metadata came from Goodreads.
+    var goodreadsID: String? = nil
 
     var id: String { "\(source.rawValue):\(sourceID)" }
     var started: Bool { (percent ?? 0) > 0 || lastOpened != nil }
@@ -182,6 +191,7 @@ enum ReadingApps {
     /// one, else by title and author.
     static func match(_ books: [ReaderBook], to library: [ShelfEntry]) -> [String: ShelfEntry] {
         var byISBN: [String: ShelfEntry] = [:]
+        let byID = Dictionary(library.map { ($0.bookID, $0) }, uniquingKeysWith: { a, _ in a })
         var byTitle: [String: [ShelfEntry]] = [:]
         for entry in library {
             for isbn in [entry.isbn, entry.isbn13].compactMap({ $0 }) { byISBN[isbn] = entry }
@@ -189,6 +199,7 @@ enum ReadingApps {
         }
         var result: [String: ShelfEntry] = [:]
         for book in books {
+            if let id = book.goodreadsID, let hit = byID[id] { result[book.id] = hit; continue }
             if let isbn = book.isbn, let hit = byISBN[isbn] { result[book.id] = hit; continue }
             let authors = Highlights.authorTokens(book.author)
             for key in Highlights.titleKeys(book.title) {

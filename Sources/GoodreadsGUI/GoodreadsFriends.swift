@@ -120,13 +120,27 @@ enum GoodreadsFriends {
         return Profile(
             name: result.name ?? String(localized: "Goodreads member"),
             avatarURL: result.avatar.flatMap(URL.init(string:)),
-            stats: result.stats,
+            stats: result.stats.map(cleanStats),
             activity: decodeActivity(activityRaw),
             details: ProfileDetails.decode(detailsRaw)
         )
     }
 
     // MARK: - Shared decoding
+
+    /// "61 ratings (4.65 avg) 25 reviews #1 most followed //<![CDATA[ … //]]>" →
+    /// "61 ratings (4.65 avg) · 25 reviews · #1 most followed".
+    static func cleanStats(_ text: String) -> String {
+        var clean = text.replacingOccurrences(of: #"//\s*<!\[CDATA\[.*?//\s*\]\]>"#, with: " ",
+                                              options: [.regularExpression])
+        clean = clean.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespaces)
+        clean = clean.replacingOccurrences(of: #"\s*(\d[\d,]* reviews?|#\d+ [a-z ]+)"#, with: " · $1",
+                                           options: [.regularExpression, .caseInsensitive])
+        return clean.replacingOccurrences(of: #"\s+·"#, with: " ·", options: .regularExpression)
+            .replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: " ·"))
+    }
 
     static func decodeActivity(_ raw: String) -> [Activity] {
         guard let data = raw.data(using: .utf8),
@@ -347,7 +361,13 @@ enum GoodreadsFriends {
         const name = (document.querySelector('#profileNameTopHeading, .userProfileName') || {}).textContent;
         const avatarImg = document.querySelector('.leftAlignedProfilePicture img');
         const statsEl = document.querySelector('.profilePageUserStatsInfo');
-        const stats = statsEl ? (statsEl.textContent || '').replace(/\\s+/g, ' ').trim() : null;
+        // The badges ("#1 most followed") carry their own <script>; leave those out.
+        let stats = null;
+        if (statsEl) {
+            const copy = statsEl.cloneNode(true);
+            copy.querySelectorAll('script, style, noscript').forEach(n => n.remove());
+            stats = (copy.textContent || '').replace(/\\s+/g, ' ').trim();
+        }
 
         return JSON.stringify({
             ok: true,

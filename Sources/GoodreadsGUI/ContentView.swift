@@ -18,8 +18,6 @@ struct ContentView: View {
                 case .quotes:      QuotesPane(model: model)
                 case .shelf:       ShelfPane(model: model)
                 }
-                Divider()
-                StatusBar(model: model, session: session)
             }
             .frame(minWidth: 480, minHeight: 420)
         }
@@ -91,6 +89,8 @@ struct ContentView: View {
                 HighlightsImportSheet(model: model)
             case .readingApps:
                 ReadingAppsSheet()
+            case .koboSync:
+                KoboSyncSheet(model: model)
             case .detail(let book):
                 BookDetailView(book: book)
             case .friendProfile:
@@ -118,7 +118,7 @@ struct ContentView: View {
             Label("Stats", systemImage: "chart.bar")
                 .tag(LibraryModel.Pane.stats)
 
-            Label("Quotes", systemImage: "quote.bubble")
+            Label("Notes", systemImage: "note.text")
                 .tag(LibraryModel.Pane.quotes)
 
             Section("Shelves") {
@@ -130,27 +130,7 @@ struct ContentView: View {
         }
         .frame(minWidth: 190)
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 4) {
-                if model.isExporting, let note = model.exportProgress {
-                    Text(note)
-                        .appFont(size: 10)
-                        .foregroundStyle(.secondary)
-                }
-                Button {
-                    Task { await model.exportEverything() }
-                } label: {
-                    if model.isExporting {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Label("Export Library…", systemImage: "square.and.arrow.down")
-                            .appFont(size: 11)
-                    }
-                }
-                .glassButton()
-                .disabled(model.isExporting)
-                .help("Fetch every shelf and save one CSV")
-            }
-            .padding(.bottom, 8)
+            SidebarStatus(model: model, session: session)
         }
     }
 }
@@ -196,155 +176,10 @@ private struct HomePane: View {
     @ObservedObject var model: LibraryModel
 
     var body: some View {
-        VStack(spacing: 22) {
-            Spacer(minLength: 10)
-
-            TypewriterText(text: String(localized: "Welcome to Goodreads"), font: .system(size: 22, weight: .semibold))
-
-            AppLogoImage()
-
-            if !model.currentlyReading.isEmpty {
-                CurrentlyReadingCarousel(model: model)
-            } else if model.isLoadingCurrentlyReading {
-                ProgressView().controlSize(.small)
-            } else {
-                Text("Nothing on Currently Reading yet.")
-                    .appFont(size: 12)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let next = model.upNext {
-                Button {
-                    model.showBookDetail(next.asBook)
-                } label: {
-                    Label {
-                        Text("Up next: \(next.title)")
-                    } icon: {
-                        Image(systemName: "arrow.right.circle")
-                    }
-                    .appFont(size: 12)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .glassCapsule(interactive: true)
-                }
-                .buttonStyle(.plain)
-                .help("The first book in your Want to Read order")
-            }
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay(alignment: .bottomTrailing) { ReadNextCard(model: model) }
+        HomeDashboard(model: model)
     }
 }
 
-/// Reveals `text` a character at a time, replaying on every appearance —
-/// `.task` re-runs whenever this view comes back on screen, since Home is
-/// recreated each time the sidebar selection returns to it.
-private struct TypewriterText: View {
-    let text: String
-    let font: Font
-
-    @State private var shown = ""
-
-    var body: some View {
-        Text(shown)
-            .font(font)
-            .task {
-                shown = ""
-                for character in text {
-                    shown.append(character)
-                    try? await Task.sleep(for: .milliseconds(45))
-                }
-            }
-    }
-}
-
-private struct AppLogoImage: View {
-    var body: some View {
-        if let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-           let nsImage = NSImage(contentsOf: url) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 72, height: 72)
-        } else {
-            Image(systemName: "book.closed.fill")
-                .appFont(size: 48)
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
-/// One book — the top-ranked suggestion — pinned in the corner with a
-/// one-tap way to start it, so Home surfaces a pick without becoming a list.
-private struct ReadNextCard: View {
-    @ObservedObject var model: LibraryModel
-
-    var body: some View {
-        if let suggestion = model.suggestions.first {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Read Next")
-                    .appFont(size: 11, weight: .semibold)
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 10) {
-                    coverImage(suggestion.book.coverURL)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(suggestion.book.title)
-                            .appFont(size: 12, weight: .medium)
-                            .lineLimit(2)
-                        Text(suggestion.book.author)
-                            .appFont(size: 11)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-
-                if model.busyBookID == suggestion.book.id {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button("Add to Currently Reading") {
-                        Task { await model.shelve(suggestion.book, to: .currentlyReading) }
-                    }
-                    .appFont(size: 11)
-                    .controlSize(.small)
-                    .glassProminentButton()
-                }
-            }
-            .padding(14)
-            .frame(width: 230)
-            .glassCard(cornerRadius: 18)
-            .padding(16)
-        }
-    }
-
-    @ViewBuilder
-    private func coverImage(_ url: URL?) -> some View {
-        Group {
-            if let url {
-                CachedAsyncImage(url: url) { phase in
-                    if case .success(let image) = phase {
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } else {
-                        placeholder
-                    }
-                }
-            } else {
-                placeholder
-            }
-        }
-        .frame(width: 34, height: 50)
-        .clipShape(RoundedRectangle(cornerRadius: 3))
-    }
-
-    private var placeholder: some View {
-        RoundedRectangle(cornerRadius: 3)
-            .fill(Color.secondary.opacity(0.15))
-            .overlay(Image(systemName: "book.closed").appFont(size: 12).foregroundStyle(.tertiary))
-    }
-}
 
 // MARK: - Suggestions
 
@@ -743,7 +578,7 @@ private struct FriendProfileSheet: View {
                                 Text(profile.name)
                                     .appFont(size: 16, weight: .semibold)
                                 if let stats = profile.stats {
-                                    Text(stats)
+                                    Text(GoodreadsFriends.cleanStats(stats))
                                         .appFont(size: 12)
                                         .foregroundStyle(.secondary)
                                 }
@@ -1200,6 +1035,8 @@ private struct SearchPane: View {
 private struct ShelfPane: View {
     @ObservedObject var model: LibraryModel
     @AppStorage("shelfLayout") private var layout = "list"
+    @State private var picking = false
+    @State private var quickRating = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1262,6 +1099,10 @@ private struct ShelfPane: View {
             ImageMemoryCache.shared.prefetch(model.visibleEntries.prefix(40).compactMap(\.coverURL))
         }
         .toolbar { toolbarContent }
+        .sheet(isPresented: $picking) { PickForMeSheet(model: model, candidates: model.visibleEntries) }
+        .sheet(isPresented: $quickRating) {
+            QuickRateSheet(model: model, unrated: model.shelfEntries.filter { ($0.rating ?? 0) == 0 })
+        }
     }
 
     private var subtitle: String {
@@ -1298,6 +1139,21 @@ private struct ShelfPane: View {
                 Label("Sort shelf", systemImage: "arrow.up.arrow.down")
             }
             .help("Sort: \(model.sortOrder.title)")
+
+            if model.currentShelf?.name == Shelf.wantToRead.name {
+                Button { picking = true } label: {
+                    Label("Pick for Me", systemImage: "dice")
+                }
+                .help("Suggest a book from this shelf (filters and smart lists narrow it)")
+                .disabled(model.visibleEntries.isEmpty)
+            }
+            if model.currentShelf?.name == Shelf.read.name {
+                Button { quickRating = true } label: {
+                    Label("Rate Unrated", systemImage: "star.leadinghalf.filled")
+                }
+                .help("Rate the books on Read that have no stars, one at a time")
+                .disabled(!model.shelfEntries.contains { ($0.rating ?? 0) == 0 })
+            }
 
             Button { model.exportCurrentShelf() } label: {
                 Label("Export shelf as CSV", systemImage: "square.and.arrow.down")
@@ -1424,6 +1280,11 @@ private struct ShelfPane: View {
         Divider()
 
         Button("View Details…") { model.showBookDetail(entry.asBook) }
+        if let file = BookFiles.file(for: entry.bookID) {
+            Button("Open in Apple Books") {
+                BookFiles.openInAppleBooks(file, bookID: entry.bookID, title: entry.title, author: entry.author)
+            }
+        }
         Button("Open on Goodreads") { model.openOnGoodreads(bookID: entry.bookID) }
         if let url = LibraryModel.goodreadsURL(bookID: entry.bookID) {
             ShareLink(item: url, subject: Text(entry.title),
@@ -1499,7 +1360,7 @@ private struct CoverTile: View {
 
 // MARK: - Currently Reading carousel
 
-private struct CurrentlyReadingCarousel: View {
+struct CurrentlyReadingCarousel: View {
     @ObservedObject var model: LibraryModel
 
     var body: some View {
@@ -1651,6 +1512,10 @@ private struct CurrentlyReadingCard: View {
     }
 
     private func pagesLeftText(_ pages: ReadingPace.Pages) -> String {
+        if let plan = FinishPlans.date(for: entry.bookID),
+           let needed = FinishPlans.pagesPerDay(left: pages.left, by: plan) {
+            return String(localized: "\(needed) a day to finish by \(LibraryModel.shortDate(plan))")
+        }
         if let perDay = pages.perDay, perDay >= 1 {
             return String(localized: "\(pages.left) pages left · ~\(Int(perDay.rounded())) a day")
         }
@@ -1771,14 +1636,31 @@ private struct BookRow<Actions: View>: View {
     }
 }
 
-private struct StatusBar: View {
+/// What's happening, at the foot of the sidebar: the latest result (with
+/// Undo), being offline, an update, and signing in when signed out.
+private struct SidebarStatus: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject var session: WebSession
     @ObservedObject private var prefs = Preferences.shared
     @ObservedObject private var connectivity = Connectivity.shared
 
     var body: some View {
-        HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
+            if model.isExporting, let note = model.exportProgress {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text(note).appFont(size: 10).foregroundStyle(.secondary)
+                }
+            }
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private var content: some View {
             if !connectivity.isOnline {
                 Label("Offline — showing saved data", systemImage: "wifi.slash")
                     .appFont(size: 11, weight: .medium)
@@ -1789,22 +1671,26 @@ private struct StatusBar: View {
                     .help("No internet connection. What you see is from the cache, and refreshes once you're back online.")
             }
             if let status = model.status {
-                Image(systemName: status.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                    .foregroundStyle(status.isError ? .orange : .green)
-                Text(status.text)
-                    .lineLimit(2)
-                    .appFont(size: 11)
-                    .textSelection(.enabled)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: status.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+                        .foregroundStyle(status.isError ? .orange : .green)
+                    Text(status.text)
+                        .lineLimit(4)
+                        .appFont(size: 11)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             } else {
-                Circle()
-                    .fill(model.loggedIn ? Color.green : Color.secondary)
-                    .frame(width: 7, height: 7)
-                Text(model.loggedIn ? String(localized: "Signed in") : String(localized: "Not signed in"))
-                    .appFont(size: 11)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(model.loggedIn ? Color.green : Color.secondary)
+                        .frame(width: 7, height: 7)
+                    Text(model.loggedIn ? String(localized: "Signed in") : String(localized: "Not signed in"))
+                        .appFont(size: 11)
+                        .foregroundStyle(.secondary)
+                    if session.isBusy { ProgressView().controlSize(.mini) }
+                }
             }
-
-            Spacer()
 
             if let pending = model.pendingUndo {
                 Button("Undo") { Task { await model.performPendingUndo() } }
@@ -1817,8 +1703,6 @@ private struct StatusBar: View {
                 UpdateButton(update: update)
             }
 
-            if session.isBusy { ProgressView().controlSize(.small) }
-
             if prefs.showBrowserButton {
                 Button("Browser") { model.startBrowser() }
                     .controlSize(.small)
@@ -1826,18 +1710,11 @@ private struct StatusBar: View {
                     .help("Watch what the app is doing in the page — for troubleshooting.")
             }
 
-            Button(model.loggedIn ? String(localized: "Sign Out") : String(localized: "Log In")) {
-                if model.loggedIn {
-                    Task { await model.signOut() }
-                } else {
-                    model.startSignIn()
-                }
+            if !model.loggedIn {
+                Button("Log In") { model.startSignIn() }
+                    .controlSize(.small)
+                    .glassProminentButton()
             }
-            .controlSize(.small)
-            .glassProminentButton()
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
     }
 }
 

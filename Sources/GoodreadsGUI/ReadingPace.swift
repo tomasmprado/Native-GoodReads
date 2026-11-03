@@ -78,3 +78,31 @@ enum ReadingPace {
         return max(now, last.date.addingTimeInterval(remainingDays * 86400))
     }
 }
+
+/// "Finish by" dates you set for books you're reading, and how many pages
+/// a day that takes from where you are.
+enum FinishPlans {
+    private static let key = "finishPlans"
+
+    static var all: [String: Date] {
+        (UserDefaults.standard.dictionary(forKey: key) as? [String: Double] ?? [:])
+            .mapValues { Date(timeIntervalSince1970: $0) }
+    }
+
+    static func date(for bookID: String) -> Date? { all[bookID] }
+
+    static func set(_ date: Date?, for bookID: String) {
+        var plans = UserDefaults.standard.dictionary(forKey: key) as? [String: Double] ?? [:]
+        plans[bookID] = date?.timeIntervalSince1970
+        UserDefaults.standard.set(plans, forKey: key)
+    }
+
+    /// Pages a day from today to `date` (counting today), at least 1 when anything's left.
+    static func pagesPerDay(left: Int, by date: Date, now: Date = Date(), calendar: Calendar = .current) -> Int? {
+        guard left > 0 else { return 0 }
+        let days = (calendar.dateComponents([.day], from: calendar.startOfDay(for: now),
+                                            to: calendar.startOfDay(for: date)).day ?? 0) + 1
+        guard days > 0 else { return nil }
+        return max(1, Int((Double(left) / Double(days)).rounded(.up)))
+    }
+}

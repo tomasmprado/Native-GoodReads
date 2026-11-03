@@ -73,6 +73,7 @@ final class LibraryModel: ObservableObject {
         case abandon(ShelfEntry)
         case importHighlights
         case readingApps
+        case koboSync
         case detail(Book)
         case friendProfile
         case authorPage
@@ -88,6 +89,7 @@ final class LibraryModel: ObservableObject {
             case .abandon(let entry):   return "abandon-\(entry.id)"
             case .importHighlights:     return "importHighlights"
             case .readingApps:          return "readingApps"
+            case .koboSync:             return "koboSync"
             case .detail(let book):     return "detail-\(book.id)"
             case .friendProfile:        return "friendProfile"
             case .authorPage:           return "authorPage"
@@ -112,6 +114,8 @@ final class LibraryModel: ObservableObject {
         didSet { WidgetBridge.scheduleUpdate() }
     }
     @Published var isLoadingCurrentlyReading = false
+    /// Friends' reading-challenge progress, for the race on Home.
+    @Published var friendRace: [RaceEntry] = []
     /// Books you stopped reading, by book id — kept on this Mac.
     @Published var abandoned: [String: AbandonedBook] = [:]
 
@@ -126,7 +130,19 @@ final class LibraryModel: ObservableObject {
     }
     @Published var isLoadingStats = false
     /// This year's Goodreads Reading Challenge, once read.
-    @Published var challenge: ReadingChallenge?
+    @Published var challenge: ReadingChallenge? {
+        didSet { WidgetBridge.scheduleUpdate() }
+    }
+
+    /// Books read this year as Goodreads counts them for the challenge
+    /// (rereads and books without a date included), else from the Read shelf.
+    var readThisYear: Int {
+        let year = Calendar.current.component(.year, from: Date())
+        if Preferences.shared.useGoodreadsChallenge, let challenge, challenge.year == year, let read = challenge.read {
+            return max(read, readingStats?.readThisYear ?? 0)
+        }
+        return readingStats?.readThisYear ?? 0
+    }
     /// "Fill In" on the Stats pane: book pages fetched so far, of how many.
     @Published var extrasDone = 0
     @Published var extrasTotal = 0
@@ -399,6 +415,8 @@ final class LibraryModel: ObservableObject {
         }
         await loadNewReleases()
         Task { await fetchCleanTitles() }
+        Task { await SpotlightIndex.refreshNotes() }
+        await loadChallenge()
         friendsBooks = await FriendsBooks.index()
         if FriendsBooks.isStale(friendsBooks) { await syncFriendsBooks() }
     }
@@ -760,7 +778,12 @@ final class LibraryModel: ObservableObject {
         let cached = ShelfCache.read(.read)
         if let cached { readingStats = ReadingStats.compute(from: cached.entries, extras: extras) }
         let stale = cached.map { ShelfCache.isStale($0.fetched) } ?? true
-        guard force || stale else { return }
+        // The challenge has its own half-day cache, so it's read either way —
+        // its count is what the goal shows.
+        guard force || stale else {
+            await loadChallenge()
+            return
+        }
 
         isLoadingStats = true
         defer { isLoadingStats = false }
@@ -776,8 +799,14 @@ final class LibraryModel: ObservableObject {
     /// Reads this year's Reading Challenge and, when you've joined it, makes
     /// its goal the Stats goal. A page the app can't read changes nothing.
     func loadChallenge(force: Bool = false) async {
-        guard loggedIn, Preferences.shared.useGoodreadsChallenge else { return }
+        guard Preferences.shared.useGoodreadsChallenge else { return }
         let year = Calendar.current.component(.year, from: Date())
+        // The saved count shows straight away, signed in or not yet.
+        if challenge == nil,
+           let saved = await DataCache.shared.read(ReadingChallenge.self, "challenge", String(year), ttl: .infinity) {
+            challenge = saved.value
+        }
+        guard loggedIn else { return }
         try? await DataCache.load("challenge", String(year), ttl: 12 * 3600, force: force) {
             try await GoodreadsChallenge.fetch(year: year)
         } show: { [weak self] challenge, _ in

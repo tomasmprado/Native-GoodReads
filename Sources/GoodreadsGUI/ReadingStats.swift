@@ -9,6 +9,8 @@ struct BookExtras: Codable, Sendable, Equatable {
     let genres: [String]
     /// Goodreads' average rating, for the smart lists. Absent before 2.6.
     var rating: Double? = nil
+    /// How many people rated it on Goodreads — for Year in Books' most and least shelved.
+    var ratingsCount: Int? = nil
 
     private static let namespace = "book-extras"
     private static let key = "all"
@@ -29,7 +31,8 @@ struct BookExtras: Codable, Sendable, Equatable {
         let genres = current?.genres.isEmpty == false ? current!.genres : google.genresFromCategories
         let pages = current?.pages ?? google.pageCount
         guard pages != nil || !genres.isEmpty else { return }
-        await save(BookExtras(pages: pages, genres: genres, rating: current?.rating), for: entry.bookID)
+        await save(BookExtras(pages: pages, genres: genres, rating: current?.rating, ratingsCount: current?.ratingsCount),
+                   for: entry.bookID)
     }
 
     static func save(_ extras: BookExtras, for bookID: String) async {
@@ -216,7 +219,7 @@ struct StatsPane: View {
             }
         }
         .navigationTitle("Stats")
-        .sheet(isPresented: $showingYear) { YearInReviewSheet() }
+        .sheet(isPresented: $showingYear) { YearWrappedSheet(model: model) }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { showingYear = true } label: {
@@ -245,7 +248,8 @@ struct StatsPane: View {
         let goal = prefs.yearlyGoal
         let expected = ReadingStats.expectedByToday(goal: goal)
         let year = Calendar.current.component(.year, from: Date())
-        let ahead = stats.readThisYear - expected
+        let read = model.readThisYear
+        let ahead = read - expected
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -266,14 +270,14 @@ struct StatsPane: View {
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("\(stats.readThisYear)")
+                Text("\(read)")
                     .appFont(size: 34, weight: .bold, design: .rounded)
                 Text("of \(goal) books")
                     .foregroundStyle(.secondary)
             }
-            ProgressView(value: Double(min(stats.readThisYear, goal)), total: Double(goal))
+            ProgressView(value: Double(min(read, goal)), total: Double(goal))
             Text(ahead >= 0
-                 ? (stats.readThisYear >= goal ? String(localized: "Goal reached 🎉") : String(localized: "\(ahead) ahead of schedule"))
+                 ? (read >= goal ? String(localized: "Goal reached 🎉") : String(localized: "\(ahead) ahead of schedule"))
                  : String(localized: "\(-ahead) behind schedule"))
                 .appFont(size: 11)
                 .foregroundStyle(ahead >= 0 ? Color.green : Color.orange)

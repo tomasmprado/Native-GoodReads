@@ -36,5 +36,6 @@ enum BookNotes {
                 all[bookID] = stamped
             }
         }
+        await SpotlightIndex.refreshNotes()
     }
 }

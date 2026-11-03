@@ -14,6 +14,8 @@ struct ProgressSheet: View {
     @State private var percent: Double
     @State private var page: String = ""
     @State private var note: String = ""
+    @State private var hasPlan = false
+    @State private var planDate = Calendar.current.date(byAdding: .day, value: 14, to: Date()) ?? Date()
 
     enum Mode: String, CaseIterable, Identifiable {
         case percent = "Percent"
@@ -68,6 +70,18 @@ struct ProgressSheet: View {
                 }
             }
 
+            Toggle("Finish by", isOn: $hasPlan)
+                .toggleStyle(.checkbox)
+                .appFont(size: 12)
+            if hasPlan {
+                DatePicker("Finish by", selection: $planDate, in: Date()..., displayedComponents: .date)
+                    .labelsHidden()
+                if let totalPages, let pagesPerDay = FinishPlans.pagesPerDay(left: max(0, totalPages - currentPage(totalPages)), by: planDate) {
+                    Text("\(pagesPerDay) pages a day")
+                        .appFont(size: 11).foregroundStyle(.secondary)
+                }
+            }
+
             TextField("Note (optional)", text: $note, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
@@ -77,6 +91,7 @@ struct ProgressSheet: View {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button("Update") {
+                    FinishPlans.set(hasPlan ? planDate : nil, for: entry.bookID)
                     if mode == .percent {
                         commit(Int(percent), nil, note)
                     } else {
@@ -90,5 +105,16 @@ struct ProgressSheet: View {
         }
         .padding(16)
         .frame(width: 340)
+        .onAppear {
+            if let date = FinishPlans.date(for: entry.bookID) {
+                hasPlan = true
+                planDate = date
+            }
+        }
+    }
+
+    private func currentPage(_ total: Int) -> Int {
+        if mode == .page, let typed = Int(page) { return typed }
+        return Int((Double(total) * percent / 100).rounded())
     }
 }
