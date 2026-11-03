@@ -25,6 +25,12 @@ added in that diff, meaning `v1.0.0` predates all of it.
   imported too.
 - **Where to Get It** adds Apple Books, Kindle and Kobo.
 
+### Fixed
+
+- Searching for an ISBN (with or without hyphens) finds the book: Google
+  Books is asked for that ISBN, and Goodreads too when Google has nothing.
+  Books on your shelves with that ISBN come first.
+
 ### Changed
 
 - Book Details, profiles and author pages no longer have a zoom (+) button.

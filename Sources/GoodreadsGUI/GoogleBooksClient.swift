@@ -15,6 +15,14 @@ enum GoogleBooksClient {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
 
+        // An ISBN only finds anything written as "isbn:…"; Goodreads knows
+        // editions Google doesn't, so it's asked too when Google has none.
+        if let isbn = ISBN.normalized(trimmed) {
+            if let found = try? await volumes(q: "isbn:\(isbn)"), !found.isEmpty { return found }
+            if let book = await goodreadsBook(isbn: isbn) { return [book] }
+            return []
+        }
+
         var q = trimmed
         let subjectTerm = subject.trimmingCharacters(in: .whitespacesAndNewlines)
         if !subjectTerm.isEmpty { q += " subject:\"\(subjectTerm)\"" }
@@ -36,6 +44,18 @@ enum GoogleBooksClient {
             guard httpError.apiKeyWasEmpty else { throw httpError }
             return try await SearchClient.search(trimmed)
         }
+    }
+
+    /// The Goodreads edition with this ISBN, as a search result.
+    static func goodreadsBook(isbn: String) async -> Book? {
+        guard let bookID = await GoodreadsLookup.bookID(isbn: isbn),
+              let detail = try? await GoodreadsBookPage.fetch(bookID: bookID),
+              let about = detail.about, let title = about.title else { return nil }
+        return Book(id: isbn, title: title, author: about.authorName ?? "", coverURL: about.coverURL,
+                    rating: about.averageRating.map { String(format: "%.1f", $0) }, publisher: about.publisher,
+                    isbn: isbn, goodreadsID: bookID, language: detail.language, description: about.synopsis,
+                    pageCount: detail.pageCount,
+                    publishedDate: about.published.map { $0.formatted(.dateTime.year()) })
     }
 
     /// Used by suggestions to find more books by an author already read.

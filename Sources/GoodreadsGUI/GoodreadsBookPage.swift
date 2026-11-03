@@ -27,6 +27,7 @@ enum GoodreadsBookPage {
         var title: String?
         var authorName: String?
         var authorURL: URL?
+        var coverURL: URL?
         /// The synopsis, as plain text with paragraph breaks.
         var synopsis: String?
         var publisher: String?
@@ -165,6 +166,7 @@ enum GoodreadsBookPage {
 
         var about = About()
         about.title = text(book["titleComplete"]) ?? text(book["title"])
+        about.coverURL = text(book["imageUrl"]).flatMap(URL.init(string:))
         about.authorName = contributorName(book["primaryContributorEdge"] as? [String: Any], in: apollo)
             ?? authorName(fromJSONLD: html)
         if let ref = ((book["primaryContributorEdge"] as? [String: Any])?["node"] as? [String: Any])?["__ref"] as? String,

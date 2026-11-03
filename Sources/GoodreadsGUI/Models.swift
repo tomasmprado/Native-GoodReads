@@ -154,9 +154,13 @@ struct ShelfEntry: Identifiable, Hashable, Codable {
              isbn: isbn13 ?? isbn, goodreadsID: bookID)
     }
 
-    /// Substring match across title and author, for the filter field.
+    /// Substring match across title and author — or the ISBN, when the term
+    /// is one — for the filter field and search.
     func matches(_ term: String) -> Bool {
         guard !term.isEmpty else { return true }
+        if let isbn = ISBN.normalized(term) {
+            return [self.isbn, isbn13].compactMap { $0.flatMap(ISBN.normalized) }.contains(isbn)
+        }
         let needle = term.lowercased()
         return title.lowercased().contains(needle) || author.lowercased().contains(needle)
     }
@@ -220,5 +224,19 @@ enum ShelfSortOrder: String, CaseIterable, Identifiable {
 enum GenreNames {
     static func display(_ genre: String) -> String {
         Bundle.main.localizedString(forKey: genre, value: genre, table: "Genres")
+    }
+}
+
+
+enum ISBN {
+    /// "978-972-23-6728-8" or "972 23 6728 X" → digits only, when it's a
+    /// 10- or 13-digit ISBN; nil for anything else.
+    static func normalized(_ text: String) -> String? {
+        let compact = text.uppercased().filter { !" -‐–".contains($0) }
+        let isTen = compact.count == 10 && compact.dropLast().allSatisfy(\.isNumber)
+            && (compact.last!.isNumber || compact.last == "X")
+        let isThirteen = compact.count == 13 && compact.allSatisfy(\.isNumber)
+            && (compact.hasPrefix("978") || compact.hasPrefix("979"))
+        return isTen || isThirteen ? compact : nil
     }
 }

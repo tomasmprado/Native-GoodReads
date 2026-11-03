@@ -22,6 +22,14 @@ enum GoodreadsLookup {
         return try await byTitleAndAuthor(title: book.title, author: book.author)
     }
 
+    /// The Goodreads edition with exactly this ISBN — never a guess by title.
+    static func bookID(isbn: String) async -> String? {
+        if let cached = await cache.read(isbn) { return cached }
+        guard let resolved = try? await byISBN(isbn) else { return nil }
+        await cache.write(isbn: isbn, bookID: resolved)
+        return resolved
+    }
+
     /// `/book/isbn/<isbn>` 301-redirects to `/book/show/<id>-slug`, publicly —
     /// no session or cookies needed, so this is a plain request off to the
     /// side of the shared web view.

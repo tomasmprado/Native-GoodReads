@@ -169,3 +169,21 @@ final class AuthorLinksTests: XCTestCase {
         XCTAssertEqual(StoreLinks.koboStore("JP"), "us/en")
     }
 }
+
+final class ISBNTests: XCTestCase {
+    func testRecognisesISBNs() {
+        XCTAssertEqual(ISBN.normalized("9789722367288"), "9789722367288")
+        XCTAssertEqual(ISBN.normalized("978-972-23-6728-8"), "9789722367288")
+        XCTAssertEqual(ISBN.normalized("972 23 6728 x"), "972236728X")
+        XCTAssertNil(ISBN.normalized("1984"))
+        XCTAssertNil(ISBN.normalized("Dune"))
+        XCTAssertNil(ISBN.normalized("1234567890123"), "13 digits must start 978/979")
+    }
+
+    func testShelfEntryMatchesItsISBN() {
+        let entry = makeEntry(id: "1", title: "Demónios", author: "Fiódor Dostoiévski", isbn13: "9789722367288")
+        XCTAssertTrue(entry.matches("978-972-23-6728-8"))
+        XCTAssertFalse(entry.matches("9780000000002"))
+        XCTAssertTrue(entry.matches("demónios"))
+    }
+}
