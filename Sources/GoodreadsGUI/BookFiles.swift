@@ -14,21 +14,49 @@ enum BookFiles {
             .appendingPathComponent("GoodreadsGUI/books", isDirectory: true)
     }
 
-    /// The attached file for a book, if there is one.
+    /// The file for a book: a copy you added, else one linked from Calibre.
     static func file(for bookID: String) -> URL? {
         let safe = safeName(bookID)
         let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
-        return files.first { $0.deletingPathExtension().lastPathComponent == safe && extensions.contains($0.pathExtension.lowercased()) }
+        if let own = files.first(where: { $0.deletingPathExtension().lastPathComponent == safe && extensions.contains($0.pathExtension.lowercased()) }) {
+            return own
+        }
+        return linked[bookID].map { URL(fileURLWithPath: $0) }.flatMap { FileManager.default.fileExists(atPath: $0.path) ? $0 : nil }
     }
 
-    /// Every book with a file, by book id.
+    /// Every book with a file, by its file-safe book id.
     static func all() -> [String: URL] {
-        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
         var result: [String: URL] = [:]
+        for (bookID, path) in linked where FileManager.default.fileExists(atPath: path) {
+            result[safeName(bookID)] = URL(fileURLWithPath: path)
+        }
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
         for file in files where extensions.contains(file.pathExtension.lowercased()) {
             result[file.deletingPathExtension().lastPathComponent] = file
         }
         return result
+    }
+
+    // MARK: Linked files (Calibre)
+
+    private static let linkedKey = "linkedBookFiles"
+
+    /// Files that stay where they are — in your Calibre library — by book id.
+    static var linked: [String: String] {
+        get { UserDefaults.standard.dictionary(forKey: linkedKey) as? [String: String] ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: linkedKey) }
+    }
+
+    /// Whether the book's file is a link (to Calibre) rather than a copy.
+    static func isLinked(_ bookID: String) -> Bool {
+        guard let file = file(for: bookID) else { return false }
+        return !file.path.hasPrefix(folder.path)
+    }
+
+    static func link(_ file: URL, to bookID: String) {
+        var all = linked
+        all[bookID] = file.path
+        linked = all
     }
 
     /// Copies `source` in as this book's file, replacing any earlier one.
@@ -46,8 +74,15 @@ enum BookFiles {
         return target
     }
 
+    /// Deletes a copy you added; a Calibre link is only unlinked, never deleted.
     static func remove(for bookID: String) {
-        if let file = file(for: bookID) { try? FileManager.default.removeItem(at: file) }
+        if isLinked(bookID) {
+            var all = linked
+            all[bookID] = nil
+            linked = all
+        } else if let file = file(for: bookID) {
+            try? FileManager.default.removeItem(at: file)
+        }
     }
 
     // MARK: Apple Books
@@ -134,7 +169,8 @@ struct BookFileSection: View {
                 HStack(spacing: 8) {
                     Image(systemName: file.pathExtension.lowercased() == "pdf" ? "doc.richtext" : "book.closed")
                         .foregroundStyle(.secondary)
-                    Text("\(file.pathExtension.uppercased()) · \(BookFiles.size(file))")
+                    Text("\(file.pathExtension.uppercased()) · \(BookFiles.size(file))"
+                         + (BookFiles.isLinked(bookID) ? " · " + String(localized: "from Calibre") : ""))
                         .appFont(size: 11).foregroundStyle(.secondary)
                     Spacer()
                     Button {

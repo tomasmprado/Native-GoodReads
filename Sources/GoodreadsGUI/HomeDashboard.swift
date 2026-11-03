@@ -100,29 +100,39 @@ struct HomeDashboard: View {
     @ObservedObject var model: LibraryModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
+        GeometryReader { proxy in
+            // The window's height is shared out, so nothing spills into the
+            // next card however small the window is.
+            let spacing: CGFloat = 12
+            let usable = max(320, proxy.size.height - 32 - 34 - spacing * 2)
+            let top = min(250, max(150, usable * 0.46))
+            let bottom = usable - top
+            VStack(alignment: .leading, spacing: spacing) {
+                header.frame(height: 34)
 
-            HStack(alignment: .top, spacing: 14) {
-                readingCard
-                GoalCardSmall(read: model.readThisYear, goal: Preferences.shared.yearlyGoal)
-                    .frame(width: 170)
-            }
-            .frame(maxHeight: 250)
-
-            HStack(alignment: .top, spacing: 14) {
-                RaceCard(model: model)
-                    .frame(maxWidth: .infinity)
-                VStack(spacing: 14) {
-                    WeekCard(summary: model.weekSummary)
-                    NextCard(model: model)
+                HStack(alignment: .top, spacing: 14) {
+                    ReadingStrip(model: model, height: top)
+                        .frame(maxWidth: .infinity)
+                    GoalCardSmall(read: model.readThisYear, goal: Preferences.shared.yearlyGoal)
+                        .frame(width: 170)
                 }
-                .frame(width: 250)
+                .frame(height: top)
+
+                HStack(alignment: .top, spacing: 14) {
+                    RaceCard(model: model, height: bottom)
+                        .frame(maxWidth: .infinity)
+                    VStack(spacing: 12) {
+                        WeekCard(summary: model.weekSummary)
+                            .frame(height: min(110, (bottom - 12) / 2))
+                        NextCard(model: model)
+                            .frame(maxHeight: .infinity)
+                    }
+                    .frame(width: 250)
+                }
+                .frame(height: bottom)
             }
-            .frame(maxHeight: .infinity)
+            .padding(16)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .task {
             await model.loadStats()
             if model.friendRace.isEmpty { await model.loadFriendRace() }
@@ -144,24 +154,6 @@ struct HomeDashboard: View {
         case 5..<12: return String(localized: "Good morning")
         case 12..<20: return String(localized: "Good afternoon")
         default: return String(localized: "Good evening")
-        }
-    }
-
-    @ViewBuilder
-    private var readingCard: some View {
-        if !model.currentlyReading.isEmpty {
-            CurrentlyReadingCarousel(model: model)
-                .glassCard(cornerRadius: 14)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } else {
-            VStack {
-                Spacer()
-                Text(model.isLoadingCurrentlyReading ? String(localized: "Loading…") : String(localized: "Nothing on Currently Reading yet."))
-                    .appFont(size: 12).foregroundStyle(.secondary)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity, maxHeight: 240)
-            .glassCard(cornerRadius: 14)
         }
     }
 }
@@ -205,6 +197,7 @@ private struct GoalCardSmall: View {
 /// finish line, and where an even pace would put you today.
 private struct RaceCard: View {
     @ObservedObject var model: LibraryModel
+    var height: CGFloat = 300
 
     var body: some View {
         let runners = model.race
@@ -221,7 +214,7 @@ private struct RaceCard: View {
                     .appFont(size: 11).foregroundStyle(.secondary)
             }
             VStack(spacing: 10) {
-                ForEach(runners.prefix(6)) { runner in
+                ForEach(runners.prefix(max(1, Int((height - 90) / 36)))) { runner in
                     lane(runner, today: today)
                 }
             }
@@ -231,6 +224,7 @@ private struct RaceCard: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .clipped()
         .glassCard(cornerRadius: 14)
     }
 
@@ -317,7 +311,8 @@ private struct WeekCard: View {
             }
         }
         .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .clipped()
         .glassCard(cornerRadius: 14)
     }
 
@@ -353,6 +348,7 @@ private struct NextCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .clipped()
         .glassCard(cornerRadius: 14)
     }
 
@@ -378,5 +374,79 @@ private struct NextCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+
+/// Home's Currently Reading: compact cards sized to the space Home gives them.
+private struct ReadingStrip: View {
+    @ObservedObject var model: LibraryModel
+    let height: CGFloat
+
+    var body: some View {
+        // Header, padding and the text under each cover take about 95pt.
+        let coverHeight = max(60, min(130, height - 98))
+        let coverWidth = coverHeight * 2 / 3
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Currently Reading").appFont(size: 13, weight: .semibold)
+                if model.isLoadingCurrentlyReading { ProgressView().controlSize(.small) }
+            }
+            if model.currentlyReading.isEmpty {
+                Spacer()
+                Text(model.isLoadingCurrentlyReading ? String(localized: "Loading…") : String(localized: "Nothing on Currently Reading yet."))
+                    .appFont(size: 12).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                Spacer()
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 14) {
+                        ForEach(model.currentlyReading) { entry in
+                            card(entry, width: max(coverWidth, 92), coverHeight: coverHeight, coverWidth: coverWidth)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .clipped()
+        .glassCard(cornerRadius: 14)
+    }
+
+    private func card(_ entry: ShelfEntry, width: CGFloat, coverHeight: CGFloat, coverWidth: CGFloat) -> some View {
+        let pages = model.pages(for: entry)
+        return VStack(alignment: .leading, spacing: 4) {
+            Button { model.showBookDetail(entry.asBook) } label: {
+                CachedAsyncImage(url: entry.coverURL) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().aspectRatio(contentMode: .fill)
+                    } else {
+                        RoundedRectangle(cornerRadius: 4).fill(Color.secondary.opacity(0.15))
+                            .overlay(Image(systemName: "book.closed").foregroundStyle(.tertiary))
+                    }
+                }
+                .frame(width: coverWidth, height: coverHeight)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+            .buttonStyle(.plain)
+            Text(entry.title).appFont(size: 11, weight: .medium).lineLimit(1)
+            ProgressView(value: Double(entry.progress ?? 0), total: 100)
+                .accessibilityLabel(Text("Progress"))
+            Text(pages.map { String(localized: "\(entry.progress ?? 0)% · p. \($0.page) of \($0.total)") }
+                 ?? (entry.progress.map { "\($0)%" } ?? String(localized: "No progress yet")))
+                .appFont(size: 9).foregroundStyle(.secondary).lineLimit(1)
+            Button("Update Progress…") { model.activeSheet = .progress(entry) }
+                .buttonStyle(.link)
+                .appFont(size: 9)
+        }
+        .frame(width: width, alignment: .leading)
+        .contextMenu {
+            Button("Update Progress…") { model.activeSheet = .progress(entry) }
+            Button("Mark Read & Rate…") { model.activeSheet = .finish(entry) }
+            Button("Stop Reading…") { model.activeSheet = .abandon(entry) }
+            Divider()
+            Button("View Details…") { model.showBookDetail(entry.asBook) }
+        }
     }
 }

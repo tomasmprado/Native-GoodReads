@@ -123,6 +123,27 @@ final class Preferences: ObservableObject {
         }
     }
 
+    /// Calibre's library is read along with Apple Books and Kobo.
+    @Published var useCalibre: Bool {
+        didSet {
+            defaults.set(useCalibre, forKey: Keys.useCalibre)
+            if useCalibre { Task { await ReadingAppsSync.shared.scan() } }
+        }
+    }
+
+    /// A Calibre book's EPUB or PDF becomes your copy, without copying it.
+    @Published var calibreFiles: Bool {
+        didSet {
+            defaults.set(calibreFiles, forKey: Keys.calibreFiles)
+            if calibreFiles { Task { await ReadingAppsSync.shared.scan() } }
+        }
+    }
+
+    /// Ratings, shelves (as tags) and Goodreads ids go back into Calibre.
+    @Published var calibreWriteBack: Bool {
+        didSet { defaults.set(calibreWriteBack, forKey: Keys.calibreWriteBack) }
+    }
+
     /// Post a notification when a friend starts or finishes a book.
     @Published var notifyFriendActivity: Bool {
         didSet { defaults.set(notifyFriendActivity, forKey: Keys.notify) }
@@ -175,6 +196,9 @@ final class Preferences: ObservableObject {
         static let priceDrops = "notifyPriceDrops"
         static let koboConnected = "notifyKoboConnected"
         static let importReadingApps = "importReadingAppsLibrary"
+        static let useCalibre = "useCalibre"
+        static let calibreFiles = "calibreFiles"
+        static let calibreWriteBack = "calibreWriteBack"
         static let notify   = "notifyFriendActivity"
         static let reminder = "readingReminder"
         static let newReleases = "notifyNewReleases"
@@ -198,6 +222,9 @@ final class Preferences: ObservableObject {
         notifyPriceDrops = defaults.bool(forKey: Keys.priceDrops)
         notifyKoboConnected = defaults.object(forKey: Keys.koboConnected) as? Bool ?? true
         importReadingAppsLibrary = defaults.bool(forKey: Keys.importReadingApps)
+        useCalibre = defaults.object(forKey: Keys.useCalibre) as? Bool ?? true
+        calibreFiles = defaults.object(forKey: Keys.calibreFiles) as? Bool ?? true
+        calibreWriteBack = defaults.bool(forKey: Keys.calibreWriteBack)
         notifyFriendActivity = defaults.bool(forKey: Keys.notify)
         indexInSpotlight = SpotlightIndex.isEnabled
         readingReminder = defaults.bool(forKey: Keys.reminder)
@@ -367,6 +394,8 @@ struct PreferencesView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
+
+            CalibreSection()
 
             StoresSection()
 

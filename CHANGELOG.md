@@ -11,6 +11,13 @@ added in that diff, meaning `v1.0.0` predates all of it.
 
 ### Added
 
+- **Calibre sync.** Your Calibre library is read along with Apple Books
+  and Kobo: books are matched by Goodreads id, ISBN or title; their EPUBs
+  and PDFs become your copies (left in Calibre, not copied); progress and
+  highlights from Calibre's viewer come over; books not on a shelf can be
+  added to Want to Read. Optionally, your stars, a "Goodreads: Read" style
+  tag and the Goodreads id are written back into Calibre (while it's closed),
+  keeping its other identifiers.
 - **A new Home** that fits the window: what you're reading, this year's goal,
   **the race** — you and your friends running to your reading-challenge
   goals, with a finish line and where an even pace would be — your week

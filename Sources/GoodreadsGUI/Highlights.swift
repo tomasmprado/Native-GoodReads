@@ -14,10 +14,11 @@ struct ImportedBook: Identifiable, Equatable, Sendable {
 }
 
 enum HighlightSource: String, CaseIterable, Identifiable {
-    case appleBooks, kobo, kindle
+    case appleBooks, kobo, calibre, kindle
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .calibre:    return String(localized: "Calibre")
         case .appleBooks: return String(localized: "Apple Books")
         case .kobo:       return String(localized: "Kobo (plugged in by USB)")
         case .kindle:     return String(localized: "Kindle (My Clippings.txt)")
@@ -287,6 +288,8 @@ struct HighlightsImportSheet: View {
                      ? String(localized: "Connect your Kindle and pick documents/My Clippings.txt.")
                      : source == .kobo
                         ? String(localized: "Connect your Kobo by USB; its highlights and notes are read straight from it.")
+                     : source == .calibre
+                        ? String(localized: "Highlights and notes you made in Calibre’s e-book viewer.")
                         : String(localized: "Highlights and notes you made in Apple Books on this Mac. macOS may ask to let the app read them."))
                     .appFont(size: 11)
                     .foregroundStyle(.secondary)
@@ -389,6 +392,12 @@ struct HighlightsImportSheet: View {
                 needsFolder = false
             case .kobo:
                 books = try await Task.detached { try ReadingApps.koboHighlights() }.value
+            case .calibre:
+                guard let library = Calibre.library else {
+                    message = String(localized: "No Calibre library found. Choose it in Settings → Reading Apps.")
+                    return
+                }
+                books = try await Task.detached { try Calibre.highlights(in: library) }.value
             }
         } catch {
             let denied = (error as NSError).domain == NSCocoaErrorDomain

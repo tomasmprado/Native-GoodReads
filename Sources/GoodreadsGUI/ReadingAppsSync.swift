@@ -16,6 +16,9 @@ final class ReadingAppsSync: ObservableObject {
     @Published private(set) var isScanning = false
     @Published private(set) var lastScan: Date?
     @Published var busy: Set<String> = []
+    /// Changes that would make Calibre match Goodreads (ratings, shelf tags, ids).
+    @Published private(set) var calibreUpdates: [Calibre.Update] = []
+    @Published private(set) var isWritingCalibre = false
 
     /// A folder chosen by hand when macOS wouldn't let the app read Apple Books.
     var appleBooksFolder: URL? {
@@ -60,6 +63,17 @@ final class ReadingAppsSync: ObservableObject {
             }
         }
 
+        var calibre: [CalibreBook] = []
+        if Preferences.shared.useCalibre, let folder = Calibre.library {
+            do {
+                calibre = try await Task.detached { try Calibre.books(in: folder) }.value
+                books += calibre.map(\.asReaderBook)
+                newCounts[.calibre] = calibre.count
+            } catch {
+                newErrors[.calibre] = error.localizedDescription
+            }
+        }
+
         let shelves = Shelf.builtIn.map { ($0, ShelfCache.read($0)?.entries ?? []) }
         let library = shelves.flatMap(\.1)
         var shelfByBook: [String: String] = [:]
@@ -67,10 +81,54 @@ final class ReadingAppsSync: ObservableObject {
             for entry in entries { shelfByBook[entry.bookID] = shelf.name }
         }
         let matches = ReadingApps.match(books, to: library)
-        suggestions = ReaderSuggestion.plan(books: books, matches: matches) { shelfByBook[$0.bookID] }
-            .sorted { ($0.book.lastOpened ?? .distantPast) > ($1.book.lastOpened ?? .distantPast) }
+        var planned = ReaderSuggestion.plan(books: books, matches: matches) { shelfByBook[$0.bookID] }
+        // Calibre is a library of books you own, read or not: the unread ones go to Want to Read.
+        let calibreBooks = books.filter { $0.source == .calibre }
+        for book in calibreBooks where matches[book.id] == nil && !book.started && !book.finished {
+            planned.append(ReaderSuggestion(book: book, entry: nil, kind: .add(.wantToRead)))
+        }
+        suggestions = planned.sorted { ($0.book.lastOpened ?? .distantPast) > ($1.book.lastOpened ?? .distantPast) }
+        linkCalibreFiles(calibre, matches: matches)
+        calibreUpdates = calibre.compactMap { book in
+            guard let entry = matches["calibre:\(book.id)"] else { return nil }
+            let shelf = shelfByBook[entry.bookID].flatMap { name in Shelf.builtIn.first { $0.name == name } }
+            return Calibre.update(for: book, entry: entry, shelf: shelf)
+        }
         errors = newErrors
         counts = newCounts
+    }
+
+    /// Your Calibre files become your copies of the books they match, left where they are.
+    private func linkCalibreFiles(_ calibre: [CalibreBook], matches: [String: ShelfEntry]) {
+        guard Preferences.shared.calibreFiles else { return }
+        for book in calibre {
+            guard let entry = matches["calibre:\(book.id)"], let file = book.readableFile,
+                  FileManager.default.fileExists(atPath: file.path) else { continue }
+            let current = BookFiles.file(for: entry.bookID)
+            // A copy you added yourself wins.
+            if current == nil || (BookFiles.isLinked(entry.bookID) && current != file) {
+                BookFiles.link(file, to: entry.bookID)
+            }
+        }
+    }
+
+    /// Writes ratings, shelf tags and Goodreads ids into Calibre. Calibre must be closed.
+    @discardableResult
+    func writeBackToCalibre() async -> String {
+        guard let library = Calibre.library, !calibreUpdates.isEmpty else { return "" }
+        guard Calibre.isInstalled else { return String(localized: "Calibre isn’t in Applications.") }
+        guard !Calibre.isRunning else { return String(localized: "Quit Calibre first — it can’t be changed while it’s open.") }
+        isWritingCalibre = true
+        defer { isWritingCalibre = false }
+        let updates = calibreUpdates
+        do {
+            let done = try await Calibre.apply(updates, library: library)
+            await scan()
+            return String(localized: "Updated \(done) books in Calibre.")
+        } catch {
+            await scan()
+            return error.localizedDescription
+        }
     }
 
     private static func describe(_ error: Error) -> String {
@@ -103,7 +161,8 @@ final class ReadingAppsSync: ObservableObject {
                                dateRead: suggestion.book.finishedOn ?? Date(), note: "")
         case .add(let shelf):
             let book = Book(id: suggestion.book.isbn ?? suggestion.book.id, title: suggestion.book.title,
-                            author: suggestion.book.author, coverURL: nil, rating: nil, isbn: suggestion.book.isbn)
+                            author: suggestion.book.author, coverURL: nil, rating: nil, isbn: suggestion.book.isbn,
+                            goodreadsID: suggestion.book.goodreadsID)
             if shelf == .read {
                 await model.finishBook(book, rating: nil, dateRead: suggestion.book.finishedOn ?? Date(), note: "")
             } else {
@@ -132,14 +191,20 @@ final class ReadingAppsSync: ObservableObject {
     /// Does what Settings allow, skipping anything already done once.
     func runAutomatically() async {
         let prefs = Preferences.shared
-        guard prefs.syncReadingApps || prefs.importReadingAppsLibrary, LibraryModel.shared.loggedIn else { return }
+        guard prefs.syncReadingApps || prefs.importReadingAppsLibrary || prefs.calibreWriteBack || prefs.calibreFiles,
+              LibraryModel.shared.loggedIn else { return }
         await scan()
         let done = applied
         for suggestion in suggestions {
             guard done[suggestion.id] != Self.signature(suggestion) else { continue }
+            // Unread Calibre books only go to Want to Read when you choose them in Reading Apps.
+            if suggestion.book.source == .calibre, suggestion.kind == .add(.wantToRead) { continue }
             let allowed = suggestion.isProgress ? prefs.syncReadingApps : prefs.importReadingAppsLibrary
             guard allowed, !Task.isCancelled else { continue }
             await apply(suggestion)
+        }
+        if prefs.calibreWriteBack, !calibreUpdates.isEmpty, !Calibre.isRunning {
+            await writeBackToCalibre()
         }
     }
 
@@ -171,6 +236,7 @@ struct ReadingAppsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var sync = ReadingAppsSync.shared
     @ObservedObject private var prefs = Preferences.shared
+    @State private var calibreMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -190,6 +256,20 @@ struct ReadingAppsSheet: View {
                 HStack(spacing: 16) {
                     source(.appleBooks)
                     source(.kobo)
+                    if prefs.useCalibre { source(.calibre) }
+                }
+                if prefs.useCalibre, !sync.calibreUpdates.isEmpty {
+                    HStack(spacing: 8) {
+                        Text("\(sync.calibreUpdates.count) books in Calibre don’t match Goodreads yet (rating, shelf, Goodreads id).")
+                            .appFont(size: 11).foregroundStyle(.secondary)
+                        if sync.isWritingCalibre { ProgressView().controlSize(.small) }
+                        Button("Update Calibre") { Task { calibreMessage = await sync.writeBackToCalibre() } }
+                            .controlSize(.small)
+                            .disabled(sync.isWritingCalibre)
+                    }
+                }
+                if let calibreMessage {
+                    Text(calibreMessage).appFont(size: 11).foregroundStyle(.orange)
                 }
                 Toggle("Sync progress and finished books automatically", isOn: $prefs.syncReadingApps)
                     .checkboxStyle()
@@ -218,7 +298,7 @@ struct ReadingAppsSheet: View {
 
             Divider()
             HStack {
-                Text("Apple Books is read from this Mac; a Kobo when it’s plugged in by USB.")
+                Text("Apple Books and Calibre are read from this Mac; a Kobo when it’s plugged in by USB.")
                     .appFont(size: 11).foregroundStyle(.secondary)
                 Spacer()
                 Button("Do All") {
@@ -246,7 +326,8 @@ struct ReadingAppsSheet: View {
             } else if let count = sync.counts[source] {
                 Text("\(source.title): \(count) books").appFont(size: 11)
             } else {
-                Text(source == .kobo ? String(localized: "Kobo: not connected") : source.title)
+                Text(source == .kobo ? String(localized: "Kobo: not connected")
+                     : source == .calibre ? String(localized: "Calibre: no library found") : source.title)
                     .appFont(size: 11).foregroundStyle(.secondary)
             }
         }
