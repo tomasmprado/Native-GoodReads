@@ -7,6 +7,42 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
+## [Unreleased]
+
+### Added
+
+- **Reading sessions.** Press ▶ on a book on Home (or the Reading Session
+  widget) to time a session; when you stop, say what page you're on. The
+  app learns how many pages an hour you read and shows how long each book
+  has left; progress goes to Goodreads.
+- **Reading time and a calendar of the days you read** in Stats, from
+  timed sessions, the Kobo's own reading time, the days a book was open in
+  Apple Books, and progress updates.
+- **Your Series** in Suggestions: how far you are in each series you've
+  read from, the next book (one click to Want to Read), and a notification
+  when a new book joins one of them.
+- **Because You Loved…** in Suggestions: books your friends gave five stars,
+  from the friends who loved the same books you did.
+- **Scan a barcode** (File → Scan a Barcode…, ⇧⌘B, or the button in Search):
+  hold a book's barcode up to the Mac's camera or an iPhone's through
+  Continuity Camera, and add it to a shelf.
+- **Price alerts at Wook** (in Portugal), as well as Apple Books, for books
+  on Want to Read.
+- **Widgets:** Quote of the Day (one of your saved quotes, a new one daily),
+  Friends' Race, and Reading Session (start and see the timer).
+- **Authors' Countries**: a world map in Stats of where the authors you've
+  read are from (from Wikidata), and how many countries in Year in Books.
+
+### Fixed
+
+- Rating a book could fail with "Goodreads rejected the rating (HTTP 404)";
+  the app now rates through the same endpoint as the stars on the shelf
+  page when the first one refuses, with a fresh token.
+- Rate Unrated: the keyboard shortcuts rated the first book shown over and
+  over instead of the one on screen. Books Goodreads won't take go back in
+  the queue with the reason. Pick for Me had the same shortcut problem.
+- The diagnostics log is also kept in a file.
+
 ## [3.0.0] — 2026-11-03
 
 ### Added

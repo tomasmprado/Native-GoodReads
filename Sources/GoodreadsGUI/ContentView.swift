@@ -20,6 +20,7 @@ struct ContentView: View {
                 }
             }
             .frame(minWidth: 480, minHeight: 420)
+            .safeAreaInset(edge: .bottom, spacing: 0) { SessionBar() }
         }
         .task {
             model.refreshUpNext()
@@ -97,6 +98,10 @@ struct ContentView: View {
                 FriendProfileSheet(model: model)
             case .authorPage:
                 AuthorPageSheet(model: model)
+            case .endSession(let session):
+                EndSessionSheet(session: session, totalPages: model.bookExtras[session.entry.bookID]?.pages)
+            case .scanBarcode:
+                BarcodeScanSheet(model: model)
             }
         }
     }
@@ -186,6 +191,7 @@ private struct HomePane: View {
 private struct SuggestionsPane: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject private var prefs = Preferences.shared
+    @State private var showAllSeries = false
 
     private var subtitle: String {
         var bits: [String] = []
@@ -221,11 +227,37 @@ private struct SuggestionsPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if model.suggestions.isEmpty && model.newReleases.isEmpty {
+            if model.suggestions.isEmpty && model.newReleases.isEmpty && model.seriesProgress.isEmpty && model.lovedSuggestions.isEmpty {
                 EmptyPane(symbol: model.isBuildingSuggestions ? "hourglass" : "sparkles",
                           text: model.suggestionNote ?? String(localized: "Nothing to suggest yet."))
             } else {
                 List {
+                    if !model.seriesProgress.isEmpty {
+                        Section {
+                            ForEach(showAllSeries ? model.seriesProgress : model.seriesProgress.filter { !$0.isComplete }) { series in
+                                SeriesRow(series: series, model: model)
+                            }
+                            let complete = model.seriesProgress.filter(\.isComplete).count
+                            if complete > 0 {
+                                Button(showAllSeries ? String(localized: "Hide finished series")
+                                                     : String(localized: "Show \(complete) finished series")) { showAllSeries.toggle() }
+                                    .buttonStyle(.link)
+                                    .appFont(size: 11)
+                            }
+                        } header: {
+                            HStack {
+                                Text("Your Series")
+                                if model.isLoadingSeries { ProgressView().controlSize(.mini) }
+                            }
+                        }
+                    }
+                    if !model.lovedSuggestions.isEmpty {
+                        Section("Because You Loved…") {
+                            ForEach(model.lovedSuggestions) { suggestion in
+                                suggestionRow(suggestion, detail: suggestion.reason)
+                            }
+                        }
+                    }
                     if !model.newReleases.isEmpty {
                         Section("New from Your Authors") {
                             ForEach(model.newReleases) { suggestion in
@@ -265,7 +297,9 @@ private struct SuggestionsPane: View {
                     Button {
                         Task {
                             await model.buildSuggestions(force: true)
+                            await model.loadLovedSuggestions()
                             await model.loadNewReleases(force: true)
+                            await model.loadSeries(force: true)
                         }
                     } label: {
                         Label("Rebuild suggestions", systemImage: "arrow.clockwise")
@@ -947,6 +981,12 @@ private struct SearchPane: View {
                     .focused($focused)
                     .onChange(of: model.query) { _ in model.queryChanged() }
                     .onSubmit { model.searchNow() }
+
+                Button { model.activeSheet = .scanBarcode } label: {
+                    Image(systemName: "barcode.viewfinder")
+                }
+                .buttonStyle(.borderless)
+                .help("Scan a book’s barcode with the camera")
 
                 if model.isSearching {
                     ProgressView().controlSize(.small)

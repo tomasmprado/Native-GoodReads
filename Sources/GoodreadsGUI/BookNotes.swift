@@ -37,5 +37,6 @@ enum BookNotes {
             }
         }
         await SpotlightIndex.refreshNotes()
+        await MainActor.run { WidgetBridge.scheduleUpdate() }
     }
 }

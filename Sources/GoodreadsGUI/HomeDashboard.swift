@@ -381,6 +381,7 @@ private struct NextCard: View {
 /// Home's Currently Reading: compact cards sized to the space Home gives them.
 private struct ReadingStrip: View {
     @ObservedObject var model: LibraryModel
+    @ObservedObject private var timer = SessionTimer.shared
     let height: CGFloat
 
     var body: some View {
@@ -436,12 +437,27 @@ private struct ReadingStrip: View {
             Text(pages.map { String(localized: "\(entry.progress ?? 0)% · p. \($0.page) of \($0.total)") }
                  ?? (entry.progress.map { "\($0)%" } ?? String(localized: "No progress yet")))
                 .appFont(size: 9).foregroundStyle(.secondary).lineLimit(1)
-            Button("Update Progress…") { model.activeSheet = .progress(entry) }
-                .buttonStyle(.link)
-                .appFont(size: 9)
+            if let left = model.timeLeft(for: entry) {
+                Text("\(ReadingLog.duration(left)) left").appFont(size: 9).foregroundStyle(.secondary).lineLimit(1)
+            }
+            HStack(spacing: 6) {
+                if timer.isRunning(entry.bookID) {
+                    Button { timer.stop() } label: { Image(systemName: "stop.fill") }
+                        .help("Stop the reading session")
+                } else {
+                    Button { timer.start(entry) } label: { Image(systemName: "play.fill") }
+                        .help("Start a reading session")
+                        .disabled(timer.running != nil)
+                }
+                Button("Update…") { model.activeSheet = .progress(entry) }
+            }
+            .buttonStyle(.link)
+            .appFont(size: 9)
         }
         .frame(width: width, alignment: .leading)
         .contextMenu {
+            Button("Start Reading Session") { timer.start(entry) }
+                .disabled(timer.running != nil)
             Button("Update Progress…") { model.activeSheet = .progress(entry) }
             Button("Mark Read & Rate…") { model.activeSheet = .finish(entry) }
             Button("Stop Reading…") { model.activeSheet = .abandon(entry) }

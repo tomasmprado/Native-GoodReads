@@ -77,6 +77,8 @@ final class LibraryModel: ObservableObject {
         case detail(Book)
         case friendProfile
         case authorPage
+        case endSession(SessionTimer.Running)
+        case scanBarcode
 
         var id: String {
             switch self {
@@ -93,6 +95,8 @@ final class LibraryModel: ObservableObject {
             case .detail(let book):     return "detail-\(book.id)"
             case .friendProfile:        return "friendProfile"
             case .authorPage:           return "authorPage"
+            case .endSession(let s):    return "endSession-\(s.started.timeIntervalSince1970)"
+            case .scanBarcode:          return "scanBarcode"
             }
         }
     }
@@ -105,6 +109,16 @@ final class LibraryModel: ObservableObject {
     @Published var suggestionNote: String?
     /// Recent books by authors you've read more than once.
     @Published var newReleases: [Suggestion] = []
+    /// Series you're reading and what comes next in each.
+    @Published var seriesProgress: [SeriesProgress] = []
+    @Published var isLoadingSeries = false
+    /// Books friends with your taste loved.
+    @Published var lovedSuggestions: [Suggestion] = []
+    /// Where the authors on Read come from.
+    @Published var countryTally: [AuthorCountries.Tally] = []
+    @Published var authorCountryMap: [String: AuthorCountry] = [:]
+    @Published var authorsWithoutCountry = 0
+    @Published var isLoadingCountries = false
 
     @Published var currentlyReading: [ShelfEntry] = [] {
         didSet { WidgetBridge.scheduleUpdate() }
@@ -114,8 +128,12 @@ final class LibraryModel: ObservableObject {
         didSet { WidgetBridge.scheduleUpdate() }
     }
     @Published var isLoadingCurrentlyReading = false
+    /// Timed sessions and reading-app time, for pace and the calendar.
+    @Published var readingLog: [ReadingRecord] = []
     /// Friends' reading-challenge progress, for the race on Home.
-    @Published var friendRace: [RaceEntry] = []
+    @Published var friendRace: [RaceEntry] = [] {
+        didSet { WidgetBridge.scheduleUpdate() }
+    }
     /// Books you stopped reading, by book id — kept on this Mac.
     @Published var abandoned: [String: AbandonedBook] = [:]
 
@@ -546,8 +564,10 @@ final class LibraryModel: ObservableObject {
             await buildSuggestions()
             await loadCurrentlyReading()
         case .suggestions:
+            await loadLovedSuggestions()
             await buildSuggestions()
             await loadNewReleases()
+            await loadSeries()
         case .friends:
             await loadFriends()
         case .stats:
@@ -667,6 +687,7 @@ final class LibraryModel: ObservableObject {
     func loadCurrentlyReading(force: Bool = false) async {
         guard !isLoadingCurrentlyReading else { return }
         if progressHistory.isEmpty { progressHistory = await ReadingPace.all() }
+        if readingLog.isEmpty { readingLog = await ReadingLog.all() }
         let cached = ShelfCache.read(.currentlyReading)
         if let cached { currentlyReading = cached.entries }
         if bookExtras.isEmpty { bookExtras = await BookExtras.all() }
@@ -759,6 +780,13 @@ final class LibraryModel: ObservableObject {
         guard let percent = entry.progress, let total = bookExtras[entry.bookID]?.pages else { return nil }
         return ReadingPace.pages(percent: percent, total: total, history: progressHistory[entry.bookID] ?? [],
                                  startedOn: entry.dateAdded.flatMap(Suggestions.parseDate))
+    }
+
+    /// Reading time left for `entry`, at your pages an hour from timed sessions.
+    func timeLeft(for entry: ShelfEntry) -> TimeInterval? {
+        guard let pages = pages(for: entry),
+              let rate = ReadingLog.pagesPerHour(readingLog, bookID: entry.bookID) else { return nil }
+        return ReadingLog.timeLeft(pagesLeft: pages.left, pagesPerHour: rate)
     }
 
     /// Roughly when `entry` will be finished at the pace so far.

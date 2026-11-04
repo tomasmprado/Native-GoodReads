@@ -89,6 +89,8 @@ final class ReadingAppsSync: ObservableObject {
         }
         suggestions = planned.sorted { ($0.book.lastOpened ?? .distantPast) > ($1.book.lastOpened ?? .distantPast) }
         linkCalibreFiles(calibre, matches: matches)
+        await ReadingLog.importReaderTime(books, matches: matches)
+        LibraryModel.shared.readingLog = await ReadingLog.all()
         calibreUpdates = calibre.compactMap { book in
             guard let entry = matches["calibre:\(book.id)"] else { return nil }
             let shelf = shelfByBook[entry.bookID].flatMap { name in Shelf.builtIn.first { $0.name == name } }

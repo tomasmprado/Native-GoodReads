@@ -16,13 +16,17 @@ struct SnapshotProvider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (SnapshotEntry) -> Void) {
         let saved = WidgetStore.read()
-        completion(SnapshotEntry(date: Date(), snapshot: context.isPreview && (saved?.reading.isEmpty ?? true) ? .sample : saved ?? .empty))
+        let preview = context.isPreview && (saved?.reading.isEmpty ?? true) && (saved?.quotes ?? []).isEmpty
+        completion(SnapshotEntry(date: Date(), snapshot: preview ? .sample : saved ?? .empty))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SnapshotEntry>) -> Void) {
-        let entry = SnapshotEntry(date: Date(), snapshot: WidgetStore.read() ?? .empty)
-        // The app reloads the widget on every change; this is just a backstop.
-        completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(6 * 3600))))
+        let snapshot = WidgetStore.read() ?? .empty
+        // The app reloads the widget on every change; this is just a backstop,
+        // plus a fresh entry at midnight for the next day's quote.
+        let midnight = Calendar.current.startOfDay(for: Date().addingTimeInterval(86400))
+        let entries = [SnapshotEntry(date: Date(), snapshot: snapshot), SnapshotEntry(date: midnight, snapshot: snapshot)]
+        completion(Timeline(entries: entries, policy: .after(min(midnight, Date().addingTimeInterval(6 * 3600)))))
     }
 }
 
@@ -35,7 +39,11 @@ extension WidgetSnapshot {
                   finishEstimate: nil, coverFile: nil),
         ],
         goal: .init(year: Calendar.current.component(.year, from: Date()), read: 18, goal: 24, ahead: 1),
-        updated: Date()
+        updated: Date(),
+        quotes: [.init(text: "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
+                       title: "Pride and Prejudice", author: "Jane Austen")],
+        race: [.init(name: "Ana", read: 21, goal: 30, isMe: false), .init(name: "You", read: 18, goal: 24, isMe: true),
+               .init(name: "Rui", read: 9, goal: 20, isMe: false)]
     )
 }
 
@@ -189,11 +197,164 @@ struct GoalWidget: Widget {
     }
 }
 
+// MARK: - Quote of the Day
+
+struct QuoteWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: SnapshotEntry
+
+    var body: some View {
+        Group {
+            if let quote = entry.snapshot.quote(on: entry.date) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Image(systemName: "quote.opening").font(.caption).foregroundStyle(.orange).widgetAccentable()
+                    Text(quote.text)
+                        .font(.system(size: family == .systemSmall ? 12 : 14, design: .serif))
+                        .lineLimit(family == .systemLarge ? 14 : family == .systemMedium ? 5 : 6)
+                        .minimumScaleFactor(0.8)
+                    Spacer(minLength: 0)
+                    Text([quote.title, quote.author].filter { !$0.isEmpty }.joined(separator: " · "))
+                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+            } else {
+                VStack(spacing: 6) {
+                    Image(systemName: "quote.opening").font(.title2).foregroundStyle(.secondary)
+                    Text("Save quotes in a book’s notes and one shows here each day")
+                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetBackground()
+    }
+}
+
+struct QuoteWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: WidgetStore.kindQuote, provider: SnapshotProvider()) { entry in
+            QuoteWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Quote of the Day")
+        .description("One of the quotes you saved, a different one each day.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+    }
+}
+
+// MARK: - Friends' Race
+
+struct RaceWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: SnapshotEntry
+
+    var body: some View {
+        let runners = entry.snapshot.race ?? []
+        Group {
+            if runners.count < 2 {
+                VStack(spacing: 6) {
+                    Image(systemName: "flag.checkered").font(.title2).foregroundStyle(.secondary)
+                    Text("Open Home in the app to see the race with your friends")
+                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Reading Challenge").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    ForEach(runners.prefix(family == .systemLarge ? 6 : 3)) { runner in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(runner.name).font(.caption.weight(runner.isMe ? .bold : .regular)).lineLimit(1)
+                                Spacer()
+                                Text("\(runner.read)/\(runner.goal)").font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                            }
+                            ProgressBar(fraction: runner.goal > 0 ? Double(runner.read) / Double(runner.goal) : 0)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetBackground()
+    }
+}
+
+struct RaceWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: WidgetStore.kindRace, provider: SnapshotProvider()) { entry in
+            RaceWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Friends’ Race")
+        .description("You and your friends in this year’s Reading Challenge.")
+        .supportedFamilies([.systemMedium, .systemLarge])
+    }
+}
+
+// MARK: - Reading Session
+
+struct SessionWidgetView: View {
+    let entry: SnapshotEntry
+
+    var body: some View {
+        let session = entry.snapshot.session
+        let book = entry.snapshot.reading.first { $0.bookID == session?.bookID } ?? entry.snapshot.reading.first
+        Group {
+            if let session {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("Reading", systemImage: "timer").font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                        .widgetAccentable()
+                    Text(session.started, style: .timer)
+                        .font(.system(size: 26, weight: .bold, design: .rounded).monospacedDigit())
+                    Spacer(minLength: 0)
+                    Text(session.title).font(.caption.weight(.semibold)).lineLimit(2)
+                    Text("Click to stop").font(.caption2).foregroundStyle(.secondary)
+                }
+                .widgetURL(URL(string: "goodreads-gui://session/stop"))
+            } else if let book {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top) {
+                        Image(systemName: "play.circle.fill").font(.system(size: 30)).foregroundStyle(.orange)
+                            .widgetAccentable()
+                        Spacer()
+                        if let percent = book.percent {
+                            Text("\(percent)%").font(.system(size: 16, weight: .bold, design: .rounded))
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    Text("Start reading").font(.caption2).foregroundStyle(.secondary)
+                    Text(book.title).font(.caption.weight(.semibold)).lineLimit(2)
+                }
+                .widgetURL(URL(string: "goodreads-gui://session/start?book=\(book.bookID)"))
+            } else {
+                VStack(spacing: 6) {
+                    Image(systemName: "timer").font(.title2).foregroundStyle(.secondary)
+                    Text("Nothing on Currently Reading").font(.caption).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetBackground()
+    }
+}
+
+struct SessionWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: WidgetStore.kindSession, provider: SnapshotProvider()) { entry in
+            SessionWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Reading Session")
+        .description("Start timing a reading session for the book you’re on, and see it running.")
+        .supportedFamilies([.systemSmall])
+    }
+}
+
 @main
 struct GoodreadsWidgets: WidgetBundle {
     var body: some Widget {
         ReadingWidget()
         GoalWidget()
+        QuoteWidget()
+        RaceWidget()
+        SessionWidget()
     }
 }
 

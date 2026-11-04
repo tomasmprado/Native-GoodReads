@@ -37,6 +37,10 @@ struct GoodreadsGUIApp: App {
                 .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
                 .onOpenURL { url in
                     guard url.scheme == ShareIntake.scheme else { return }
+                    if url.host == "session" {
+                        SessionTimer.shared.handle(url)
+                        return
+                    }
                     Task { await ShareIntake.handle(url) }
                 }
         }
@@ -57,6 +61,11 @@ struct GoodreadsGUIApp: App {
                     WindowManager.shared.openMain?()
                     LibraryModel.shared.activeSheet = .importHighlights
                 }
+                Button("Scan a Barcode…") {
+                    WindowManager.shared.openMain?()
+                    LibraryModel.shared.activeSheet = .scanBarcode
+                }
+                .keyboardShortcut("b", modifiers: [.command, .shift])
                 Divider()
                 Button("Back Up Notes & Progress…") {
                     Task {
