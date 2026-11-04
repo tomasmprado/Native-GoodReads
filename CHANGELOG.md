@@ -11,27 +11,26 @@ added in that diff, meaning `v1.0.0` predates all of it.
 
 ### Added
 
-- **Reading sessions.** Press ▶ on a book on Home (or the Reading Session
-  widget) to time a session; when you stop, say what page you're on. The
-  app learns how many pages an hour you read and shows how long each book
-  has left; progress goes to Goodreads.
-- **Reading time and a calendar of the days you read** in Stats, from
-  timed sessions, the Kobo's own reading time, the days a book was open in
-  Apple Books, and progress updates.
-- **Your Series** in Suggestions: how far you are in each series you've
-  read from, the next book (one click to Want to Read), and a notification
-  when a new book joins one of them.
+- **Reading time and a calendar of the days you read** in Stats, from the
+  Kobo's own reading time, the days a book was open in Apple Books, and
+  progress updates.
+- **Your Series** in Suggestions, from Google Books: how far you are in
+  each series you've read from, the next book (one click to Want to Read),
+  and a notification when a new book joins one of them.
 - **Because You Loved…** in Suggestions: books your friends gave five stars,
   from the friends who loved the same books you did.
 - **Scan a barcode** (File → Scan a Barcode…, ⇧⌘B, or the button in Search):
   hold a book's barcode up to the Mac's camera or an iPhone's through
-  Continuity Camera, and add it to a shelf.
+  Continuity Camera (used when there is one); the barcode is outlined when
+  it's read, and the book can go straight onto a shelf, or say which shelf
+  it's on already.
 - **Price alerts at Wook** (in Portugal), as well as Apple Books, for books
   on Want to Read.
-- **Widgets:** Quote of the Day (one of your saved quotes, a new one daily),
-  Friends' Race, and Reading Session (start and see the timer).
+- **Widgets:** Quote of the Day (one of your saved quotes, a new one daily)
+  and Friends' Race.
 - **Authors' Countries**: a world map in Stats of where the authors you've
-  read are from (from Wikidata), and how many countries in Year in Books.
+  read are from, looked up on Wikidata by itself, and how many countries
+  in Year in Books.
 
 ### Fixed
 

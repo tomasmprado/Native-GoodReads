@@ -202,6 +202,7 @@ struct YearWrappedSheet: View {
     private func load() async {
         read = ShelfCache.read(.read)?.entries ?? []
         if model.authorCountryMap.isEmpty { await model.loadAuthorCountries(lookUp: false) }
+        Task { await model.loadAuthorCountries(lookUp: true) }
         extras = await BookExtras.all()
         if let latest = YearSummary.years(in: read).first, latest < year,
            YearWrap.compute(read: read, extras: extras, year: year).books.isEmpty { year = latest }

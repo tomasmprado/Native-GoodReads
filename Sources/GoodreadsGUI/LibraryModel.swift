@@ -77,7 +77,6 @@ final class LibraryModel: ObservableObject {
         case detail(Book)
         case friendProfile
         case authorPage
-        case endSession(SessionTimer.Running)
         case scanBarcode
 
         var id: String {
@@ -95,7 +94,6 @@ final class LibraryModel: ObservableObject {
             case .detail(let book):     return "detail-\(book.id)"
             case .friendProfile:        return "friendProfile"
             case .authorPage:           return "authorPage"
-            case .endSession(let s):    return "endSession-\(s.started.timeIntervalSince1970)"
             case .scanBarcode:          return "scanBarcode"
             }
         }
@@ -128,7 +126,7 @@ final class LibraryModel: ObservableObject {
         didSet { WidgetBridge.scheduleUpdate() }
     }
     @Published var isLoadingCurrentlyReading = false
-    /// Timed sessions and reading-app time, for pace and the calendar.
+    /// Reading-app time, for the calendar in Stats.
     @Published var readingLog: [ReadingRecord] = []
     /// Friends' reading-challenge progress, for the race on Home.
     @Published var friendRace: [RaceEntry] = [] {
@@ -780,13 +778,6 @@ final class LibraryModel: ObservableObject {
         guard let percent = entry.progress, let total = bookExtras[entry.bookID]?.pages else { return nil }
         return ReadingPace.pages(percent: percent, total: total, history: progressHistory[entry.bookID] ?? [],
                                  startedOn: entry.dateAdded.flatMap(Suggestions.parseDate))
-    }
-
-    /// Reading time left for `entry`, at your pages an hour from timed sessions.
-    func timeLeft(for entry: ShelfEntry) -> TimeInterval? {
-        guard let pages = pages(for: entry),
-              let rate = ReadingLog.pagesPerHour(readingLog, bookID: entry.bookID) else { return nil }
-        return ReadingLog.timeLeft(pagesLeft: pages.left, pagesPerHour: rate)
     }
 
     /// Roughly when `entry` will be finished at the pace so far.

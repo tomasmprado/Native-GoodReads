@@ -2,24 +2,6 @@ import XCTest
 @testable import GoodreadsGUI
 
 final class ReadingLogTests: XCTestCase {
-    private func record(_ book: String?, minutes: Int, from: Int?, to: Int?, source: ReadingRecord.Source = .timer) -> ReadingRecord {
-        ReadingRecord(bookID: book, title: "T", start: Date(), seconds: minutes * 60, startPage: from, endPage: to, source: source)
-    }
-
-    func testPagesPerHourPrefersTheBookItself() {
-        let records = [record("a", minutes: 30, from: 10, to: 40),      // 60 an hour
-                       record("b", minutes: 60, from: 0, to: 20)]       // 20 an hour
-        XCTAssertEqual(ReadingLog.pagesPerHour(records, bookID: "a") ?? 0, 60, accuracy: 0.01)
-        XCTAssertEqual(ReadingLog.pagesPerHour(records, bookID: "c") ?? 0, 50 / 1.5, accuracy: 0.01, "falls back to every book")
-        XCTAssertNil(ReadingLog.pagesPerHour([record("a", minutes: 10, from: 0, to: 10)]), "under 20 minutes is too little")
-        XCTAssertNil(ReadingLog.pagesPerHour([record("a", minutes: 60, from: 0, to: 10, source: .kobo)]), "only timed sessions")
-    }
-
-    func testTimeLeft() {
-        XCTAssertEqual(ReadingLog.timeLeft(pagesLeft: 90, pagesPerHour: 30), 3 * 3600)
-        XCTAssertNil(ReadingLog.timeLeft(pagesLeft: 0, pagesPerHour: 30))
-    }
-
     func testKoboTimeBecomesRecordsOfWhatIsNew() {
         let book = ReaderBook(source: .kobo, sourceID: "k1", title: "Dune", author: "", isbn: nil, percent: 40,
                               finished: false, finishedOn: nil, lastOpened: Date(), secondsRead: 3600)
@@ -43,42 +25,42 @@ final class ReadingLogTests: XCTestCase {
 }
 
 final class SeriesTrackerTests: XCTestCase {
-    private func volume(_ id: String, _ position: Double?, _ title: String) -> GoodreadsSeries.Volume {
-        GoodreadsSeries.Volume(bookID: id, title: title, author: "", coverURL: nil,
-                               label: position.map { "Book \($0.formatted())" } ?? "Book 1-3", position: position)
+    private func volume(_ id: String, _ number: Double?, _ title: String) -> Book {
+        Book(id: id, title: title, author: "", coverURL: nil, rating: nil, seriesID: "s", seriesNumber: number)
     }
 
     func testNextIsTheFirstNumberedBookNotRead() {
-        let volumes = [volume("1", 1, "One"), volume("15", 1.5, "Novella"), volume("2", 2, "Two"),
-                       volume("3", 3, "Three"), volume("box", nil, "Box set")]
-        let progress = SeriesTracker.progress(title: "S", url: URL(string: "https://x/s")!, volumes: volumes,
-                                              readPositions: [1], readingPositions: [], shelvedIDs: [], shelvedTitles: [],
-                                              wantedIDs: [], wantedTitles: [])
-        XCTAssertEqual(progress.volumes.map(\.bookID), ["1", "2", "3"])
-        XCTAssertEqual(progress.next?.bookID, "2")
-        XCTAssertFalse(progress.nextIsWanted)
+        let volumes = [volume("3", 3, "Three"), volume("1", 1, "One"), volume("2", 2, "Two"), volume("x", nil, "Extra")]
+        let progress = SeriesTracker.progress(id: "s", title: "S", volumes: volumes, readNumbers: [1], readingNumbers: [],
+                                              shelvedTitles: [], wantedTitles: [])
+        XCTAssertEqual(progress.volumes.map(\.id), ["1", "2", "3"])
+        XCTAssertEqual(progress.next?.id, "2")
+        XCTAssertEqual(progress.read, [1])
     }
 
-    func testABookReadInAnotherEditionCounts() {
+    func testABookOnYourShelvesInAnotherEditionCounts() {
         let volumes = [volume("1", 1, "One"), volume("2", 2, "Two"), volume("3", 3, "Three")]
-        let progress = SeriesTracker.progress(title: "S", url: URL(string: "https://x/s")!, volumes: volumes,
-                                              readPositions: [1], readingPositions: [], shelvedIDs: ["other"],
-                                              shelvedTitles: ["two"], wantedIDs: ["3"], wantedTitles: [])
-        XCTAssertEqual(progress.next?.bookID, "3")
+        let progress = SeriesTracker.progress(id: "s", title: "S", volumes: volumes, readNumbers: [1], readingNumbers: [],
+                                              shelvedTitles: ["two", "three"], wantedTitles: ["three"])
+        XCTAssertEqual(progress.next?.id, "3")
         XCTAssertTrue(progress.nextIsWanted)
+        XCTAssertEqual(progress.read, [1, 2])
     }
 
     func testCompleteSeries() {
-        let progress = SeriesTracker.progress(title: "S", url: URL(string: "https://x/s")!, volumes: [volume("1", 1, "One")],
-                                              readPositions: [1], readingPositions: [], shelvedIDs: [], shelvedTitles: [],
-                                              wantedIDs: [], wantedTitles: [])
+        let progress = SeriesTracker.progress(id: "s", title: "S", volumes: [volume("1", 1, "One")], readNumbers: [1],
+                                              readingNumbers: [], shelvedTitles: [], wantedTitles: [])
         XCTAssertTrue(progress.isComplete)
     }
 
     func testNewVolumesOnlyAfterTheFirstLook() {
         let now = [volume("1", 1, "One"), volume("2", 2, "Two")]
         XCTAssertTrue(SeriesTracker.newVolumes(before: nil, now: now).isEmpty)
-        XCTAssertEqual(SeriesTracker.newVolumes(before: ["1"], now: now).map(\.bookID), ["2"])
+        XCTAssertEqual(SeriesTracker.newVolumes(before: ["1"], now: now).map(\.id), ["2"])
+    }
+
+    func testBareTitle() {
+        XCTAssertEqual(SeriesTracker.bareTitle("Dune (Dune, #1)"), "Dune")
     }
 }
 

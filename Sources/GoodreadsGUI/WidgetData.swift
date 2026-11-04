@@ -42,13 +42,6 @@ struct WidgetSnapshot: Codable, Equatable, Sendable {
         var id: String { name }
     }
 
-    /// The reading session running in the app.
-    struct Session: Codable, Equatable, Sendable {
-        let bookID: String
-        let title: String
-        let started: Date
-    }
-
     var reading: [Book]
     var goal: Goal?
     var updated: Date
@@ -56,7 +49,6 @@ struct WidgetSnapshot: Codable, Equatable, Sendable {
     /// Up to 100 of your saved quotes; the widget shows one a day.
     var quotes: [Quote]? = nil
     var race: [Runner]? = nil
-    var session: Session? = nil
 
     static let empty = WidgetSnapshot(reading: [], goal: nil, updated: .distantPast)
 
@@ -104,5 +96,4 @@ enum WidgetStore {
     static let kindGoal = "local.goodreads.gui.goal"
     static let kindQuote = "local.goodreads.gui.quote"
     static let kindRace = "local.goodreads.gui.race"
-    static let kindSession = "local.goodreads.gui.session"
 }

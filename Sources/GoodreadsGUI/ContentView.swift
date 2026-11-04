@@ -20,7 +20,6 @@ struct ContentView: View {
                 }
             }
             .frame(minWidth: 480, minHeight: 420)
-            .safeAreaInset(edge: .bottom, spacing: 0) { SessionBar() }
         }
         .task {
             model.refreshUpNext()
@@ -98,8 +97,6 @@ struct ContentView: View {
                 FriendProfileSheet(model: model)
             case .authorPage:
                 AuthorPageSheet(model: model)
-            case .endSession(let session):
-                EndSessionSheet(session: session, totalPages: model.bookExtras[session.entry.bookID]?.pages)
             case .scanBarcode:
                 BarcodeScanSheet(model: model)
             }

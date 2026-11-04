@@ -288,65 +288,6 @@ struct RaceWidget: Widget {
     }
 }
 
-// MARK: - Reading Session
-
-struct SessionWidgetView: View {
-    let entry: SnapshotEntry
-
-    var body: some View {
-        let session = entry.snapshot.session
-        let book = entry.snapshot.reading.first { $0.bookID == session?.bookID } ?? entry.snapshot.reading.first
-        Group {
-            if let session {
-                VStack(alignment: .leading, spacing: 6) {
-                    Label("Reading", systemImage: "timer").font(.caption.weight(.semibold)).foregroundStyle(.orange)
-                        .widgetAccentable()
-                    Text(session.started, style: .timer)
-                        .font(.system(size: 26, weight: .bold, design: .rounded).monospacedDigit())
-                    Spacer(minLength: 0)
-                    Text(session.title).font(.caption.weight(.semibold)).lineLimit(2)
-                    Text("Click to stop").font(.caption2).foregroundStyle(.secondary)
-                }
-                .widgetURL(URL(string: "goodreads-gui://session/stop"))
-            } else if let book {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .top) {
-                        Image(systemName: "play.circle.fill").font(.system(size: 30)).foregroundStyle(.orange)
-                            .widgetAccentable()
-                        Spacer()
-                        if let percent = book.percent {
-                            Text("\(percent)%").font(.system(size: 16, weight: .bold, design: .rounded))
-                        }
-                    }
-                    Spacer(minLength: 0)
-                    Text("Start reading").font(.caption2).foregroundStyle(.secondary)
-                    Text(book.title).font(.caption.weight(.semibold)).lineLimit(2)
-                }
-                .widgetURL(URL(string: "goodreads-gui://session/start?book=\(book.bookID)"))
-            } else {
-                VStack(spacing: 6) {
-                    Image(systemName: "timer").font(.title2).foregroundStyle(.secondary)
-                    Text("Nothing on Currently Reading").font(.caption).foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetBackground()
-    }
-}
-
-struct SessionWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: WidgetStore.kindSession, provider: SnapshotProvider()) { entry in
-            SessionWidgetView(entry: entry)
-        }
-        .configurationDisplayName("Reading Session")
-        .description("Start timing a reading session for the book you’re on, and see it running.")
-        .supportedFamilies([.systemSmall])
-    }
-}
-
 @main
 struct GoodreadsWidgets: WidgetBundle {
     var body: some Widget {
@@ -354,7 +295,6 @@ struct GoodreadsWidgets: WidgetBundle {
         GoalWidget()
         QuoteWidget()
         RaceWidget()
-        SessionWidget()
     }
 }
 

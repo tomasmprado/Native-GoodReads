@@ -213,16 +213,13 @@ struct AuthorsMapCard: View {
                 Spacer()
                 if model.isLoadingCountries {
                     ProgressView().controlSize(.small)
-                    Text("\(model.authorsWithoutCountry) to go").font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
-                } else if model.authorsWithoutCountry > 0 {
-                    Button("Find Countries") { Task { await model.loadAuthorCountries(lookUp: true) } }
-                        .controlSize(.small)
-                        .glassButton()
-                        .help("Look up where each author is from on Wikidata")
+                    Text("Finding countries… \(model.authorsWithoutCountry) to go")
+                        .font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
                 }
             }
             if tally.isEmpty {
-                Text("Find Countries looks up where each author you’ve read is from.")
+                Text(model.isLoadingCountries ? String(localized: "Looking up where your authors are from…")
+                                              : String(localized: "No countries found for your authors yet."))
                     .appFont(size: 12).foregroundStyle(.secondary)
             } else {
                 HStack(alignment: .top, spacing: 16) {
@@ -259,6 +256,6 @@ struct AuthorsMapCard: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard(cornerRadius: 18)
-        .task { await model.loadAuthorCountries(lookUp: false) }
+        .task { await model.loadAuthorCountries(lookUp: true) }
     }
 }

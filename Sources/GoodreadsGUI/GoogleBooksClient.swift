@@ -153,15 +153,85 @@ enum GoogleBooksClient {
                                 langRestrict: String? = nil,
                                 sortNewest: Bool = false,
                                 maxResults: Int = 20) async throws -> [Book] {
-        var components = URLComponents(string: "https://www.googleapis.com/books/v1/volumes")!
-        components.queryItems = [
+        var query = [
             URLQueryItem(name: "q", value: q),
             URLQueryItem(name: "maxResults", value: String(maxResults)),
             URLQueryItem(name: "orderBy", value: sortNewest ? "newest" : "relevance")
         ]
         if let langRestrict {
-            components.queryItems?.append(URLQueryItem(name: "langRestrict", value: langRestrict))
+            query.append(URLQueryItem(name: "langRestrict", value: langRestrict))
         }
+        let data = try await get("volumes", query)
+        let decoded: VolumesResponse
+        do {
+            decoded = try JSONDecoder().decode(VolumesResponse.self, from: data)
+        } catch {
+            throw AppError("Couldn't read Google Books' response.")
+        }
+        return (decoded.items ?? []).compactMap(book(from:))
+    }
+
+    // MARK: Series
+
+    /// A series' name and its books, in order, from Google Books. Books
+    /// without a number in the series (box sets, extras) are left out.
+    static func series(id: String) async throws -> (title: String?, books: [Book]) {
+        struct Info: Decodable { struct Series: Decodable { let title: String? }; let series: [Series]? }
+        struct Membership: Decodable { let member: [Item]?; let nextPageToken: String? }
+        let title = (try? JSONDecoder().decode(Info.self, from: try await get("series/get", [URLQueryItem(name: "series_id", value: id)])))?
+            .series?.first?.title
+        var books: [Book] = []
+        var token: String?
+        for _ in 0..<5 {
+            var query = [URLQueryItem(name: "series_id", value: id), URLQueryItem(name: "page_size", value: "40")]
+            if let token { query.append(URLQueryItem(name: "page_token", value: token)) }
+            let page = try JSONDecoder().decode(Membership.self, from: try await get("series/membership/get", query))
+            books += (page.member ?? []).compactMap(book(from:))
+            token = page.nextPageToken
+            if token == nil { break }
+        }
+        var byNumber: [Double: Book] = [:]
+        for book in books where book.seriesID == id {
+            guard let number = book.seriesNumber, number > 0 else { continue }
+            if byNumber[number] == nil { byNumber[number] = book }
+        }
+        return (title, byNumber.values.sorted { ($0.seriesNumber ?? 0) < ($1.seriesNumber ?? 0) })
+    }
+
+    /// Which series a book is in, from any of its Google Books editions —
+    /// often only the ebook edition says. Cached: a month when it isn't in
+    /// one, for good when it is.
+    static func seriesOf(isbn: String?, title: String, author: String) async -> Book? {
+        let cleanTitle = title.replacingOccurrences(of: #"\s*\([^()]*#[^()]*\)\s*$"#, with: "", options: .regularExpression)
+        let key = "\(isbn ?? "")|\(cleanTitle)|\(author)".lowercased()
+        if let hit = await DataCache.shared.read(Book?.self, "google-series-of", key, ttl: 30 * 24 * 3600),
+           hit.value != nil || !hit.isStale {
+            return hit.value
+        }
+        var candidates: [Book] = []
+        do {
+            if let isbn, !isbn.isEmpty { candidates += try await volumes(q: "isbn:\(isbn)", maxResults: 3) }
+            if !candidates.contains(where: { $0.seriesID != nil }) {
+                let byline = author.isEmpty ? "" : " inauthor:\"\(author.split(separator: ",").first.map(String.init) ?? author)\""
+                let found = try await volumes(q: "intitle:\"\(cleanTitle)\"\(byline)", maxResults: 20)
+                let wanted = Suggestions.normalizedTitle(cleanTitle)
+                candidates += found.filter { candidate in
+                    let name = Suggestions.normalizedTitle(candidate.title)
+                    return name == wanted || name.hasPrefix(wanted + " ")
+                }
+            }
+        } catch {
+            return nil      // not saved, so it's asked again next time
+        }
+        let found = candidates.first { $0.seriesID != nil && $0.seriesNumber != nil }
+        await DataCache.shared.write(found, "google-series-of", key)
+        return found
+    }
+
+    /// A Google Books API call, with your key when there is one.
+    private static func get(_ path: String, _ query: [URLQueryItem]) async throws -> Data {
+        var components = URLComponents(string: "https://www.googleapis.com/books/v1/\(path)")!
+        components.queryItems = query
 
         // The free shared tier stays exhausted (it's shared across every
         // caller with no key), so a personal key set in Settings goes on
@@ -185,14 +255,7 @@ enum GoogleBooksClient {
             throw GoogleBooksHTTPError(message: message + hint, apiKeyWasEmpty: apiKey.isEmpty, status: http.statusCode)
         }
 
-        let decoded: VolumesResponse
-        do {
-            decoded = try JSONDecoder().decode(VolumesResponse.self, from: data)
-        } catch {
-            throw AppError("Couldn't read Google Books' response.")
-        }
-
-        return (decoded.items ?? []).compactMap(book(from:))
+        return data
     }
 
     private static func book(from item: Item) -> Book? {
@@ -220,7 +283,10 @@ enum GoogleBooksClient {
             description: info.description,
             pageCount: info.pageCount,
             publishedDate: info.publishedDate,
-            categories: info.categories
+            categories: info.categories,
+            seriesID: info.seriesInfo?.volumeSeries?.first?.seriesId,
+            seriesNumber: info.seriesInfo?.volumeSeries?.first?.orderNumber.map(Double.init)
+                ?? info.seriesInfo?.bookDisplayNumber.flatMap { Double($0) }
         )
     }
 
@@ -262,6 +328,13 @@ enum GoogleBooksClient {
         let pageCount: Int?
         let publishedDate: String?
         let categories: [String]?
+        let seriesInfo: SeriesInfo?
+    }
+
+    private struct SeriesInfo: Decodable {
+        struct Member: Decodable { let seriesId: String?; let orderNumber: Int? }
+        let bookDisplayNumber: String?
+        let volumeSeries: [Member]?
     }
 
     private struct Identifier: Decodable {

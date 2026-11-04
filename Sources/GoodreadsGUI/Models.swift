@@ -22,6 +22,9 @@ struct Book: Identifiable, Hashable, Codable {
     var publishedDate: String? = nil
     /// Google Books' subjects, e.g. "Fiction / Science Fiction".
     var categories: [String]? = nil
+    /// The Google Books series it belongs to, and its number in it.
+    var seriesID: String? = nil
+    var seriesNumber: Double? = nil
 
     /// This book with whatever it's missing taken from `other`.
     func filled(from other: Book?) -> Book {
