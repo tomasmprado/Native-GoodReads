@@ -11,6 +11,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         AutoBackup.start()
         ReadingAppsSync.shared.start()
         PriceWatch.start()
+        // Suggestions and authors' countries get ready in the background,
+        // window open or not.
+        Task {
+            try? await Task.sleep(for: .seconds(30))
+            await LibraryModel.shared.buildRecommendations()
+            await LibraryModel.shared.loadAuthorCountries(lookUp: true)
+        }
 
         UNUserNotificationCenter.current().delegate = self
         ReadingReminder.registerCategory()

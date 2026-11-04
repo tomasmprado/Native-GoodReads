@@ -61,6 +61,12 @@ final class RecommenderTests: XCTestCase {
         let ranked = Recommender.rank([disliked, loved], profile: profile, excluded: [])
         XCTAssertEqual(ranked.map(\.book.title), ["A", "B"])
     }
+
+    func testAFewVotesCountLessThanMany() {
+        let obscure = Candidate(book: book("Obscure", "X"), sources: [.genre("x")], communityRating: 4.8, ratingsCount: 80)
+        let loved = Candidate(book: book("Loved", "Y"), sources: [.genre("x")], communityRating: 4.4, ratingsCount: 200_000)
+        XCTAssertEqual(Recommender.rank([obscure, loved], profile: TasteProfile(), excluded: []).first?.book.title, "Loved")
+    }
 }
 
 final class ReadingLanguagesTests: XCTestCase {

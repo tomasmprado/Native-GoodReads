@@ -215,7 +215,7 @@ struct DiscoverPane: View {
             history.append((item, verdict))
             await SwipeHistory.add(SwipeDecision(key: item.id, title: book.title, author: book.author,
                                                  genres: item.genres.isEmpty ? book.genresFromCategories : item.genres,
-                                                 verdict: verdict, date: Date()))
+                                                 verdict: verdict, date: Date(), bookID: book.goodreadsID, workID: item.workID))
             switch verdict {
             case .want: await model.shelve(book, to: .wantToRead)
             case .read: model.activeSheet = .finishBook(book)

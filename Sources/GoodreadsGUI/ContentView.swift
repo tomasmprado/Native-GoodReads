@@ -32,12 +32,6 @@ struct ContentView: View {
             await model.warmUp()
         }
         .task { await model.checkForUpdate() }
-        .task {
-            // Where your authors are from, for the map in Stats — on its own,
-            // a little after launch, so it's ready when you look.
-            try? await Task.sleep(for: .seconds(15))
-            await model.loadAuthorCountries(lookUp: true)
-        }
         .task { FriendNotifier.startPolling(model) }
         .task {
             Connectivity.shared.onReconnect = { [model] in

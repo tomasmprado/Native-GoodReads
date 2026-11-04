@@ -90,6 +90,9 @@ struct SwipeDecision: Codable, Sendable, Equatable {
     var genres: [String] = []
     let verdict: Verdict
     let date: Date
+    /// The Goodreads book and work, when known — books you liked lead to more like them.
+    var bookID: String? = nil
+    var workID: String? = nil
 }
 
 enum SwipeHistory {
@@ -145,6 +148,7 @@ struct Recommendation: Codable, Sendable, Identifiable, Equatable {
     var genres: [String] = []
     var communityRating: Double?
     var ratingsCount: Int?
+    var workID: String?
     var id: String { Candidate.key(book.title) }
 }
 
@@ -182,7 +186,7 @@ enum ReadingLanguages {
 
     /// Whether a book written as `title` (and described by `blurb`) is in
     /// one of `allowed`. Unknown counts as yes; only a clear guess rules out.
-    static func fits(title: String, blurb: String?, allowed: Set<String>) -> Bool {
+    static func fits(title: String, author: String = "", blurb: String?, allowed: Set<String>) -> Bool {
         guard !allowed.isEmpty else { return true }
         if let blurb, blurb.count >= 60, let language = guess(blurb) { return allowed.contains(language) }
         // A title in another alphabet says enough on its own.
@@ -190,6 +194,13 @@ enum ReadingLanguages {
         let latin = letters.filter { $0.value < 0x0250 }
         if !letters.isEmpty, latin.count * 2 < letters.count, let language = guess(title) {
             return allowed.contains(language)
+        }
+        // A short Latin title (with its author's name as written) only counts
+        // when the guess is sure of itself.
+        let recognizer = NLLanguageRecognizer()
+        recognizer.processString([title, author].joined(separator: " "))
+        if let (language, confidence) = recognizer.languageHypotheses(withMaximum: 1).first, confidence > 0.85 {
+            return allowed.contains(String(language.rawValue.prefix(2)))
         }
         return true
     }
@@ -238,11 +249,16 @@ enum Recommender {
             }
             score += 0.5 * tanh(profile.authorAffinity(candidate.book.author) / 2)
             if let match = profile.genreMatch(candidate.genres) { score += 0.6 * match }
-            if let rating = candidate.communityRating { score += (rating - 3.9) * 1.2 }
+            // A rating from a few dozen readers says less than one from thousands.
+            if let rating = candidate.communityRating {
+                let votes = Double(candidate.ratingsCount ?? 1000)
+                let steady = (votes * rating + 500 * 3.9) / (votes + 500)
+                score += (steady - 3.9) * 1.2
+            }
             if let count = candidate.ratingsCount, count > 0 { score += min(0.3, log10(Double(count)) / 20) }
             return Recommendation(book: candidate.book, score: score, reason: reason(for: candidate, seeds: seeds),
                                   genres: candidate.genres, communityRating: candidate.communityRating,
-                                  ratingsCount: candidate.ratingsCount)
+                                  ratingsCount: candidate.ratingsCount, workID: candidate.workID)
         }
 
         var perAuthor: [String: Int] = [:]
@@ -319,6 +335,17 @@ extension LibraryModel {
         let allowed: Set<String> = prefs.bookLanguage == .any
             ? ReadingLanguages.codes(of: languages)
             : Set(prefs.bookLanguage.codes.filter { $0.count == 2 })
+        /// A Google Books result in a language you read (its own field, else its title).
+        func fitsLanguage(_ book: Book) -> Bool {
+            if book.title.range(of: #"\((\w+ )?edition\)"#, options: [.regularExpression, .caseInsensitive]) != nil,
+               let named = book.title.range(of: #"\((\w+) edition\)"#, options: [.regularExpression, .caseInsensitive]),
+               let code = ReadingLanguages.code(for: book.title[named].dropFirst().split(separator: " ").first.map { $0.lowercased() } ?? ""),
+               !allowed.isEmpty, !allowed.contains(code) { return false }
+            if let language = book.language, !language.isEmpty, !allowed.isEmpty {
+                return allowed.contains(String(language.prefix(2)).lowercased())
+            }
+            return prefs.includeUnknownLanguage && ReadingLanguages.fits(title: book.title, blurb: book.description, allowed: allowed)
+        }
         var candidates: [Candidate] = []
         func publish() {
             recommendations = Recommender.rank(candidates, profile: profile, excluded: excluded, excludedWorks: excludedWorks)
@@ -326,12 +353,32 @@ extension LibraryModel {
 
         // 1. Books readers of your favourites also enjoyed.
         recommendationNote = String(localized: "Looking at books like your favourites…")
-        for seed in profile.seeds.prefix(force ? 14 : 10) where !Task.isCancelled {
-            for item in await GoodreadsSimilar.similar(to: seed.entry.bookID).prefix(18)
-            where ReadingLanguages.fits(title: item.title, blurb: item.blurb, allowed: allowed) {
+        // Books you said yes to in Discover lead to more like them.
+        let wanted = ShelfCache.read(.wantToRead)?.entries ?? []
+        let liked: [(bookID: String, work: String?, title: String, weight: Double)] = swipes.filter { $0.verdict == .want }.suffix(12).reversed().compactMap { swipe in
+            let id = swipe.bookID ?? wanted.first { Candidate.key($0.title) == swipe.key }?.bookID
+            return id.map { ($0, swipe.workID, swipe.title, 0.7) }
+        }
+        let seeds = profile.seeds.prefix(force ? 24 : 16).map { (bookID: $0.entry.bookID, work: String?.none, title: $0.entry.title, weight: $0.weight) } + liked
+        // Goodreads turns away a quick run of book pages, so only a few new
+        // ones are asked for each time; the rest come on later runs.
+        var pagesLeft = 4
+        for seed in seeds where !Task.isCancelled {
+            let saved = await DataCache.shared.read([GoodreadsSimilar.Item].self, "similar-books", seed.bookID, ttl: .infinity) != nil
+            var known = seed.work
+            if known == nil { known = await GoodreadsSimilar.workID(for: seed.bookID, fetch: false) }
+            guard saved || known != nil || pagesLeft > 0 else { continue }
+            if !saved && known == nil {
+                pagesLeft -= 1
+                try? await Task.sleep(for: .seconds(2))
+            }
+            for item in await GoodreadsSimilar.similar(to: seed.bookID, work: known)
+            where ReadingLanguages.fits(title: item.title, author: item.author, blurb: item.blurb, allowed: allowed)
+                // An edition hardly anyone has read, with no description, is usually a stray translation.
+                && !((item.blurb ?? "").isEmpty && (item.ratingsCount ?? 0) < 100) {
                 var candidate = Candidate(book: item.asBook, communityRating: item.rating, ratingsCount: item.ratingsCount)
                 candidate.workID = item.workID
-                candidate.sources = [.similar(seed: SeriesTracker.bareTitle(seed.entry.title), weight: seed.weight)]
+                candidate.sources = [.similar(seed: SeriesTracker.bareTitle(seed.title), weight: seed.weight)]
                 candidate.genres = extras[item.bookID]?.genres ?? []
                 candidates.append(candidate)
             }
@@ -362,23 +409,25 @@ extension LibraryModel {
             .filter { profile.authorAffinity($0) > 0.4 }.prefix(5)
         for author in favouriteAuthors where !Task.isCancelled {
             for book in ((try? await GoogleBooksClient.searchByAuthor(author)) ?? []).prefix(8)
-            where Suggestions.looksLikeSameAuthor(book.author, author)
-                && (prefs.bookLanguage.matches(book.language) || (book.language == nil && prefs.includeUnknownLanguage)) {
+            where Suggestions.looksLikeSameAuthor(book.author, author) && fitsLanguage(book) {
                 candidates.append(Candidate(book: book, sources: [.author(author)], genres: book.genresFromCategories,
                                             communityRating: book.rating.flatMap(Double.init)))
             }
         }
 
         // 5. Well-rated books in the genres you love most.
-        for genre in profile.topGenres.prefix(3) where !Task.isCancelled {
-            for book in ((try? await GoogleBooksClient.search("subject:\"\(genre)\"", language: prefs.bookLanguage)) ?? []).prefix(10) {
+        // Goodreads counts places ("Portugal") as genres; they make poor searches.
+        let places = Set(Locale.Region.isoRegions.compactMap { Locale(identifier: "en").localizedString(forRegionCode: $0.identifier)?.lowercased() })
+        for genre in profile.topGenres.filter({ !places.contains($0) }).prefix(3) where !Task.isCancelled {
+            for book in ((try? await GoogleBooksClient.search("subject:\"\(genre)\"", language: prefs.bookLanguage)) ?? []).prefix(10)
+            where fitsLanguage(book) {
                 candidates.append(Candidate(book: book, sources: [.genre(genre)], genres: [genre] + book.genresFromCategories,
                                             communityRating: book.rating.flatMap(Double.init)))
             }
         }
 
         publish()
-        Diagnostics.shared.log("suggestions", "\(candidates.count) candidates from \(profile.seeds.prefix(10).count) favourites → \(recommendations.count) picks; top: \(recommendations.prefix(3).map(\.book.title).joined(separator: ", "))",
+        Diagnostics.shared.log("suggestions", "\(candidates.count) candidates from \(seeds.count) favourites → \(recommendations.count) picks; top: \(recommendations.prefix(3).map(\.book.title).joined(separator: ", "))",
                                ok: !recommendations.isEmpty)
         recommendationNote = recommendations.isEmpty ? String(localized: "Rate a few books you’ve read, and suggestions show up here.") : nil
         await DataCache.shared.write(recommendations, "picks", "all")

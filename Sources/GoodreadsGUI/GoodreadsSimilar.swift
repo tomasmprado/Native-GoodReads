@@ -27,24 +27,27 @@ enum GoodreadsSimilar {
         }
     }
 
-    /// The work id of a book, from its Goodreads page (saved, or fetched once).
-    static func workID(for bookID: String) async -> String? {
+    /// The work id of a book, from its saved Goodreads page — or, when
+    /// `fetch` allows, from the page itself (then saved for good).
+    static func workID(for bookID: String, fetch: Bool) async -> String? {
         if let detail = await DataCache.shared.read(GoodreadsBookPage.Detail.self, "book-page", bookID, ttl: .infinity)?.value,
            let work = detail.workID {
             return work
         }
-        guard let detail = try? await GoodreadsBookPage.fetch(bookID: bookID) else { return nil }
+        guard fetch, let detail = try? await GoodreadsBookPage.fetch(bookID: bookID), detail.workID != nil else { return nil }
         await DataCache.shared.write(detail, "book-page", bookID)
         return detail.workID
     }
 
     /// Books readers of `bookID` also enjoyed, the book itself left out.
-    /// Saved for two weeks.
-    static func similar(to bookID: String) async -> [Item] {
+    /// `work` saves looking up its work id. Saved for two weeks.
+    static func similar(to bookID: String, work known: String? = nil, fetchPage: Bool = true) async -> [Item] {
         if let hit = await DataCache.shared.read([Item].self, "similar-books", bookID, ttl: 14 * 24 * 3600), !hit.isStale {
             return hit.value
         }
-        guard let work = await workID(for: bookID),
+        var resolved = known
+        if resolved == nil { resolved = await workID(for: bookID, fetch: fetchPage) }
+        guard let work = resolved,
               let url = URL(string: "https://www.goodreads.com/book/similar/\(work)") else { return [] }
         var request = URLRequest(url: url)
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
