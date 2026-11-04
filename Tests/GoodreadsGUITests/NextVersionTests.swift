@@ -128,3 +128,11 @@ final class StoreAndScanTests: XCTestCase {
         XCTAssertNotEqual(today, tomorrow)
     }
 }
+
+final class AuthorCountriesSavedTests: XCTestCase {
+    func testNeverLookedUpIsNotTheSameAsNoCountry() async {
+        let name = "Nobody \(UUID().uuidString)"
+        let saved = await AuthorCountries.saved(for: name)
+        XCTAssertTrue(saved == nil, "an author never looked up has to be looked up")
+    }
+}

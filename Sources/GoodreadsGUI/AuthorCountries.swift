@@ -24,39 +24,57 @@ struct AuthorCountry: Codable, Sendable, Equatable, Hashable {
 
 enum AuthorCountries {
     private static let cacheTTL: TimeInterval = 180 * 24 * 3600
+    /// "No country" answers saved before the lookup learned to find authors
+    /// described by another job are asked again.
+    private static let retryEmptyBefore = Date(timeIntervalSince1970: 1_793_827_200)   // 4 Nov 2026
+
+    private static func isUsable(_ hit: DataCache.Hit<AuthorCountry?>) -> Bool {
+        hit.value != nil || hit.fetched > retryEmptyBefore
+    }
 
     static func country(for author: String) async -> AuthorCountry? {
         let key = author.lowercased()
-        if let hit = await DataCache.shared.read(AuthorCountry?.self, "author-country", key, ttl: cacheTTL), !hit.isStale {
+        if let hit = await DataCache.shared.read(AuthorCountry?.self, "author-country", key, ttl: cacheTTL),
+           !hit.isStale, isUsable(hit) {
             return hit.value
         }
-        let found = await lookup(author)
-        await DataCache.shared.write(found, "author-country", key)
-        return found
+        do {
+            let found = try await lookup(author)
+            await DataCache.shared.write(found, "author-country", key)
+            return found
+        } catch {
+            // Offline or turned away: not saved, so it's asked again next time.
+            await Diagnostics.shared.log("authors' countries", "\(author): \(error.localizedDescription)", ok: false)
+            return nil
+        }
     }
 
     /// Already known, without asking Wikidata — for drawing the map at once.
+    /// Outer nil: never looked up. Inner nil: looked up, no country found.
     static func saved(for author: String) async -> AuthorCountry?? {
-        await DataCache.shared.read(AuthorCountry?.self, "author-country", author.lowercased(), ttl: .infinity)?.value
+        guard let hit = await DataCache.shared.read(AuthorCountry?.self, "author-country", author.lowercased(), ttl: .infinity),
+              isUsable(hit) else {
+            return nil
+        }
+        return .some(hit.value)
     }
 
-    private static func lookup(_ author: String) async -> AuthorCountry? {
-        guard let person = await person(named: author),
-              let claims = await claims(of: person) else { return nil }
+    private static func lookup(_ author: String) async throws -> AuthorCountry? {
+        guard let (_, claims) = try await person(named: author) else { return nil }
         var candidates = Array(entityIDs(claims["P27"]).reversed())     // most recent citizenship first
         if candidates.isEmpty, let birthplace = entityIDs(claims["P19"]).first,
-           let place = await self.claims(of: birthplace) {
+           let place = try await entity(birthplace)?.claims {
             candidates = entityIDs(place["P17"])
         }
         for id in candidates {
-            if let country = await country(id: id) { return country }
+            if let country = try await country(id: id) { return country }
         }
         return nil
     }
 
     /// A country with an ISO code. A former state ("Kingdom of Portugal")
     /// has none, so the states that replaced it are tried, nearest first.
-    private static func country(id: String) async -> AuthorCountry? {
+    private static func country(id: String) async throws -> AuthorCountry? {
         if let hit = await DataCache.shared.read(AuthorCountry?.self, "wikidata-country", id, ttl: .infinity) {
             return hit.value
         }
@@ -65,7 +83,7 @@ enum AuthorCountries {
         var found: AuthorCountry?
         while !queue.isEmpty, seen.count <= 12, found == nil {
             let current = queue.removeFirst()
-            guard let entity = await entity(current) else { continue }
+            guard let entity = try await entity(current) else { continue }
             if let code = strings(entity.claims["P297"]).first,
                let coordinate = (entity.claims["P625"] as? [[String: Any]])?.first.flatMap(value) as? [String: Any],
                let latitude = coordinate["latitude"] as? Double, let longitude = coordinate["longitude"] as? Double {
@@ -77,32 +95,45 @@ enum AuthorCountries {
         return found
     }
 
-    private static func entity(_ id: String) async -> (claims: [String: Any], label: String?)? {
-        guard let url = api(["action": "wbgetentities", "ids": id, "props": "claims|labels", "languages": "en"]),
-              let data = try? await get(url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+    private static func entity(_ id: String) async throws -> (claims: [String: Any], label: String?)? {
+        guard let url = api(["action": "wbgetentities", "ids": id, "props": "claims|labels", "languages": "en"]) else { return nil }
+        let data = try await get(url)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let entity = (json["entities"] as? [String: Any])?[id] as? [String: Any],
               let claims = entity["claims"] as? [String: Any] else { return nil }
         let label = ((entity["labels"] as? [String: Any])?["en"] as? [String: Any])?["value"] as? String
         return (claims, label)
     }
 
-    /// The first search hit described as a writer of some kind.
-    private static func person(named name: String) async -> String? {
-        let language = Bundle.main.preferredLocalizations.first ?? "en"
-        guard let url = api(["action": "wbsearchentities", "search": name, "language": language, "uselang": "en",
-                             "type": "item", "limit": "5"]),
-              let data = try? await get(url),
-              let result = try? JSONDecoder().decode(Search.self, from: data) else { return nil }
-        return result.search.first { AuthorWikipedia.isWriter($0.description) }?.id
+    /// The author on Wikidata: a search hit described as a writer, else a
+    /// person whose name is exactly the author's (writers are often
+    /// described by another job — "Italian physicist"). A name Goodreads
+    /// cut short ("Soph de Mello Breyner Andresen") is tried again without
+    /// its first word, writers only.
+    private static func person(named name: String) async throws -> (id: String, claims: [String: Any])? {
+        if let found = try await person(search: name, anyPerson: true) { return found }
+        let words = name.split(separator: " ")
+        guard words.count >= 3 else { return nil }
+        return try await person(search: words.dropFirst().joined(separator: " "), anyPerson: false)
     }
 
-    private static func claims(of id: String) async -> [String: Any]? {
-        guard let url = api(["action": "wbgetentities", "ids": id, "props": "claims"]),
-              let data = try? await get(url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let entity = (json["entities"] as? [String: Any])?[id] as? [String: Any] else { return nil }
-        return entity["claims"] as? [String: Any]
+    private static func person(search name: String, anyPerson: Bool) async throws -> (id: String, claims: [String: Any])? {
+        let language = Bundle.main.preferredLocalizations.first ?? "en"
+        guard let url = api(["action": "wbsearchentities", "search": name, "language": language, "uselang": "en",
+                             "type": "item", "limit": "7"]) else { return nil }
+        let data = try await get(url)
+        guard let result = try? JSONDecoder().decode(Search.self, from: data) else { return nil }
+        let writers = result.search.filter { AuthorWikipedia.isWriter($0.description) }
+        let namesakes = anyPerson ? result.search.filter { hit in
+            !writers.contains { $0.id == hit.id }
+                && ([hit.label, hit.match?.text].compactMap { $0 }).contains { AuthorWikipedia.sameName($0, name) }
+        } : []
+        for hit in (writers + namesakes).prefix(4) {
+            guard let claims = try await entity(hit.id)?.claims else { continue }
+            let isHuman = entityIDs(claims["P31"]).contains("Q5")
+            if isHuman { return (hit.id, claims) }
+        }
+        return nil
     }
 
     private static func value(_ claim: [String: Any]) -> Any? {
@@ -136,7 +167,13 @@ enum AuthorCountries {
     }
 
     private struct Search: Decodable {
-        struct Hit: Decodable { let id: String; let description: String? }
+        struct Hit: Decodable {
+            struct Match: Decodable { let text: String? }
+            let id: String
+            let label: String?
+            let description: String?
+            let match: Match?
+        }
         let search: [Hit]
     }
 
@@ -183,12 +220,20 @@ extension LibraryModel {
         guard lookUp, !missing.isEmpty, !isLoadingCountries else { return }
         isLoadingCountries = true
         defer { isLoadingCountries = false }
-        for (index, author) in missing.enumerated() where !Task.isCancelled {
-            if let country = await AuthorCountries.country(for: author) { countries[author] = country }
+        Diagnostics.shared.log("authors' countries", "looking up \(missing.count) of \(authors.count) authors on Wikidata")
+        var foundCount = 0
+        for (index, author) in missing.enumerated() {
+            if let country = await AuthorCountries.country(for: author) {
+                countries[author] = country
+                foundCount += 1
+            }
             authorsWithoutCountry = missing.count - index - 1
             if index % 5 == 4 || index == missing.count - 1 {
                 countryTally = AuthorCountries.tally(pairs())
                 authorCountryMap = countries
+            }
+            if index == missing.count - 1 {
+                Diagnostics.shared.log("authors' countries", "found \(foundCount) of \(missing.count)", ok: foundCount > 0)
             }
             try? await Task.sleep(for: .milliseconds(200))
         }
@@ -256,6 +301,10 @@ struct AuthorsMapCard: View {
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassCard(cornerRadius: 18)
-        .task { await model.loadAuthorCountries(lookUp: true) }
+        .task {
+            await model.loadAuthorCountries(lookUp: false)
+            // Not tied to this card: leaving Stats doesn't stop the lookups.
+            Task { await model.loadAuthorCountries(lookUp: true) }
+        }
     }
 }
