@@ -17,8 +17,17 @@ added in that diff, meaning `v1.0.0` predates all of it.
 - **Your Series** in Suggestions, from Google Books: how far you are in
   each series you've read from, the next book (one click to Want to Read),
   and a notification when a new book joins one of them.
-- **Because You Loved…** in Suggestions: books your friends gave five stars,
-  from the friends who loved the same books you did.
+- **Smarter suggestions ("Picked for You").** A taste profile from your Read
+  shelf — authors and genres weighed by your stars against your own average
+  and by how recently you read them, minus books you gave up on — scores
+  books from several places at once: Goodreads' "Readers also enjoyed" for
+  your favourites, friends' five-star books (friends who loved what you
+  loved), next in your series, new and older books by authors you love, and
+  well-rated books in your genres. Books several favourites point to rise
+  to the top; each suggestion says why; two per author at most.
+- **Discover**: suggestions one card at a time — swipe right (→) for Want to
+  Read, left (←) to pass, up (↑) if you've read it (then rate it), ⌘Z to
+  undo. Every swipe teaches the suggestions.
 - **Scan a barcode** (File → Scan a Barcode…, ⇧⌘B, or the button in Search):
   hold a book's barcode up to the Mac's camera or an iPhone's through
   Continuity Camera (used when there is one); the barcode is outlined when

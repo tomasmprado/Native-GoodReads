@@ -13,6 +13,7 @@ struct ContentView: View {
                 case .home:        HomePane(model: model)
                 case .search:      SearchPane(model: model)
                 case .suggestions: SuggestionsPane(model: model)
+                case .discover:    DiscoverPane(model: model)
                 case .friends:     FriendsPane(model: model)
                 case .stats:       StatsPane(model: model)
                 case .quotes:      QuotesPane(model: model)
@@ -120,6 +121,9 @@ struct ContentView: View {
             Label("Suggestions", systemImage: "sparkles")
                 .tag(LibraryModel.Pane.suggestions)
 
+            Label("Discover", systemImage: "rectangle.stack")
+                .tag(LibraryModel.Pane.discover)
+
             Label("Friends", systemImage: "person.2")
                 .tag(LibraryModel.Pane.friends)
 
@@ -197,10 +201,7 @@ private struct SuggestionsPane: View {
     @State private var showAllSeries = false
 
     private var subtitle: String {
-        var bits: [String] = []
-        if !model.suggestionBasis.isEmpty {
-            bits.append(String(localized: "from \(model.suggestionBasis.count) finished in \(prefs.suggestionWindowDays) days"))
-        }
+        var bits: [String] = [String(localized: "from your ratings, favourites, friends and swipes")]
         if prefs.bookLanguage != .any { bits.append(prefs.bookLanguage.label) }
         return bits.joined(separator: " · ")
     }
@@ -230,9 +231,9 @@ private struct SuggestionsPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if model.suggestions.isEmpty && model.newReleases.isEmpty && model.seriesProgress.isEmpty && model.lovedSuggestions.isEmpty {
-                EmptyPane(symbol: model.isBuildingSuggestions ? "hourglass" : "sparkles",
-                          text: model.suggestionNote ?? String(localized: "Nothing to suggest yet."))
+            if model.recommendations.isEmpty && model.newReleases.isEmpty && model.seriesProgress.isEmpty {
+                EmptyPane(symbol: model.isBuildingRecommendations ? "hourglass" : "sparkles",
+                          text: model.recommendationNote ?? String(localized: "Nothing to suggest yet."))
             } else {
                 List {
                     if !model.seriesProgress.isEmpty {
@@ -254,10 +255,17 @@ private struct SuggestionsPane: View {
                             }
                         }
                     }
-                    if !model.lovedSuggestions.isEmpty {
-                        Section("Because You Loved…") {
-                            ForEach(model.lovedSuggestions) { suggestion in
-                                suggestionRow(suggestion, detail: suggestion.reason)
+                    if !model.recommendations.isEmpty {
+                        Section {
+                            ForEach(model.recommendations.prefix(25)) { item in
+                                suggestionRow(Suggestion(book: item.book, reason: item.reason),
+                                              detail: [item.reason, item.communityRating.map { String(format: "%.2f ★", $0) }]
+                                                .compactMap { $0 }.joined(separator: " · "))
+                            }
+                        } header: {
+                            HStack {
+                                Text("Picked for You")
+                                if model.isBuildingRecommendations { ProgressView().controlSize(.mini) }
                             }
                         }
                     }
@@ -269,19 +277,11 @@ private struct SuggestionsPane: View {
                             }
                         }
                     }
-                    if !model.suggestions.isEmpty {
-                        Section("More by Authors You’ve Read") {
-                            ForEach(model.suggestions) { suggestion in
-                                suggestionRow(suggestion,
-                                              detail: detailLine(suggestion.reason, publisher: suggestion.book.publisher))
-                            }
-                        }
-                    }
                 }
                 .listStyle(.inset)
             }
 
-            if let note = model.suggestionNote, !model.suggestions.isEmpty {
+            if let note = model.recommendationNote, !model.recommendations.isEmpty {
                 Divider()
                 Text(note)
                     .appFont(size: 11)
@@ -294,15 +294,14 @@ private struct SuggestionsPane: View {
         .navigationSubtitle(subtitle)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                if model.isBuildingSuggestions {
+                if model.isBuildingRecommendations {
                     ProgressView().controlSize(.small)
                 } else {
                     Button {
                         Task {
-                            await model.buildSuggestions(force: true)
-                            await model.loadLovedSuggestions()
                             await model.loadNewReleases(force: true)
                             await model.loadSeries(force: true)
+                            await model.buildRecommendations(force: true)
                         }
                     } label: {
                         Label("Rebuild suggestions", systemImage: "arrow.clockwise")

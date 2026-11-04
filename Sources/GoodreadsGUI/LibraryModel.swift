@@ -110,6 +110,10 @@ final class LibraryModel: ObservableObject {
     /// Series you're reading and what comes next in each.
     @Published var seriesProgress: [SeriesProgress] = []
     @Published var isLoadingSeries = false
+    /// "Picked for You" and the Discover deck, best first.
+    @Published var recommendations: [Recommendation] = []
+    @Published var isBuildingRecommendations = false
+    @Published var recommendationNote: String?
     /// Books friends with your taste loved.
     @Published var lovedSuggestions: [Suggestion] = []
     /// Where the authors on Read come from.
@@ -203,6 +207,7 @@ final class LibraryModel: ObservableObject {
         case home
         case search
         case suggestions
+        case discover
         case friends
         case stats
         case quotes
@@ -562,10 +567,11 @@ final class LibraryModel: ObservableObject {
             await buildSuggestions()
             await loadCurrentlyReading()
         case .suggestions:
-            await loadLovedSuggestions()
-            await buildSuggestions()
             await loadNewReleases()
             await loadSeries()
+            await buildRecommendations()
+        case .discover:
+            await buildRecommendations()
         case .friends:
             await loadFriends()
         case .stats:
@@ -584,7 +590,7 @@ final class LibraryModel: ObservableObject {
         case .home:        await loadCurrentlyReading(force: true)
         case .friends:     await loadFriends(force: true)
         case .stats:       await loadStats(force: true)
-        case .suggestions, .search, .quotes: break
+        case .suggestions, .discover, .search, .quotes: break
         }
     }
 
@@ -650,33 +656,13 @@ final class LibraryModel: ObservableObject {
 
         let prefs = Preferences.shared
 
-        do {
-            suggestionNote = String(localized: "Finding books…")
-            let result = try await Suggestions.build(
-                from: readEntries,
-                excludingTitles: shelvedTitles,
-                windowDays: prefs.suggestionWindowDays,
-                language: prefs.bookLanguage,
-                includeUnknown: prefs.includeUnknownLanguage
-            )
-
-            suggestions = result.items
-            suggestionBasis = result.basis
-            await DataCache.shared.write(SavedSuggestions(items: result.items, basis: result.basis),
-                                         "suggestions", "home")
-
-            if result.basis.isEmpty {
-                suggestionNote = String(localized: "Nothing finished in the last \(prefs.suggestionWindowDays) days — mark a book read and this fills in.")
-            } else if result.items.isEmpty {
-                suggestionNote = prefs.bookLanguage == .any
-                    ? String(localized: "No new books found from those authors.")
-                    : String(localized: "Nothing found in \(prefs.bookLanguage.label.lowercased()). Try widening the language in Settings.")
-            } else {
-                suggestionNote = nil
-            }
-        } catch {
-            suggestionNote = error.localizedDescription
-        }
+        suggestionNote = String(localized: "Finding books…")
+        await buildRecommendations(force: force)
+        let recent = Suggestions.recentlyRead(readEntries, withinDays: prefs.suggestionWindowDays)
+        suggestions = recommendations.prefix(15).map { Suggestion(book: $0.book, reason: $0.reason) }
+        suggestionBasis = recent
+        await DataCache.shared.write(SavedSuggestions(items: suggestions, basis: recent), "suggestions", "home")
+        suggestionNote = suggestions.isEmpty ? (recommendationNote ?? String(localized: "Nothing to suggest yet.")) : nil
     }
 
     /// Same cache-then-refresh shape as `performLoad`, kept separate from
