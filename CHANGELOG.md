@@ -11,6 +11,24 @@ added in that diff, meaning `v1.0.0` predates all of it.
 
 ### Added
 
+- **Influences**, from Wikidata: pick one of your authors and see who
+  shaped them and whom they shaped, with the authors you've read lit up;
+  click anyone to follow the thread. The first page lists the writers who
+  influenced several of your authors and whom you've never read, and the
+  links between authors you have read.
+- **Bingo**: a 4×4 card for the year built from what you rarely read —
+  countries and continents you've never visited, books older than your
+  grandparents, genres you skip or keep passing in Discover, books waiting
+  on your shelves for years. Squares fill themselves as you finish books;
+  each suggests books from your Want to Read.
+- **Letters to yourself**: a few lines when you finish a book (or any time),
+  sealed until a month, six months, a year or five years later, with a
+  notification when one opens. The Letters pane also shows what you
+  finished, or were reading, on this day in past years.
+- **Soundtrack** for a book: songs picked from where its author comes from,
+  when it was written and its genre, calmer or more restless with the
+  Agitation slider. 30-second previews play in the app; each song opens
+  in Apple Music. From the sidebar or a book's details.
 - **Reading time and a calendar of the days you read** in Stats, from the
   Kobo's own reading time, the days a book was open in Apple Books, and
   progress updates.

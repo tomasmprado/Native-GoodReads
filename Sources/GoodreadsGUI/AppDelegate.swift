@@ -17,7 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             try? await Task.sleep(for: .seconds(30))
             await LibraryModel.shared.buildRecommendations()
             await LibraryModel.shared.loadAuthorCountries(lookUp: true)
+            await InfluenceAtlas.shared.load()
         }
+        LetterBox.shared.startDelivering()
 
         UNUserNotificationCenter.current().delegate = self
         ReadingReminder.registerCategory()
@@ -38,6 +40,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let content = response.notification.request.content
         if let link = content.userInfo["url"] as? String, let url = URL(string: link) {
             await MainActor.run { _ = NSWorkspace.shared.open(url) }
+            return
+        }
+        if content.categoryIdentifier == LetterBox.category {
+            await MainActor.run {
+                self.showLibrary()
+                LibraryModel.shared.selection = .letters
+            }
             return
         }
         if content.categoryIdentifier == KoboSync.category {

@@ -17,6 +17,10 @@ struct ContentView: View {
                 case .friends:     FriendsPane(model: model)
                 case .stats:       StatsPane(model: model)
                 case .quotes:      QuotesPane(model: model)
+                case .influences:  InfluencesPane(model: model)
+                case .bingo:       BingoPane(model: model)
+                case .letters:     LettersPane(model: model)
+                case .soundtrack:  SoundtrackPane(model: model)
                 case .shelf:       ShelfPane(model: model)
                 }
             }
@@ -68,14 +72,14 @@ struct ContentView: View {
                     Task { await model.updateProgress(entry, percent: percent, page: page, note: note) }
                 }
             case .finish(let entry):
-                FinishSheet(title: entry.title, author: entry.author) { rating, date, note in
+                FinishSheet(title: entry.title, author: entry.author, bookID: entry.bookID, cover: entry.coverURL) { rating, date, note in
                     Task {
                         await model.finish(bookID: entry.bookID, title: entry.title,
                                            rating: rating, dateRead: date, note: note)
                     }
                 }
             case .finishBook(let book):
-                FinishSheet(title: book.title, author: book.author) { rating, date, note in
+                FinishSheet(title: book.title, author: book.author, bookID: book.goodreadsID, cover: book.coverURL) { rating, date, note in
                     Task {
                         await model.finishBook(book, rating: rating, dateRead: date, note: note)
                     }
@@ -126,6 +130,17 @@ struct ContentView: View {
 
             Label("Notes", systemImage: "note.text")
                 .tag(LibraryModel.Pane.quotes)
+
+            Section("Explore") {
+                Label("Influences", systemImage: "point.3.connected.trianglepath.dotted")
+                    .tag(LibraryModel.Pane.influences)
+                Label("Bingo", systemImage: "square.grid.4x3.fill")
+                    .tag(LibraryModel.Pane.bingo)
+                LettersSidebarRow()
+                    .tag(LibraryModel.Pane.letters)
+                Label("Soundtrack", systemImage: "music.note.list")
+                    .tag(LibraryModel.Pane.soundtrack)
+            }
 
             Section("Shelves") {
                 ForEach(model.shelves) { shelf in
@@ -1567,7 +1582,7 @@ private struct CurrentlyReadingCard: View {
 
 // MARK: - Shared pieces
 
-private struct EmptyPane: View {
+struct EmptyPane: View {
     let symbol: String
     let text: String
 
@@ -1798,5 +1813,24 @@ private struct UpdateButton: View {
             return String(localized: "The last attempt failed: \(message). Click to try again.")
         }
         return String(localized: "See what's new in \(update.version)")
+    }
+}
+
+/// Letters in the sidebar, with how many opened ones you haven't read.
+private struct LettersSidebarRow: View {
+    @ObservedObject private var box = LetterBox.shared
+
+    var body: some View {
+        HStack {
+            Label("Letters", systemImage: "envelope")
+            Spacer()
+            if box.unread > 0 {
+                Text("\(box.unread)")
+                    .appFont(size: 10, weight: .bold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6).padding(.vertical, 1)
+                    .background(Capsule().fill(Color.accentColor))
+            }
+        }
     }
 }

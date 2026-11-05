@@ -103,6 +103,8 @@ enum GoodreadsBookPage {
             detail = try? parse(html: html, bookID: bookID)
         }
         guard let detail else { throw firstError ?? AppError("Couldn't read the book page.") }
+        // Kept, so the bingo, the soundtrack and the suggestions can read it later.
+        await DataCache.shared.write(detail, "book-page", bookID)
         await BookExtras.save(BookExtras(pages: detail.pageCount, genres: detail.genres ?? [],
                                            rating: detail.about?.averageRating,
                                            ratingsCount: detail.about?.ratingsCount), for: bookID)

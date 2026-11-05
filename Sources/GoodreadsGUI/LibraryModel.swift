@@ -112,6 +112,8 @@ final class LibraryModel: ObservableObject {
     @Published var isLoadingSeries = false
     /// "Picked for You" and the Discover deck, best first.
     @Published var recommendations: [Recommendation] = []
+    /// The book the Soundtrack pane plays for; nil for the one you're reading.
+    @Published var soundtrackBook: Book?
     @Published var isBuildingRecommendations = false
     @Published var recommendationNote: String?
     /// Books friends with your taste loved.
@@ -211,6 +213,10 @@ final class LibraryModel: ObservableObject {
         case friends
         case stats
         case quotes
+        case influences
+        case bingo
+        case letters
+        case soundtrack
         case shelf(String)      // shelf slug
     }
 
@@ -576,7 +582,7 @@ final class LibraryModel: ObservableObject {
             await loadFriends()
         case .stats:
             await loadStats()
-        case .search, .quotes:
+        case .search, .quotes, .influences, .bingo, .letters, .soundtrack:
             break
         }
     }
@@ -590,7 +596,7 @@ final class LibraryModel: ObservableObject {
         case .home:        await loadCurrentlyReading(force: true)
         case .friends:     await loadFriends(force: true)
         case .stats:       await loadStats(force: true)
-        case .suggestions, .discover, .search, .quotes: break
+        case .suggestions, .discover, .search, .quotes, .influences, .bingo, .letters, .soundtrack: break
         }
     }
 

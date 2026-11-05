@@ -95,7 +95,7 @@ enum AuthorCountries {
         return found
     }
 
-    private static func entity(_ id: String) async throws -> (claims: [String: Any], label: String?)? {
+    static func entity(_ id: String) async throws -> (claims: [String: Any], label: String?)? {
         guard let url = api(["action": "wbgetentities", "ids": id, "props": "claims|labels", "languages": "en"]) else { return nil }
         let data = try await get(url)
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -110,7 +110,7 @@ enum AuthorCountries {
     /// described by another job — "Italian physicist"). A name Goodreads
     /// cut short ("Soph de Mello Breyner Andresen") is tried again without
     /// its first word, writers only.
-    private static func person(named name: String) async throws -> (id: String, claims: [String: Any])? {
+    static func person(named name: String) async throws -> (id: String, claims: [String: Any])? {
         if let found = try await person(search: name, anyPerson: true) { return found }
         let words = name.split(separator: " ")
         guard words.count >= 3 else { return nil }
@@ -136,28 +136,28 @@ enum AuthorCountries {
         return nil
     }
 
-    private static func value(_ claim: [String: Any]) -> Any? {
+    static func value(_ claim: [String: Any]) -> Any? {
         ((claim["mainsnak"] as? [String: Any])?["datavalue"] as? [String: Any])?["value"]
     }
 
-    private static func entityIDs(_ claims: Any?) -> [String] {
+    static func entityIDs(_ claims: Any?) -> [String] {
         (claims as? [[String: Any]] ?? []).compactMap { claim in
             (value(claim) as? [String: Any])?["id"] as? String
         }
     }
 
-    private static func strings(_ claims: Any?) -> [String] {
+    static func strings(_ claims: Any?) -> [String] {
         (claims as? [[String: Any]] ?? []).compactMap { value($0) as? String }
     }
 
-    private static func api(_ parameters: [String: String]) -> URL? {
+    static func api(_ parameters: [String: String]) -> URL? {
         var components = URLComponents(string: "https://www.wikidata.org/w/api.php")!
         components.queryItems = (parameters.merging(["format": "json"]) { a, _ in a })
             .sorted { $0.key < $1.key }.map { URLQueryItem(name: $0.key, value: $0.value) }
         return components.url
     }
 
-    private static func get(_ url: URL) async throws -> Data {
+    static func get(_ url: URL) async throws -> Data {
         var request = URLRequest(url: url)
         request.setValue("GoodreadsGUI/1.0 (macOS; https://github.com/tomasmprado/Native-GoodReads)", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 15
