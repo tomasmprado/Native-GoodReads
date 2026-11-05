@@ -90,6 +90,12 @@ final class SoundtrackTests: XCTestCase {
         XCTAssertTrue(Soundtrack.ingredients(country: nil, year: nil, genres: []).isEmpty)
     }
 
+    func testSpotifyNamesDropTheExtras() {
+        XCTAssertEqual(Spotify.cleanName("Verdes Anos (Instrumental) - Remastered 2003"), "Verdes Anos")
+        XCTAssertEqual(Spotify.cleanName("Canção Verdes Anos [feat. Fernando Alvim]"), "Canção Verdes Anos")
+        XCTAssertEqual(Spotify.cleanName("Fado"), "Fado")
+    }
+
     func testEnergyBands() {
         XCTAssertEqual(Soundtrack.band(for: 0), 0)
         XCTAssertEqual(Soundtrack.band(for: 0.5), 1)

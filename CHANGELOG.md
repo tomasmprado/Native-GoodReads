@@ -28,7 +28,10 @@ added in that diff, meaning `v1.0.0` predates all of it.
 - **Soundtrack** for a book: songs picked from where its author comes from,
   when it was written and its genre, calmer or more restless with the
   Agitation slider. 30-second previews play in the app; each song opens
-  in Apple Music. From the sidebar or a book's details.
+  in Apple Music or Spotify. **Make a Spotify Playlist** turns the mix into
+  a private playlist in your account — it needs a Client ID from an app of
+  your own on developer.spotify.com (Spotify asks for Premium on its owner)
+  and signs in through the browser. From the sidebar or a book's details.
 - **Reading time and a calendar of the days you read** in Stats, from the
   Kobo's own reading time, the days a book was open in Apple Books, and
   progress updates.

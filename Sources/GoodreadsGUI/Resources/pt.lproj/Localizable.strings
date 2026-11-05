@@ -944,3 +944,34 @@
 "No songs found right now." = "Não foram encontradas músicas agora.";
 "Open in Apple Music" = "Abrir no Apple Music";
 "Music to read this book to" = "Música para ler este livro";
+
+/* Spotify */
+"Music" = "Music";
+"Find it on Spotify" = "Procurar no Spotify";
+"Make a Spotify Playlist" = "Criar playlist no Spotify";
+"Finding %lld of %lld on Spotify…" = "A procurar %lld de %lld no Spotify…";
+"Playlist made with %lld of %lld songs." = "Playlist criada com %lld de %lld músicas.";
+"Open" = "Abrir";
+"Music to read %@ by %@ to — %@, %@. Made by Goodreads for Mac." = "Música para ler %1$@, de %2$@ — %3$@, %4$@. Feita pela app Goodreads para Mac.";
+"Soundtrack: %@" = "Banda sonora: %@";
+"Spotify didn’t find any of these songs." = "O Spotify não encontrou nenhuma destas músicas.";
+"Spotify didn’t make the playlist." = "O Spotify não criou a playlist.";
+"Spotify said no (403). Developer apps need the app’s owner to have Spotify Premium, and you must be the owner or one of its users." = "O Spotify recusou (403). As apps de programador precisam que o dono tenha Spotify Premium, e tens de ser o dono ou um dos utilizadores da app.";
+"Spotify answered with an error (HTTP %lld)." = "O Spotify respondeu com um erro (HTTP %lld).";
+"Add your Spotify Client ID first." = "Primeiro, junta o teu Client ID do Spotify.";
+"The Spotify sign-in didn’t match. Try again." = "O início de sessão no Spotify não bateu certo. Tenta outra vez.";
+"You didn’t allow it on Spotify." = "Não autorizaste no Spotify.";
+"Spotify didn’t sign you in." = "O Spotify não iniciou a sessão.";
+"Spotify didn’t sign you in. Check the Client ID and that the app’s Redirect URI is http://127.0.0.1/callback." = "O Spotify não iniciou a sessão. Confirma o Client ID e que o Redirect URI da app é http://127.0.0.1/callback.";
+"The Spotify sign-in took too long." = "O início de sessão no Spotify demorou demasiado.";
+"Done — you can close this tab and go back to Goodreads." = "Feito — podes fechar este separador e voltar à app Goodreads.";
+"Playlists on Spotify" = "Playlists no Spotify";
+"Spotify only lets apps make playlists through an app of your own. It takes two minutes, once:" = "O Spotify só deixa criar playlists através de uma app tua. Demora dois minutos, uma só vez:";
+"Open developer.spotify.com/dashboard and sign in (the account needs Spotify Premium)." = "Abre developer.spotify.com/dashboard e inicia sessão (a conta precisa de Spotify Premium).";
+"Create app. Any name; for Redirect URI put http://127.0.0.1/callback and tick Web API." = "Cria uma app. Qualquer nome; em Redirect URI põe http://127.0.0.1/callback e marca Web API.";
+"Copy the app’s Client ID and paste it below." = "Copia o Client ID da app e cola-o aqui em baixo.";
+"Open the Spotify Dashboard" = "Abrir o painel do Spotify";
+"The first playlist opens Spotify in your browser to ask for permission." = "Na primeira playlist, o Spotify abre no browser para pedir autorização.";
+"Continue" = "Continuar";
+"Sign Out of Spotify" = "Terminar sessão no Spotify";
+"For Soundtrack playlists: create an app at developer.spotify.com/dashboard (Redirect URI http://127.0.0.1/callback, Web API) and paste its Client ID. Spotify asks for Premium on the app’s owner." = "Para as playlists da banda sonora: cria uma app em developer.spotify.com/dashboard (Redirect URI http://127.0.0.1/callback, Web API) e cola o Client ID. O Spotify exige Premium ao dono da app.";

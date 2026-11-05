@@ -298,6 +298,10 @@ struct SoundtrackPane: View {
     @State private var isLoading = false
     @State private var mixNumber = 0
     @State private var copied = false
+    @State private var showingSpotifySetup = false
+    @State private var spotifyProgress: Int?
+    @State private var spotifyResult: Spotify.Created?
+    @State private var spotifyError: String?
 
     private var choices: [Book] {
         let reading = ShelfCache.read(.currentlyReading)?.entries ?? []
@@ -314,6 +318,7 @@ struct SoundtrackPane: View {
             if let book {
                 header(book)
                 energySlider
+                spotifyBar(book)
                 Divider()
                 trackList
             } else {
@@ -325,6 +330,9 @@ struct SoundtrackPane: View {
         .navigationTitle("Soundtrack")
         .onAppear { shownEnergy = energy }
         .task(id: "\(book?.id ?? "")-\(Soundtrack.band(for: energy))-\(mixNumber)") { await build() }
+        .sheet(isPresented: $showingSpotifySetup) {
+            SpotifySetupSheet { if let book { Task { await makeSpotifyPlaylist(book) } } }
+        }
     }
 
     private func header(_ book: Book) -> some View {
@@ -422,9 +430,24 @@ struct SoundtrackPane: View {
                     }
                     Spacer()
                     if let link = track.link {
-                        Button { NSWorkspace.shared.open(link) } label: { Image(systemName: "arrow.up.forward.app") }
-                            .buttonStyle(.plain)
-                            .help("Open in Apple Music")
+                        Button { NSWorkspace.shared.open(link) } label: {
+                            Text("Music").appFont(size: 10, weight: .medium)
+                                .padding(.horizontal, 7).padding(.vertical, 2)
+                                .overlay(Capsule().stroke(Color.pink.opacity(0.6)))
+                                .foregroundStyle(.pink)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Open in Apple Music")
+                    }
+                    if let spotify = Spotify.searchURL(track) {
+                        Button { NSWorkspace.shared.open(spotify) } label: {
+                            Text("Spotify").appFont(size: 10, weight: .medium)
+                                .padding(.horizontal, 7).padding(.vertical, 2)
+                                .overlay(Capsule().stroke(Color.green.opacity(0.6)))
+                                .foregroundStyle(.green)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Find it on Spotify")
                     }
                 }
                 .padding(.vertical, 2)
@@ -434,10 +457,55 @@ struct SoundtrackPane: View {
         }
     }
 
+    /// "Make a Spotify playlist", and how it went.
+    private func spotifyBar(_ book: Book) -> some View {
+        HStack(spacing: 10) {
+            Button {
+                if Spotify.clientID.isEmpty { showingSpotifySetup = true } else { Task { await makeSpotifyPlaylist(book) } }
+            } label: {
+                Label("Make a Spotify Playlist", systemImage: "music.note.list")
+            }
+            .disabled(tracks.isEmpty || spotifyProgress != nil)
+            if let done = spotifyProgress {
+                ProgressView().controlSize(.small)
+                Text("Finding \(done) of \(tracks.count) on Spotify…").appFont(size: 11).foregroundStyle(.secondary)
+            } else if let result = spotifyResult {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Text("Playlist made with \(result.found) of \(result.total) songs.").appFont(size: 11)
+                Button("Open") { NSWorkspace.shared.open(result.url) }.controlSize(.small)
+            } else if let spotifyError {
+                Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
+                Text(spotifyError).appFont(size: 11).foregroundStyle(.secondary).lineLimit(2)
+            }
+            Spacer()
+        }
+    }
+
+    private func makeSpotifyPlaylist(_ book: Book) async {
+        guard !tracks.isEmpty else { return }
+        spotifyError = nil
+        spotifyResult = nil
+        spotifyProgress = 0
+        defer { spotifyProgress = nil }
+        let mood = Soundtrack.energyLabel(energy).lowercased()
+        let about = String(localized: "Music to read \(book.title) by \(book.author) to — \(ingredients.map(\.label).joined(separator: ", ")), \(mood). Made by Goodreads for Mac.")
+        do {
+            let made = try await Spotify.makePlaylist(name: String(localized: "Soundtrack: \(book.title)"), about: about,
+                                                      tracks: tracks) { spotifyProgress = $0 }
+            spotifyResult = made
+            NSWorkspace.shared.open(made.url)
+            Diagnostics.shared.log("spotify", "playlist for \(book.title): \(made.found) of \(made.total) songs")
+        } catch {
+            spotifyError = error.localizedDescription
+        }
+    }
+
     private func build() async {
         guard let book else { return }
         isLoading = true
         copied = false
+        spotifyResult = nil
+        spotifyError = nil
         defer { isLoading = false }
         var genres = book.genresFromCategories
         var year = book.publishedDate.flatMap { Int($0.prefix(4)) }
