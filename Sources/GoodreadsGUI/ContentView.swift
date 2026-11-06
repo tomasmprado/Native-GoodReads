@@ -12,19 +12,23 @@ struct ContentView: View {
                 switch model.selection {
                 case .home:        HomePane(model: model)
                 case .search:      SearchPane(model: model)
-                case .suggestions: SuggestionsPane(model: model)
-                case .discover:    DiscoverPane(model: model)
+                case .suggestions: SuggestionsHub(model: model)
                 case .friends:     FriendsPane(model: model)
                 case .stats:       StatsPane(model: model)
-                case .quotes:      QuotesPane(model: model)
-                case .influences:  InfluencesPane(model: model)
-                case .bingo:       BingoPane(model: model)
-                case .letters:     LettersPane(model: model)
-                case .soundtrack:  SoundtrackPane(model: model)
+                case .quotes:      NotesHub(model: model)
                 case .shelf:       ShelfPane(model: model)
                 }
             }
             .frame(minWidth: 480, minHeight: 420)
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Button { model.selection = .search } label: {
+                        Label("Search", systemImage: "magnifyingglass")
+                    }
+                    .keyboardShortcut("k", modifiers: .command)
+                    .help("Search Goodreads (⌘K)")
+                }
+            }
         }
         .task {
             model.refreshUpNext()
@@ -113,14 +117,8 @@ struct ContentView: View {
             Label("Home", systemImage: "house")
                 .tag(LibraryModel.Pane.home)
 
-            Label("Search", systemImage: "magnifyingglass")
-                .tag(LibraryModel.Pane.search)
-
             Label("Suggestions", systemImage: "sparkles")
                 .tag(LibraryModel.Pane.suggestions)
-
-            Label("Discover", systemImage: "rectangle.stack")
-                .tag(LibraryModel.Pane.discover)
 
             Label("Friends", systemImage: "person.2")
                 .tag(LibraryModel.Pane.friends)
@@ -128,19 +126,8 @@ struct ContentView: View {
             Label("Stats", systemImage: "chart.bar")
                 .tag(LibraryModel.Pane.stats)
 
-            Label("Notes", systemImage: "note.text")
+            NotesSidebarRow()
                 .tag(LibraryModel.Pane.quotes)
-
-            Section("Explore") {
-                Label("Influences", systemImage: "point.3.connected.trianglepath.dotted")
-                    .tag(LibraryModel.Pane.influences)
-                Label("Bingo", systemImage: "square.grid.4x3.fill")
-                    .tag(LibraryModel.Pane.bingo)
-                LettersSidebarRow()
-                    .tag(LibraryModel.Pane.letters)
-                Label("Soundtrack", systemImage: "music.note.list")
-                    .tag(LibraryModel.Pane.soundtrack)
-            }
 
             Section("Shelves") {
                 ForEach(model.shelves) { shelf in
@@ -203,6 +190,66 @@ private struct HomePane: View {
 
 
 // MARK: - Suggestions
+
+/// Suggestions, Discover and Bingo, one pane with a switch at the top.
+private struct SuggestionsHub: View {
+    @ObservedObject var model: LibraryModel
+
+    var body: some View {
+        Group {
+            switch model.suggestionsTab {
+            case .picks:    SuggestionsPane(model: model)
+            case .discover: DiscoverPane(model: model)
+            case .bingo:    BingoPane(model: model)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                PaneTabs(selection: $model.suggestionsTab)
+            }
+        }
+    }
+}
+
+/// Notes and quotes, and letters to yourself.
+private struct NotesHub: View {
+    @ObservedObject var model: LibraryModel
+
+    var body: some View {
+        Group {
+            switch model.notesTab {
+            case .notes:   QuotesPane(model: model)
+            case .letters: LettersPane(model: model)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                PaneTabs(selection: $model.notesTab)
+            }
+        }
+    }
+}
+
+/// The parts of a pane, as a switch at the top.
+protocol PaneTab: Hashable, Identifiable, CaseIterable where AllCases: RandomAccessCollection {
+    var title: String { get }
+}
+
+extension LibraryModel.SuggestionsTab: PaneTab {}
+extension LibraryModel.NotesTab: PaneTab {}
+
+private struct PaneTabs<Tab: PaneTab>: View {
+    @Binding var selection: Tab
+
+    var body: some View {
+        Picker("", selection: $selection) {
+            ForEach(Tab.allCases) { tab in Text(tab.title).tag(tab) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+    }
+}
 
 private struct SuggestionsPane: View {
     @ObservedObject var model: LibraryModel
@@ -1089,6 +1136,11 @@ private struct ShelfPane: View {
     @State private var picking = false
     @State private var quickRating = false
 
+    private var isReadingNow: Bool { model.currentShelf?.name == Shelf.currentlyReading.name }
+
+    /// The bookcase isn't offered for what you're reading now.
+    private var shownLayout: String { layout == "spines" && isReadingNow ? "list" : layout }
+
     var body: some View {
         VStack(spacing: 0) {
             if model.visibleEntries.isEmpty {
@@ -1096,7 +1148,11 @@ private struct ShelfPane: View {
                     symbol: model.isLoadingShelf ? "hourglass" : "tray",
                     text: emptyText
                 )
-            } else if layout == "grid" {
+            } else if shownLayout == "spines" {
+                BookshelfView(model: model, entries: model.visibleEntries) { entry in
+                    rowActions(entry)
+                }
+            } else if shownLayout == "grid" {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 112), spacing: 16, alignment: .top)],
                               spacing: 18) {
@@ -1169,12 +1225,15 @@ private struct ShelfPane: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            Picker("Layout", selection: $layout) {
+            Picker("Layout", selection: Binding(get: { shownLayout }, set: { layout = $0 })) {
                 Label("List", systemImage: "list.bullet").tag("list")
                 Label("Covers", systemImage: "square.grid.2x2").tag("grid")
+                if !isReadingNow {
+                    Label("Bookcase", systemImage: "books.vertical").tag("spines")
+                }
             }
             .pickerStyle(.segmented)
-            .help("Show as a list or as covers")
+            .help("Show as a list, as covers or as spines on a bookcase")
 
             filterMenu
 
@@ -1816,13 +1875,13 @@ private struct UpdateButton: View {
     }
 }
 
-/// Letters in the sidebar, with how many opened ones you haven't read.
-private struct LettersSidebarRow: View {
+/// Notes in the sidebar, with how many opened letters you haven't read.
+private struct NotesSidebarRow: View {
     @ObservedObject private var box = LetterBox.shared
 
     var body: some View {
         HStack {
-            Label("Letters", systemImage: "envelope")
+            Label("Notes", systemImage: "note.text")
             Spacer()
             if box.unread > 0 {
                 Text("\(box.unread)")

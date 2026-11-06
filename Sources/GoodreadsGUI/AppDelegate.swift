@@ -20,6 +20,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             await InfluenceAtlas.shared.load()
         }
         LetterBox.shared.startDelivering()
+        // The Soundtrack is gone: forget its Spotify sign-in and settings.
+        Keychain.write("", for: "spotify-refresh-token")
+        for key in ["spotifyClientID", "soundtrackEnergy"] { UserDefaults.standard.removeObject(forKey: key) }
 
         UNUserNotificationCenter.current().delegate = self
         ReadingReminder.registerCategory()
@@ -45,7 +48,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         if content.categoryIdentifier == LetterBox.category {
             await MainActor.run {
                 self.showLibrary()
-                LibraryModel.shared.selection = .letters
+                LibraryModel.shared.notesTab = .letters
+                LibraryModel.shared.selection = .quotes
             }
             return
         }

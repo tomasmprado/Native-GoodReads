@@ -831,31 +831,12 @@
 "Pass" = "Passar";
 "I’ve read it" = "Já li";
 
-/* Influences, bingo, letters, soundtrack */
-"Explore" = "Explorar";
+/* Bingo and letters */
 "Bingo" = "Bingo";
 "Letters" = "Cartas";
-"Soundtrack" = "Banda sonora";
-"Not found on Wikidata" = "Não está na Wikidata";
-"Influences you’re missing" = "Influências que te faltam";
 "Your authors" = "Os teus autores";
-"Writers who shaped the authors you read — and whom you’ve never read." = "Escritores que marcaram os autores que lês — e que tu nunca leste.";
-"Asking Wikidata about %lld more authors…" = "A perguntar à Wikidata por mais %lld autores…";
-"Looking…" = "A procurar…";
-"Wikidata doesn’t list influences for your authors yet." = "A Wikidata ainda não regista influências para os teus autores.";
-"Links between your authors" = "Ligações entre os teus autores";
-"The first shaped the second — and you’ve read both." = "O primeiro marcou o segundo — e leste os dois.";
-"Shaped %@" = "Marcou %@";
-"Find Books" = "Procurar livros";
 "Back" = "Voltar";
 "You’ve read them" = "Já leste";
-"Left: influenced by · Right: influenced" = "À esquerda: quem o influenciou · À direita: quem influenciou";
-"Couldn’t reach Wikidata." = "Não foi possível falar com a Wikidata.";
-"You’ve read %@. %@ shaped them — and you’ve never read %@." = "Leste %1$@. %2$@ influenciou-o — e de %3$@ não leste nada.";
-"%@ shaped %@, whom you haven’t read yet." = "%1$@ influenciou %2$@, que ainda não leste.";
-"You’ve never read %@, but they shaped %@, whom you have." = "Nunca leste %1$@, mas influenciou %2$@, que já leste.";
-"No influences listed" = "Sem influências registadas";
-"Influenced no one listed" = "Não influenciou ninguém registado";
 "and %lld more" = "e mais %lld";
 "An author from a country you’ve never read" = "Um autor de um país que nunca leste";
 "An author from %@" = "Um autor de %@";
@@ -925,53 +906,14 @@
 "a year" = "um ano";
 "five years" = "cinco anos";
 "Seal" = "Fechar carta";
-"Baroque" = "Barroco";
-"Classical era" = "Classicismo";
-"19th century" = "Século XIX";
-"Belle Époque" = "Belle Époque";
 "The %@s" = "Anos %@";
-"Calm" = "Calma";
-"Balanced" = "Equilibrada";
-"Restless" = "Agitada";
-"Start reading something and it gets a soundtrack." = "Começa a ler alguma coisa e ganha uma banda sonora.";
-"Agitation" = "Agitação";
-"Another Mix" = "Outra mistura";
-"Other songs from the same ingredients" = "Outras músicas com os mesmos ingredientes";
-"Play All" = "Tocar tudo";
 "Copied" = "Copiada";
-"Copy List" = "Copiar lista";
-"Not enough is known about this book yet — no country, year or genre to go on." = "Ainda se sabe pouco deste livro — não há país, ano nem género por onde pegar.";
-"No songs found right now." = "Não foram encontradas músicas agora.";
-"Open in Apple Music" = "Abrir no Apple Music";
-"Music to read this book to" = "Música para ler este livro";
 
-/* Spotify */
-"Music" = "Music";
-"Find it on Spotify" = "Procurar no Spotify";
-"Make a Spotify Playlist" = "Criar playlist no Spotify";
-"Finding %lld of %lld on Spotify…" = "A procurar %lld de %lld no Spotify…";
-"Playlist made with %lld of %lld songs." = "Playlist criada com %lld de %lld músicas.";
 "Open" = "Abrir";
-"Music to read %@ by %@ to — %@, %@. Made by Goodreads for Mac." = "Música para ler %1$@, de %2$@ — %3$@, %4$@. Feita pela app Goodreads para Mac.";
-"Soundtrack: %@" = "Banda sonora: %@";
-"Spotify didn’t find any of these songs." = "O Spotify não encontrou nenhuma destas músicas.";
-"Spotify didn’t make the playlist." = "O Spotify não criou a playlist.";
-"Spotify said no (403). Developer apps need the app’s owner to have Spotify Premium, and you must be the owner or one of its users." = "O Spotify recusou (403). As apps de programador precisam que o dono tenha Spotify Premium, e tens de ser o dono ou um dos utilizadores da app.";
-"Spotify answered with an error (HTTP %lld)." = "O Spotify respondeu com um erro (HTTP %lld).";
-"Add your Spotify Client ID first." = "Primeiro, junta o teu Client ID do Spotify.";
-"The Spotify sign-in didn’t match. Try again." = "O início de sessão no Spotify não bateu certo. Tenta outra vez.";
-"You didn’t allow it on Spotify." = "Não autorizaste no Spotify.";
-"Spotify didn’t sign you in." = "O Spotify não iniciou a sessão.";
-"Spotify didn’t sign you in. Check the Client ID and that the app’s Redirect URI is http://127.0.0.1/callback." = "O Spotify não iniciou a sessão. Confirma o Client ID e que o Redirect URI da app é http://127.0.0.1/callback.";
-"The Spotify sign-in took too long." = "O início de sessão no Spotify demorou demasiado.";
-"Done — you can close this tab and go back to Goodreads." = "Feito — podes fechar este separador e voltar à app Goodreads.";
-"Playlists on Spotify" = "Playlists no Spotify";
-"Spotify only lets apps make playlists through an app of your own. It takes two minutes, once:" = "O Spotify só deixa criar playlists através de uma app tua. Demora dois minutos, uma só vez:";
-"Open developer.spotify.com/dashboard and sign in (the account needs Spotify Premium)." = "Abre developer.spotify.com/dashboard e inicia sessão (a conta precisa de Spotify Premium).";
-"Create app. Any name; for Redirect URI put http://127.0.0.1/callback and tick Web API." = "Cria uma app. Qualquer nome; em Redirect URI põe http://127.0.0.1/callback e marca Web API.";
-"Copy the app’s Client ID and paste it below." = "Copia o Client ID da app e cola-o aqui em baixo.";
-"Open the Spotify Dashboard" = "Abrir o painel do Spotify";
-"The first playlist opens Spotify in your browser to ask for permission." = "Na primeira playlist, o Spotify abre no browser para pedir autorização.";
-"Continue" = "Continuar";
-"Sign Out of Spotify" = "Terminar sessão no Spotify";
-"For Soundtrack playlists: create an app at developer.spotify.com/dashboard (Redirect URI http://127.0.0.1/callback, Web API) and paste its Client ID. Spotify asks for Premium on the app’s owner." = "Para as playlists da banda sonora: cria uma app em developer.spotify.com/dashboard (Redirect URI http://127.0.0.1/callback, Web API) e cola o Client ID. O Spotify exige Premium ao dono da app.";
+
+/* Suggestions hub, bookcase, influences in suggestions */
+"Search Goodreads (⌘K)" = "Procurar no Goodreads (⌘K)";
+"Bookcase" = "Estante";
+"Show as a list, as covers or as spines on a bookcase" = "Mostrar em lista, em capas ou em lombadas numa estante";
+"An influence on %@" = "Influenciou %@";
+"An influence on %@ and %lld more of your authors" = "Influenciou %1$@ e mais %2$lld dos teus autores";

@@ -112,8 +112,6 @@ final class LibraryModel: ObservableObject {
     @Published var isLoadingSeries = false
     /// "Picked for You" and the Discover deck, best first.
     @Published var recommendations: [Recommendation] = []
-    /// The book the Soundtrack pane plays for; nil for the one you're reading.
-    @Published var soundtrackBook: Book?
     @Published var isBuildingRecommendations = false
     @Published var recommendationNote: String?
     /// Books friends with your taste loved.
@@ -208,17 +206,40 @@ final class LibraryModel: ObservableObject {
     enum Pane: Hashable {
         case home
         case search
-        case suggestions
-        case discover
+        case suggestions        // with Discover and Bingo
         case friends
         case stats
-        case quotes
-        case influences
-        case bingo
-        case letters
-        case soundtrack
+        case quotes             // notes, quotes and letters
         case shelf(String)      // shelf slug
     }
+
+    /// The parts of the Suggestions pane.
+    enum SuggestionsTab: String, CaseIterable, Identifiable {
+        case picks, discover, bingo
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .picks:    String(localized: "Suggestions")
+            case .discover: String(localized: "Discover")
+            case .bingo:    String(localized: "Bingo")
+            }
+        }
+    }
+
+    /// The parts of the Notes pane.
+    enum NotesTab: String, CaseIterable, Identifiable {
+        case notes, letters
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .notes:   String(localized: "Notes")
+            case .letters: String(localized: "Letters")
+            }
+        }
+    }
+
+    @Published var suggestionsTab: SuggestionsTab = .picks
+    @Published var notesTab: NotesTab = .notes
 
     struct Status: Identifiable {
         let id = UUID()
@@ -576,13 +597,11 @@ final class LibraryModel: ObservableObject {
             await loadNewReleases()
             await loadSeries()
             await buildRecommendations()
-        case .discover:
-            await buildRecommendations()
         case .friends:
             await loadFriends()
         case .stats:
             await loadStats()
-        case .search, .quotes, .influences, .bingo, .letters, .soundtrack:
+        case .search, .quotes:
             break
         }
     }
@@ -596,7 +615,7 @@ final class LibraryModel: ObservableObject {
         case .home:        await loadCurrentlyReading(force: true)
         case .friends:     await loadFriends(force: true)
         case .stats:       await loadStats(force: true)
-        case .suggestions, .discover, .search, .quotes, .influences, .bingo, .letters, .soundtrack: break
+        case .suggestions, .search, .quotes: break
         }
     }
 

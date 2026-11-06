@@ -80,49 +80,58 @@ struct DiscoverPane: View {
     private func card(_ item: Recommendation, isTop: Bool) -> some View {
         let book = details[item.id].map { item.book.filled(from: $0) } ?? item.book
         let offset = flying?.id == item.id ? flying!.offset : (isTop ? drag : .zero)
-        return VStack(spacing: 0) {
-            CachedAsyncImage(url: book.coverURL) { phase in
-                if case .success(let image) = phase {
-                    image.resizable().aspectRatio(contentMode: .fit)
-                } else {
-                    RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.15))
-                        .overlay(Image(systemName: "book.closed").appFont(size: 34).foregroundStyle(.tertiary))
-                        .aspectRatio(2 / 3, contentMode: .fit)
+        return GeometryReader { geo in
+            // The cover takes about half the card, whatever the window's
+            // height; the text gets the rest.
+            let coverHeight = max(110, geo.size.height * 0.52)
+            let blurbLines = max(1, Int((geo.size.height - coverHeight - 150) / 16))
+            VStack(spacing: 0) {
+                CachedAsyncImage(url: book.coverURL) { phase in
+                    if case .success(let image) = phase {
+                        image.resizable().aspectRatio(contentMode: .fit)
+                    } else {
+                        RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.15))
+                            .overlay(Image(systemName: "book.closed").appFont(size: 34).foregroundStyle(.tertiary))
+                            .aspectRatio(2 / 3, contentMode: .fit)
+                    }
                 }
-            }
-            .frame(maxHeight: 300)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .shadow(radius: 6, y: 3)
-            .padding(.top, 18)
-            .padding(.horizontal, 18)
+                .frame(maxWidth: .infinity, maxHeight: coverHeight)
+                .frame(height: coverHeight)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .shadow(radius: 6, y: 3)
+                .padding(.top, 18)
+                .padding(.horizontal, 18)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text(book.title).appFont(size: 17, weight: .semibold).lineLimit(2)
-                Text(book.author).appFont(size: 13).foregroundStyle(.secondary).lineLimit(1)
-                HStack(spacing: 8) {
-                    if let rating = item.communityRating {
-                        Label(String(format: "%.2f", rating), systemImage: "star.fill")
-                            .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(book.title).appFont(size: 17, weight: .semibold).lineLimit(2)
+                    Text(book.author).appFont(size: 13).foregroundStyle(.secondary).lineLimit(1)
+                    HStack(spacing: 8) {
+                        if let rating = item.communityRating {
+                            Label(String(format: "%.2f", rating), systemImage: "star.fill")
+                                .foregroundStyle(.orange)
+                        }
+                        if let count = item.ratingsCount {
+                            Text("\(count.formatted()) ratings").foregroundStyle(.secondary)
+                        }
+                        if let pages = book.pageCount { Text("\(pages) pages").foregroundStyle(.secondary) }
                     }
-                    if let count = item.ratingsCount {
-                        Text("\(count.formatted()) ratings").foregroundStyle(.secondary)
+                    .appFont(size: 11)
+                    Label(item.reason, systemImage: "sparkles")
+                        .appFont(size: 11, weight: .medium)
+                        .foregroundStyle(Color.accentColor)
+                        .lineLimit(2)
+                    if let text = book.description, !text.isEmpty {
+                        Text(text.replacingOccurrences(of: #"<[^>]+>"#, with: "", options: .regularExpression))
+                            .appFont(size: 12).foregroundStyle(.secondary)
+                            .lineLimit(blurbLines)
                     }
-                    if let pages = book.pageCount { Text("\(pages) pages").foregroundStyle(.secondary) }
                 }
-                .appFont(size: 11)
-                Label(item.reason, systemImage: "sparkles")
-                    .appFont(size: 11, weight: .medium)
-                    .foregroundStyle(Color.accentColor)
-                    .lineLimit(2)
-                if let text = book.description, !text.isEmpty {
-                    Text(text.replacingOccurrences(of: #"<[^>]+>"#, with: "", options: .regularExpression))
-                        .appFont(size: 12).foregroundStyle(.secondary)
-                        .lineLimit(5)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(18)
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(18)
-            Spacer(minLength: 0)
+            .frame(width: geo.size.width, height: geo.size.height)
+            .clipped()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(RoundedRectangle(cornerRadius: 22).fill(Color(nsColor: .windowBackgroundColor)))
@@ -178,6 +187,7 @@ struct DiscoverPane: View {
             circle("heart.fill", .green, help: String(localized: "Want to Read")) { decide(.want) }
                 .keyboardShortcut(.rightArrow, modifiers: [])
         }
+        .glassGroup(spacing: 22)
     }
 
     private func circle(_ symbol: String, _ color: Color, help: String, action: @escaping () -> Void) -> some View {
@@ -186,10 +196,10 @@ struct DiscoverPane: View {
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(color)
                 .frame(width: 52, height: 52)
-                .background(Circle().fill(Color(nsColor: .controlBackgroundColor)))
-                .overlay(Circle().stroke(color.opacity(0.4), lineWidth: 1.5))
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .glassCircle(tint: color)
         .help(help)
         .disabled(flying != nil)
     }

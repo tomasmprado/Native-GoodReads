@@ -76,44 +76,32 @@ final class OnThisDayTests: XCTestCase {
     }
 }
 
-final class SoundtrackTests: XCTestCase {
-    private func track(_ id: Int, _ artist: String, genre: String = "Pop") -> SoundtrackTrack {
-        SoundtrackTrack(id: id, name: "Song \(id)", artist: artist, genre: genre, preview: nil, link: nil, artwork: nil)
+final class BookshelfTests: XCTestCase {
+    func testRowsFitTheWidth() {
+        XCTAssertEqual(Bookshelf.rows(widths: [30, 30, 30], available: 100, spacing: 3), [0..<3])
+        XCTAssertEqual(Bookshelf.rows(widths: [30, 30, 30, 30], available: 100, spacing: 3), [0..<3, 3..<4])
+        XCTAssertEqual(Bookshelf.rows(widths: [120, 20], available: 100, spacing: 3), [0..<1, 1..<2], "too wide still gets a row")
+        XCTAssertEqual(Bookshelf.rows(widths: [], available: 100, spacing: 3), [])
     }
 
-    func testIngredientsFromCountryEraAndGenre() {
-        let portugal = AuthorCountry(code: "PT", name: "Portugal", latitude: 0, longitude: 0)
-        let ingredients = Soundtrack.ingredients(country: portugal, year: 1947, genres: ["Historical Fiction", "Fiction"])
-        XCTAssertEqual(ingredients.count, 3)
-        XCTAssertTrue(ingredients[0].bands[1].contains("Amália Rodrigues"))
-        XCTAssertTrue(ingredients[1].bands[2].contains("Glenn Miller"))
-        XCTAssertTrue(Soundtrack.ingredients(country: nil, year: nil, genres: []).isEmpty)
+    func testSpines() {
+        XCTAssertLessThan(Bookshelf.spineWidth(pages: 120), Bookshelf.spineWidth(pages: 900))
+        XCTAssertEqual(Bookshelf.spineWidth(pages: 5000), 54)
+        XCTAssertEqual(Bookshelf.spineHeight("42"), Bookshelf.spineHeight("42"))
+        XCTAssertEqual(Bookshelf.surname("José Saramago"), "Saramago")
+        XCTAssertEqual(Bookshelf.surname("Sophia de Mello Breyner Andresen"), "Andresen")
+        XCTAssertEqual(Bookshelf.surname("Ludwig van Beethoven"), "van Beethoven")
+        XCTAssertEqual(Bookshelf.surname("Homer"), "Homer")
     }
+}
 
-    func testSpotifyNamesDropTheExtras() {
-        XCTAssertEqual(Spotify.cleanName("Verdes Anos (Instrumental) - Remastered 2003"), "Verdes Anos")
-        XCTAssertEqual(Spotify.cleanName("Canção Verdes Anos [feat. Fernando Alvim]"), "Canção Verdes Anos")
-        XCTAssertEqual(Spotify.cleanName("Fado"), "Fado")
-    }
-
-    func testEnergyBands() {
-        XCTAssertEqual(Soundtrack.band(for: 0), 0)
-        XCTAssertEqual(Soundtrack.band(for: 0.5), 1)
-        XCTAssertEqual(Soundtrack.band(for: 1), 2)
-        XCTAssertLessThan(Soundtrack.energy(ofGenre: "Classical"), Soundtrack.energy(ofGenre: "Hard Rock"))
-    }
-
-    func testMixTakesTurnsAndLimitsArtists() {
-        let groups: [(ingredient: Int, artist: String, tracks: [SoundtrackTrack])] = [
-            (0, "A", (1...10).map { track($0, "A") }),
-            (1, "B", (11...20).map { track($0, "B") }),
-        ]
-        let mix = Soundtrack.mix(groups, energy: 0.5, seed: 7)
-        XCTAssertEqual(mix.count, 4, "two per artist")
-        XCTAssertEqual(Set(mix.map(\.artist)), ["A", "B"])
-        XCTAssertNotEqual(mix[0].artist, mix[1].artist, "ingredients take turns")
-        XCTAssertEqual(mix, Soundtrack.mix(groups, energy: 0.5, seed: 7))
-        XCTAssertEqual(Soundtrack.seed("abc"), Soundtrack.seed("abc"))
+final class InfluenceSuggestionTests: XCTestCase {
+    func testInfluencesCountAndExplainThemselves() {
+        let book = Book(id: "k1", title: "The Trial", author: "Franz Kafka", coverURL: nil, rating: nil, isbn: nil)
+        let picks = Recommender.rank([Candidate(book: book, sources: [.influence("Franz Kafka", shaped: ["José Saramago", "Jorge Luis Borges"])])],
+                                     profile: TasteProfile(), excluded: [])
+        XCTAssertEqual(picks.first?.book.title, "The Trial")
+        XCTAssertTrue(picks.first?.reason.contains("José Saramago") ?? false)
     }
 }
 

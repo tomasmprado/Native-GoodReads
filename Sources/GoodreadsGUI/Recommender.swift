@@ -126,6 +126,8 @@ struct Candidate: Sendable {
         case series(String)
         case newRelease(String)
         case genre(String)
+        /// A writer who shaped authors you've read (from Wikidata).
+        case influence(String, shaped: [String])
     }
 
     var book: Book
@@ -245,6 +247,7 @@ enum Recommender {
                 case .series: score += 1.6
                 case .newRelease: score += 0.4
                 case .genre: score += 0.25
+                case .influence(_, let shaped): score += 0.35 + 0.2 * Double(min(3, shaped.count))
                 }
             }
             score += 0.5 * tanh(profile.authorAffinity(candidate.book.author) / 2)
@@ -286,6 +289,10 @@ enum Recommender {
             case .newRelease(let author): return String(localized: "New from \(author)")
             case .author(let author): return String(localized: "More from \(author)")
             case .genre(let genre): return String(localized: "Well loved in \(GenreNames.display(genre))")
+            case .influence(_, let shaped):
+                return shaped.count > 1
+                    ? String(localized: "An influence on \(shaped[0]) and \(shaped.count - 1) more of your authors")
+                    : String(localized: "An influence on \(shaped.first ?? "")")
             default: continue
             }
         }
@@ -298,8 +305,9 @@ enum Recommender {
 extension LibraryModel {
     /// Builds "Picked for You" and the Discover deck: books like your
     /// favourites (Goodreads' "Readers also enjoyed"), friends' favourites,
-    /// more by authors you love, next in your series, new releases and
-    /// well-rated books in your genres — scored against your taste.
+    /// more by authors you love, next in your series, new releases, writers
+    /// who shaped your authors and well-rated books in your genres — scored
+    /// against your taste.
     func buildRecommendations(force: Bool = false) async {
         if recommendations.isEmpty,
            let saved = await DataCache.shared.read([Recommendation].self, "picks", "all", ttl: 12 * 3600) {
@@ -415,7 +423,20 @@ extension LibraryModel {
             }
         }
 
-        // 5. Well-rated books in the genres you love most.
+        // 5. Writers who shaped your authors (Wikidata) and you haven't read.
+        let atlas = InfluenceAtlas.shared
+        if atlas.discoveries.isEmpty { await atlas.load(lookUp: false) }
+        for discovery in atlas.discoveries.prefix(4) where !Task.isCancelled {
+            let name = discovery.person.name
+            for book in ((try? await GoogleBooksClient.searchByAuthor(name)) ?? []).prefix(5)
+            where Suggestions.looksLikeSameAuthor(book.author, name) && fitsLanguage(book) {
+                candidates.append(Candidate(book: book, sources: [.influence(name, shaped: discovery.influencedYours)],
+                                            genres: book.genresFromCategories,
+                                            communityRating: book.rating.flatMap(Double.init)))
+            }
+        }
+
+        // 6. Well-rated books in the genres you love most.
         // Goodreads counts places ("Portugal") as genres; they make poor searches.
         let places = Set(Locale.Region.isoRegions.compactMap { Locale(identifier: "en").localizedString(forRegionCode: $0.identifier)?.lowercased() })
         for genre in profile.topGenres.filter({ !places.contains($0) }).prefix(3) where !Task.isCancelled {

@@ -39,17 +39,6 @@ struct BookDetailView: View {
                 Text("Book Details")
                     .appFont(size: 13, weight: .semibold)
                 Spacer()
-                Button {
-                    var chosen = shownBook
-                    if chosen.goodreadsID == nil { chosen.goodreadsID = goodreadsID }
-                    model.soundtrackBook = chosen
-                    model.selection = .soundtrack
-                    dismiss()
-                } label: {
-                    Label("Soundtrack", systemImage: "music.note.list")
-                }
-                .glassButton()
-                .help("Music to read this book to")
                 if let goodreadsID, let url = LibraryModel.goodreadsURL(bookID: goodreadsID) {
                     ShareLink(item: url,
                               subject: Text(book.title),

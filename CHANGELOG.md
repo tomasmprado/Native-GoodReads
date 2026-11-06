@@ -11,27 +11,19 @@ added in that diff, meaning `v1.0.0` predates all of it.
 
 ### Added
 
-- **Influences**, from Wikidata: pick one of your authors and see who
-  shaped them and whom they shaped, with the authors you've read lit up;
-  click anyone to follow the thread. The first page lists the writers who
-  influenced several of your authors and whom you've never read, and the
-  links between authors you have read.
+- **Bookcase view** for shelves (not Currently Reading): spines with the
+  title and author, thicker for longer books, on wooden planks. Click one
+  to pull it out and see a little about it underneath; + opens its details.
 - **Bingo**: a 4×4 card for the year built from what you rarely read —
   countries and continents you've never visited, books older than your
   grandparents, genres you skip or keep passing in Discover, books waiting
   on your shelves for years. Squares fill themselves as you finish books;
-  each suggests books from your Want to Read.
+  each suggests books from your Want to Read. In Suggestions, next to
+  Discover.
 - **Letters to yourself**: a few lines when you finish a book (or any time),
   sealed until a month, six months, a year or five years later, with a
-  notification when one opens. The Letters pane also shows what you
+  notification when one opens. Letters, in Notes, also show what you
   finished, or were reading, on this day in past years.
-- **Soundtrack** for a book: songs picked from where its author comes from,
-  when it was written and its genre, calmer or more restless with the
-  Agitation slider. 30-second previews play in the app; each song opens
-  in Apple Music or Spotify. **Make a Spotify Playlist** turns the mix into
-  a private playlist in your account — it needs a Client ID from an app of
-  your own on developer.spotify.com (Spotify asks for Premium on its owner)
-  and signs in through the browser. From the sidebar or a book's details.
 - **Reading time and a calendar of the days you read** in Stats, from the
   Kobo's own reading time, the days a book was open in Apple Books, and
   progress updates.
@@ -43,12 +35,17 @@ added in that diff, meaning `v1.0.0` predates all of it.
   and by how recently you read them, minus books you gave up on — scores
   books from several places at once: Goodreads' "Readers also enjoyed" for
   your favourites, friends' five-star books (friends who loved what you
-  loved), next in your series, new and older books by authors you love, and
-  well-rated books in your genres. Books several favourites point to rise
+  loved), next in your series, new and older books by authors you love,
+  writers who shaped your authors (from Wikidata) whom you've never read,
+  and well-rated books in your genres. Books several favourites point to rise
   to the top; each suggestion says why; two per author at most.
 - **Discover**: suggestions one card at a time — swipe right (→) for Want to
   Read, left (←) to pass, up (↑) if you've read it (then rate it), ⌘Z to
-  undo. Every swipe teaches the suggestions.
+  undo. Every swipe teaches the suggestions. The cover grows with the card,
+  and the buttons are Liquid Glass.
+- **A simpler sidebar:** Suggestions, Discover and Bingo share one pane,
+  and so do Notes and Letters, with a switch at the top. Search is the
+  magnifying glass in the toolbar (⌘K).
 - **Scan a barcode** (File → Scan a Barcode…, ⇧⌘B, or the button in Search):
   hold a book's barcode up to the Mac's camera or an iPhone's through
   Continuity Camera (used when there is one); the barcode is outlined when

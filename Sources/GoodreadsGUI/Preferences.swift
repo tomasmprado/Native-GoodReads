@@ -292,8 +292,6 @@ struct PreferencesView: View {
                     .foregroundStyle(.secondary)
             }
 
-            SpotifyPreferencesSection()
-
             Section {
                 Toggle("Use my Goodreads Reading Challenge goal", isOn: Binding(
                     get: { prefs.useGoodreadsChallenge },
@@ -569,30 +567,5 @@ struct PreferencesView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         AutoBackup.folder = url
         autoFolder = AutoBackup.folderDescription
-    }
-}
-
-/// The Client ID for Soundtrack playlists, and signing out of Spotify.
-private struct SpotifyPreferencesSection: View {
-    @AppStorage(Spotify.clientIDKey) private var clientID = ""
-    @State private var signedIn = Spotify.isSignedIn
-
-    var body: some View {
-        Section {
-            TextField("Client ID", text: $clientID)
-                .font(.system(size: 12, design: .monospaced))
-            if signedIn {
-                Button("Sign Out of Spotify") {
-                    Spotify.signOut()
-                    signedIn = false
-                }
-            }
-        } header: {
-            Text("Spotify")
-        } footer: {
-            Text("For Soundtrack playlists: create an app at developer.spotify.com/dashboard (Redirect URI http://127.0.0.1/callback, Web API) and paste its Client ID. Spotify asks for Premium on the app’s owner.")
-                .appFont(size: 11)
-                .foregroundStyle(.secondary)
-        }
     }
 }
