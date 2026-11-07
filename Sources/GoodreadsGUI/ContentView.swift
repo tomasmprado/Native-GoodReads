@@ -1820,6 +1820,7 @@ private struct SidebarStatus: View {
     @ObservedObject var session: WebSession
     @ObservedObject private var prefs = Preferences.shared
     @ObservedObject private var connectivity = Connectivity.shared
+    @ObservedObject private var outbox = Outbox.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1838,6 +1839,14 @@ private struct SidebarStatus: View {
 
     @ViewBuilder
     private var content: some View {
+            if !outbox.queue.isEmpty {
+                Label(outbox.isSending ? String(localized: "Sending \(outbox.queue.count) changes to Goodreads…")
+                                       : String(localized: "\(outbox.queue.count) changes will go to Goodreads when you’re online"),
+                      systemImage: outbox.isSending ? "arrow.triangle.2.circlepath" : "tray.and.arrow.up")
+                    .appFont(size: 10)
+                    .foregroundStyle(.secondary)
+                    .help(outbox.queue.map(\.change.title).joined(separator: "\n"))
+            }
             if !connectivity.isOnline {
                 Label("Offline — showing saved data", systemImage: "wifi.slash")
                     .appFont(size: 11, weight: .medium)

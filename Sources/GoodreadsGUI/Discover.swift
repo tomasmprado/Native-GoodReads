@@ -1,20 +1,61 @@
 import SwiftUI
 
 /// Discover: suggestions one card at a time. Swipe right (→) for Want to
-/// Read, left (←) to pass, up (↑) if you've read it already. Every swipe
-/// is remembered and teaches the suggestions what you like.
+/// Read, left (←) to pass, up (↑) if you've read it already. The deck is a
+/// feed (see Feed.swift): it learns from every swipe, from how long you
+/// look at a card and from opening its details, re-ranks after each one,
+/// and mixes in something different now and then.
 struct DiscoverPane: View {
     @ObservedObject var model: LibraryModel
+    @ObservedObject private var learner = FeedLearner.shared
 
     @State private var gone: Set<String> = []
-    @State private var history: [(item: Recommendation, verdict: SwipeDecision.Verdict)] = []
+    @State private var history: [(item: Recommendation, verdict: SwipeDecision.Verdict, signal: Feed.Signal)] = []
+    /// The deck in the feed's order; the top card stays put until decided.
+    @State private var order: [Feed.Ranked] = []
+    /// When the top card came up, for how long it was looked at.
+    @State private var shownAt = Date()
+    /// Cards whose details were opened, or that were lingered on (taught once).
+    @State private var noticed: Set<String> = []
     @State private var drag: CGSize = .zero
     @State private var flying: (id: String, offset: CGSize)?
     @State private var details: [String: Book] = [:]
     @State private var loadedSwipes = false
 
     private var deck: [Recommendation] {
-        model.recommendations.filter { !gone.contains($0.id) }
+        let available = model.recommendations.filter { !gone.contains($0.id) }
+        let ids = Set(available.map(\.id))
+        let ranked = order.map(\.item).filter { ids.contains($0.id) }
+        let rankedIDs = Set(ranked.map(\.id))
+        // Books that arrived since the last re-rank wait at the end.
+        return ranked + available.filter { !rankedIDs.contains($0.id) }
+    }
+
+    private func isExploring(_ id: String) -> Bool {
+        order.first { $0.item.id == id }?.isExploration ?? false
+    }
+
+    /// Puts the deck in the feed's order. The card on top stays on top
+    /// unless `keepTop` is false (it was just decided).
+    private func rerank(keepTop: Bool) {
+        let available = model.recommendations.filter { !gone.contains($0.id) }
+        let top = keepTop ? deck.first : nil
+        var ranked = Feed.rank(available.filter { $0.id != top?.id }, model: learner.model,
+                               recent: history.suffix(3).map(\.item) + (top.map { [$0] } ?? []),
+                               seed: learner.sessionSeed &+ UInt64(gone.count))
+        if let top { ranked.insert(Feed.Ranked(item: top, score: 0, isExploration: isExploring(top.id)), at: 0) }
+        order = ranked
+    }
+
+    /// A softer yes, taught once per card.
+    private func notice(_ item: Recommendation, _ signal: Feed.Signal) {
+        guard noticed.insert(item.id).inserted else { return }
+        learner.learn(item, signal)
+    }
+
+    private func openDetails(_ item: Recommendation) {
+        notice(item, .openedDetails)
+        model.showBookDetail(details[item.id].map { item.book.filled(from: $0) } ?? item.book)
     }
 
     var body: some View {
@@ -64,8 +105,18 @@ struct DiscoverPane: View {
         }
         .task {
             gone = Set(await SwipeHistory.all().map(\.key))
+            await learner.load()
+            rerank(keepTop: false)
             loadedSwipes = true
             await model.buildRecommendations()
+        }
+        .onChange(of: model.recommendations.count) { _ in rerank(keepTop: true) }
+        .onChange(of: deck.first?.id) { _ in shownAt = Date() }
+        .task(id: deck.first?.id) {
+            // Lingering on a card is a quiet sign of interest.
+            guard let item = deck.first else { return }
+            try? await Task.sleep(for: .seconds(10))
+            if !Task.isCancelled, deck.first?.id == item.id { notice(item, .lingered) }
         }
         .onChange(of: deck.count) { count in
             // Running low: look for more in the background.
@@ -120,6 +171,12 @@ struct DiscoverPane: View {
                         .appFont(size: 11, weight: .medium)
                         .foregroundStyle(Color.accentColor)
                         .lineLimit(2)
+                    if isExploring(item.id) {
+                        Label("Something different, to see if you like it", systemImage: "dice")
+                            .appFont(size: 10, weight: .medium)
+                            .foregroundStyle(.purple)
+                            .lineLimit(1)
+                    }
                     if let text = book.description, !text.isEmpty {
                         Text(text.replacingOccurrences(of: #"<[^>]+>"#, with: "", options: .regularExpression))
                             .appFont(size: 12).foregroundStyle(.secondary)
@@ -149,7 +206,7 @@ struct DiscoverPane: View {
                 else if t.height < -140 { decide(.read) }
                 else { withAnimation(.spring()) { drag = .zero } }
             } : nil)
-        .onTapGesture(count: 2) { if isTop { model.showBookDetail(book) } }
+        .onTapGesture(count: 2) { if isTop { openDetails(item) } }
         .task(id: item.id) { if isTop { await loadDetails(item) } }
     }
 
@@ -181,7 +238,7 @@ struct DiscoverPane: View {
             circle("checkmark", .blue, help: String(localized: "I’ve read it")) { decide(.read) }
                 .keyboardShortcut(.upArrow, modifiers: [])
             circle("info", .secondary, help: String(localized: "Details")) {
-                if let item = deck.first { model.showBookDetail(details[item.id].map { item.book.filled(from: $0) } ?? item.book) }
+                if let item = deck.first { openDetails(item) }
             }
             .keyboardShortcut(.space, modifiers: [])
             circle("heart.fill", .green, help: String(localized: "Want to Read")) { decide(.want) }
@@ -216,13 +273,21 @@ struct DiscoverPane: View {
         case .pass: CGSize(width: -700, height: 40)
         case .read: CGSize(width: 0, height: -900)
         }
+        let signal: Feed.Signal = switch verdict {
+        case .want: .want
+        case .read: .read
+        case .pass: .pass(seconds: Date().timeIntervalSince(shownAt))
+        }
+        learner.learn(item, signal)
         withAnimation(.easeIn(duration: 0.25)) { flying = (item.id, direction) }
         Task {
             try? await Task.sleep(for: .milliseconds(250))
             gone.insert(item.id)
             flying = nil
             drag = .zero
-            history.append((item, verdict))
+            history.append((item, verdict, signal))
+            // The next cards already reflect this one.
+            rerank(keepTop: false)
             await SwipeHistory.add(SwipeDecision(key: item.id, title: book.title, author: book.author,
                                                  genres: item.genres.isEmpty ? book.genresFromCategories : item.genres,
                                                  verdict: verdict, date: Date(), bookID: book.goodreadsID, workID: item.workID))
@@ -236,7 +301,12 @@ struct DiscoverPane: View {
 
     private func undo() {
         guard let last = history.popLast() else { return }
-        withAnimation(.spring()) { _ = gone.remove(last.item.id) }
+        learner.unlearn(last.item, last.signal)
+        withAnimation(.spring()) {
+            _ = gone.remove(last.item.id)
+            order.removeAll { $0.item.id == last.item.id }
+            order.insert(Feed.Ranked(item: last.item, score: 0, isExploration: false), at: 0)
+        }
         Task {
             await SwipeHistory.remove(last.item.id)
             if last.verdict == .want,

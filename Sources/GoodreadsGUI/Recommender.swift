@@ -128,6 +128,19 @@ struct Candidate: Sendable {
         case genre(String)
         /// A writer who shaped authors you've read (from Wikidata).
         case influence(String, shaped: [String])
+
+        /// The kind alone, as Discover's feed learns it.
+        var kind: String {
+            switch self {
+            case .similar: "similar"
+            case .friend: "friend"
+            case .author: "author"
+            case .series: "series"
+            case .newRelease: "new"
+            case .genre: "genre"
+            case .influence: "influence"
+            }
+        }
     }
 
     var book: Book
@@ -151,7 +164,14 @@ struct Recommendation: Codable, Sendable, Identifiable, Equatable {
     var communityRating: Double?
     var ratingsCount: Int?
     var workID: String?
+    /// Where it came from ("similar", "friend", "series"…), for Discover's feed.
+    var sources: [String]? = nil
     var id: String { Candidate.key(book.title) }
+
+    func rescored(by delta: Double) -> Recommendation {
+        Recommendation(book: book, score: score + delta, reason: reason, genres: genres, communityRating: communityRating,
+                       ratingsCount: ratingsCount, workID: workID, sources: sources)
+    }
 }
 
 /// Which languages you read in, and a guess at a book's from its description.
@@ -261,7 +281,8 @@ enum Recommender {
             if let count = candidate.ratingsCount, count > 0 { score += min(0.3, log10(Double(count)) / 20) }
             return Recommendation(book: candidate.book, score: score, reason: reason(for: candidate, seeds: seeds),
                                   genres: candidate.genres, communityRating: candidate.communityRating,
-                                  ratingsCount: candidate.ratingsCount, workID: candidate.workID)
+                                  ratingsCount: candidate.ratingsCount, workID: candidate.workID,
+                                  sources: Array(Set(candidate.sources.map(\.kind))).sorted())
         }
 
         var perAuthor: [String: Int] = [:]
@@ -355,8 +376,13 @@ extension LibraryModel {
             return prefs.includeUnknownLanguage && ReadingLanguages.fits(title: book.title, blurb: book.description, allowed: allowed)
         }
         var candidates: [Candidate] = []
+        // What your gestures in Discover taught also moves the list.
+        let learner = FeedLearner.shared
+        await learner.load()
         func publish() {
             recommendations = Recommender.rank(candidates, profile: profile, excluded: excluded, excludedWorks: excludedWorks)
+                .map { $0.rescored(by: learner.boost($0)) }
+                .sorted { $0.score > $1.score }
         }
 
         // 1. Books readers of your favourites also enjoyed.
