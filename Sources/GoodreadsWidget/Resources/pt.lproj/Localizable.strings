@@ -24,3 +24,15 @@
 "Start reading" = "Começar a ler";
 "Reading Session" = "Sessão de leitura";
 "Start timing a reading session for the book you’re on, and see it running." = "Começa a cronometrar uma sessão de leitura do livro que estás a ler e vê-a a decorrer.";
+
+/* 3.2 */
+"day in a row" = "dia seguido";
+"days in a row" = "dias seguidos";
+"This week" = "Esta semana";
+"%lld of %lld days" = "%lld de %lld dias";
+"Longest: %lld days" = "Mais longa: %lld dias";
+"Read today ✓" = "Leste hoje ✓";
+"A few pages today keeps it going" = "Umas páginas hoje e continua";
+"Read a little today to start a streak" = "Lê um pouco hoje para começar";
+"Reading Streak" = "Dias seguidos";
+"Days in a row you’ve read, with a nudge on days you haven’t yet." = "Os dias seguidos em que leste, com um lembrete nos dias em que ainda não leste.";

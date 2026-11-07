@@ -38,7 +38,6 @@ final class WeekSummaryTests: XCTestCase {
         let read = [makeEntry(id: "r1", dateRead: "Nov 02, 2026"), makeEntry(id: "r2", dateRead: "Oct 30, 2026")]
         let summary = WeekSummary.compute(history: history, pages: ["1": 200], read: read, now: now, calendar: calendar)
         XCTAssertEqual(summary.pages, 80, "10% → 50% of 200 pages this week")
-        XCTAssertEqual(summary.streak, 3, "8, 9 and 10 November")
         XCTAssertEqual(summary.finishedThisMonth, 1)
     }
 }

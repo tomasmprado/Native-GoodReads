@@ -43,7 +43,9 @@ extension WidgetSnapshot {
         quotes: [.init(text: "It is a truth universally acknowledged, that a single man in possession of a good fortune, must be in want of a wife.",
                        title: "Pride and Prejudice", author: "Jane Austen")],
         race: [.init(name: "Ana", read: 21, goal: 30, isMe: false), .init(name: "You", read: 18, goal: 24, isMe: true),
-               .init(name: "Rui", read: 9, goal: 20, isMe: false)]
+               .init(name: "Rui", read: 9, goal: 20, isMe: false)],
+        streak: .init(lastDay: Calendar.current.startOfDay(for: Date()), length: 6, longest: 14, weekDays: 3, weekGoal: 5,
+                      weekStart: Calendar.current.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date())
     )
 }
 
@@ -288,6 +290,68 @@ struct RaceWidget: Widget {
     }
 }
 
+// MARK: - Reading Streak
+
+struct StreakWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: SnapshotEntry
+
+    var body: some View {
+        let streak = entry.snapshot.streak
+        let current = streak?.current(on: entry.date) ?? 0
+        let readToday = streak?.readToday(on: entry.date) ?? false
+        let week = streak?.daysThisWeek(on: entry.date) ?? 0
+        let goal = streak?.weekGoal ?? 5
+        HStack(alignment: .top, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Image(systemName: readToday ? "flame.fill" : "flame")
+                    .font(.title2)
+                    .foregroundStyle(current > 0 ? .orange : .secondary)
+                    .widgetAccentable()
+                Text("\(current)")
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.6)
+                Text(current == 1 ? LocalizedStringKey("day in a row") : LocalizedStringKey("days in a row"))
+                    .font(.caption2).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Text(nudge(current: current, readToday: readToday))
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(readToday ? Color.secondary : Color.orange)
+                    .lineLimit(2)
+            }
+            if family != .systemSmall {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("This week").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Text("\(week) of \(goal) days").font(.headline)
+                    ProgressBar(fraction: Double(week) / Double(max(goal, 1)))
+                    Spacer(minLength: 0)
+                    Text("Longest: \(streak?.longest ?? 0) days").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetBackground()
+    }
+
+    /// A gentle word: well done, keep it going, or start one.
+    private func nudge(current: Int, readToday: Bool) -> String {
+        if readToday { return String(localized: "Read today ✓") }
+        if current > 0 { return String(localized: "A few pages today keeps it going") }
+        return String(localized: "Read a little today to start a streak")
+    }
+}
+
+struct StreakWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: WidgetStore.kindStreak, provider: SnapshotProvider()) { entry in
+            StreakWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Reading Streak")
+        .description("Days in a row you’ve read, with a nudge on days you haven’t yet.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
 @main
 struct GoodreadsWidgets: WidgetBundle {
     var body: some Widget {
@@ -295,6 +359,7 @@ struct GoodreadsWidgets: WidgetBundle {
         GoalWidget()
         QuoteWidget()
         RaceWidget()
+        StreakWidget()
     }
 }
 

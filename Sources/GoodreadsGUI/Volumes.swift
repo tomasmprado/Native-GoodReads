@@ -119,3 +119,48 @@ enum Volumes {
         return result
     }
 }
+
+// MARK: - The next volume
+
+/// The next volume of a work you've started, waiting on another shelf.
+struct NextVolume: Equatable {
+    let entry: ShelfEntry
+    let work: String
+    let number: Int
+    let read: Int
+    let total: Int
+}
+
+extension Volumes {
+    /// For each work with a volume read, the first one not read yet that's
+    /// on `waiting` (Want to Read), the work read most recently first.
+    static func nextToRead(read: [ShelfEntry], waiting: [ShelfEntry]) -> [NextVolume] {
+        var readNumbers: [String: Set<Int>] = [:]
+        var lastRead: [String: Date] = [:]
+        for entry in read {
+            guard let (base, number) = split(entry.title) else { continue }
+            let key = key(base: base, author: entry.author)
+            readNumbers[key, default: []].insert(number)
+            if let date = Suggestions.parseDate(entry.dateRead ?? "") {
+                lastRead[key] = max(lastRead[key] ?? .distantPast, date)
+            }
+        }
+        var best: [String: (entry: ShelfEntry, base: String, number: Int)] = [:]
+        var total: [String: Set<Int>] = readNumbers
+        for entry in waiting {
+            guard let (base, number) = split(entry.title) else { continue }
+            let key = key(base: base, author: entry.author)
+            total[key, default: []].insert(number)
+            guard let done = readNumbers[key], !done.contains(number) else { continue }
+            if best[key].map({ number < $0.number }) ?? true { best[key] = (entry, base, number) }
+        }
+        return best.map { key, pick in
+            NextVolume(entry: pick.entry, work: pick.base, number: pick.number,
+                       read: readNumbers[key]?.count ?? 0, total: total[key]?.count ?? 0)
+        }
+        .sorted { a, b in
+            let ka = key(base: a.work, author: a.entry.author), kb = key(base: b.work, author: b.entry.author)
+            return (lastRead[ka] ?? .distantPast) > (lastRead[kb] ?? .distantPast)
+        }
+    }
+}

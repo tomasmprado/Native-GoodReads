@@ -44,6 +44,9 @@ enum WidgetBridge {
         var snapshot = WidgetSnapshot(reading: books, goal: goal, updated: Date())
         snapshot.quotes = await savedQuotes(shelves: reading + (ShelfCache.read(.read)?.entries ?? []))
         snapshot.race = model.race.prefix(6).map { .init(name: $0.name, read: $0.read, goal: $0.goal, isMe: $0.isMe) }
+        if model.readingLog.isEmpty { model.readingLog = await ReadingLog.all() }
+        if model.progressHistory.isEmpty { model.progressHistory = await ReadingPace.all() }
+        snapshot.streak = model.readingStreak
         if var last = lastWritten {
             last.updated = snapshot.updated
             if last == snapshot { return }
