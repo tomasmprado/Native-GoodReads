@@ -7,7 +7,7 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
-## [Unreleased]
+## [3.1.0] — 2026-11-07
 
 ### Added
 
