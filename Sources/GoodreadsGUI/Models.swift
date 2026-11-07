@@ -4,8 +4,8 @@ struct Book: Identifiable, Hashable, Codable {
     /// ISBN-13, falling back to ISBN-10, falling back to a "gb:" prefixed
     /// Google volume id for the rare item with neither. Not a Goodreads id.
     let id: String
-    let title: String
-    let author: String
+    @TidyTitle var title: String
+    @TidyName var author: String
     let coverURL: URL?
     let rating: String?
     var publisher: String? = nil
@@ -140,8 +140,8 @@ struct ShelfEntry: Identifiable, Hashable, Codable {
     let id: String          // review id when we have one, else book id
     let bookID: String
     let reviewID: String?
-    let title: String
-    let author: String
+    @TidyTitle var title: String
+    @TidyName var author: String
     let coverURLString: String?
     var rating: Int?        // 0-5
     var dateRead: String?

@@ -63,6 +63,12 @@ added in that diff, meaning `v1.0.0` predates all of it.
 
 ### Fixed
 
+- Titles and author names are tidied everywhere: the "*" Goodreads puts
+  inside some names ("Stephen * King"), double spaces, stray symbols and
+  invisible characters go; names and titles typed all in capitals or all
+  in small letters get proper capitals, keeping words like "de" small
+  ("JOSÉ SARAMAGO" → "José Saramago", "sophia De mello" → "Sophia de
+  Mello"); "Retorno, O" becomes "O Retorno".
 - Rating a book could fail with "Goodreads rejected the rating (HTTP 404)";
   the app now rates through the same endpoint as the stars on the shelf
   page when the first one refuses, with a fresh token.
