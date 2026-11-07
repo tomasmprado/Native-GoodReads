@@ -45,7 +45,9 @@ added in that diff, meaning `v1.0.0` predates all of it.
   and the buttons are Liquid Glass.
 - **A simpler sidebar:** Suggestions, Discover and Bingo share one pane,
   and so do Notes and Letters, with a switch at the top. Search is the
-  magnifying glass in the toolbar (⌘K).
+  magnifying glass in the toolbar (⌘K). The foot of the sidebar no longer
+  says "Signed in" or confirms what worked; it speaks up only when
+  something fails.
 - **Scan a barcode** (File → Scan a Barcode…, ⇧⌘B, or the button in Search):
   hold a book's barcode up to the Mac's camera or an iPhone's through
   Continuity Camera (used when there is one); the barcode is outlined when

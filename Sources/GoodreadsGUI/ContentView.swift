@@ -1746,8 +1746,9 @@ private struct BookRow<Actions: View>: View {
     }
 }
 
-/// What's happening, at the foot of the sidebar: the latest result (with
-/// Undo), being offline, an update, and signing in when signed out.
+/// At the foot of the sidebar, only when there's something to say: an
+/// action that failed, Undo, being offline, an update, and signing in when
+/// signed out.
 private struct SidebarStatus: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject var session: WebSession
@@ -1780,25 +1781,16 @@ private struct SidebarStatus: View {
                     .glassCapsule()
                     .help("No internet connection. What you see is from the cache, and refreshes once you're back online.")
             }
-            if let status = model.status {
+            // Only what went wrong; things that worked don't need saying.
+            if let status = model.status, status.isError {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Image(systemName: status.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                        .foregroundStyle(status.isError ? .orange : .green)
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
                     Text(status.text)
                         .lineLimit(4)
                         .appFont(size: 11)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
-                }
-            } else {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(model.loggedIn ? Color.green : Color.secondary)
-                        .frame(width: 7, height: 7)
-                    Text(model.loggedIn ? String(localized: "Signed in") : String(localized: "Not signed in"))
-                        .appFont(size: 11)
-                        .foregroundStyle(.secondary)
-                    if session.isBusy { ProgressView().controlSize(.mini) }
                 }
             }
 
