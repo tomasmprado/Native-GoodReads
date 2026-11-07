@@ -113,3 +113,78 @@ enum Suggestions {
             .joined(separator: " ")
     }
 }
+
+// MARK: - Because you loved…
+
+extension Suggestions {
+
+    /// A friend's Read shelf, for "Because you loved…".
+    struct FriendShelf: Sendable {
+        let name: String
+        let read: [ShelfEntry]
+    }
+
+    /// Books friends loved (5★), from friends who loved the same books you
+    /// did — the more of your favourites they share, the higher their
+    /// picks go. Nothing already on your shelves.
+    static func lovedByFriends(mine: [ShelfEntry], friends: [FriendShelf],
+                               shelvedIDs: Set<String>, shelvedTitles: Set<String>,
+                               limit: Int = 15) -> [Suggestion] {
+        var favourites = mine.filter { ($0.rating ?? 0) >= 5 }
+        if favourites.count < 3 { favourites = mine.filter { ($0.rating ?? 0) >= 4 } }
+        let favouriteIDs = Dictionary(favourites.map { ($0.bookID, $0) }, uniquingKeysWith: { a, _ in a })
+        let favouriteTitles = Dictionary(favourites.map { (normalizedTitle($0.title), $0) }, uniquingKeysWith: { a, _ in a })
+
+        struct Candidate { var entry: ShelfEntry; var score: Int; var friend: String; var because: String; var friends: Set<String> }
+        var candidates: [String: Candidate] = [:]
+        for friend in friends {
+            let shared = friend.read.compactMap { entry -> ShelfEntry? in
+                guard (entry.rating ?? 0) >= 4 else { return nil }
+                return favouriteIDs[entry.bookID] ?? favouriteTitles[normalizedTitle(entry.title)]
+            }
+            guard let example = shared.first else { continue }
+            for entry in friend.read where (entry.rating ?? 0) >= 5 {
+                let title = normalizedTitle(entry.title)
+                guard !shelvedIDs.contains(entry.bookID), !shelvedTitles.contains(title) else { continue }
+                var candidate = candidates[title] ?? Candidate(entry: entry, score: 0, friend: friend.name,
+                                                               because: example.title, friends: [])
+                guard candidate.friends.insert(friend.name).inserted else { continue }
+                candidate.score += shared.count
+                candidates[title] = candidate
+            }
+        }
+        return candidates.values
+            .sorted { $0.score != $1.score ? $0.score > $1.score : $0.entry.title < $1.entry.title }
+            .prefix(limit)
+            .map { candidate in
+                let others = candidate.friends.count - 1
+                let reason = others > 0
+                    ? String(localized: "Loved by \(candidate.friend) and \(others) more, who also loved \(candidate.because)")
+                    : String(localized: "Loved by \(candidate.friend), who also loved \(candidate.because)")
+                return Suggestion(book: candidate.entry.asBook, reason: reason)
+            }
+    }
+}
+
+extension LibraryModel {
+    /// From friends' Read shelves as saved by "Friends who read this".
+    func loadLovedSuggestions() async {
+        if friendsBooks.isEmpty { friendsBooks = await FriendsBooks.index() }
+        guard !friendsBooks.isEmpty, let mine = ShelfCache.read(.read)?.entries, !mine.isEmpty else { return }
+        var friends: [Suggestions.FriendShelf] = []
+        for library in friendsBooks.values {
+            let userID = GoodreadsFriends.userID(from: library.profileURL) ?? library.friendID
+            if let read = await DataCache.shared.read([ShelfEntry].self, "friend-shelf", "\(userID)/read", ttl: .infinity)?.value {
+                friends.append(.init(name: library.name, read: read))
+            }
+        }
+        var ids = Set<String>(), titles = Set<String>()
+        for shelf in shelves {
+            for entry in ShelfCache.read(shelf)?.entries ?? [] {
+                ids.insert(entry.bookID)
+                titles.insert(Suggestions.normalizedTitle(entry.title))
+            }
+        }
+        lovedSuggestions = Suggestions.lovedByFriends(mine: mine, friends: friends, shelvedIDs: ids, shelvedTitles: titles)
+    }
+}

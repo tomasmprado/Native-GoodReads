@@ -38,6 +38,8 @@ struct ReaderBook: Identifiable, Equatable, Sendable {
     let lastOpened: Date?
     /// Calibre keeps one when its metadata came from Goodreads.
     var goodreadsID: String? = nil
+    /// Kobo's running total of time spent reading it.
+    var secondsRead: Int? = nil
 
     var id: String { "\(source.rawValue):\(sourceID)" }
     var started: Bool { (percent ?? 0) > 0 || lastOpened != nil }
@@ -97,7 +99,8 @@ enum ReadingApps {
         // ContentType 6 is a book (chapters are 9); BookID is set only on chapters.
         let sql = """
             SELECT ContentID, Title, \(column("Attribution")), \(column("ISBN")), \(column("___PercentRead")),
-                   \(column("ReadStatus")), \(column("DateLastRead")), \(column("LastTimeFinishedReading"))
+                   \(column("ReadStatus")), \(column("DateLastRead")), \(column("LastTimeFinishedReading")),
+                   \(column("TimeSpentReading"))
             FROM content WHERE ContentType = 6 AND (BookID IS NULL OR BookID = '') AND Title IS NOT NULL
             """
         return try Highlights.query(db, sql).compactMap { row -> ReaderBook? in
@@ -109,7 +112,7 @@ enum ReadingApps {
                               isbn: row[3].flatMap { $0.isEmpty ? nil : $0 },
                               percent: percent.map { min(100, max(0, $0)) }, finished: finished,
                               finishedOn: row[7].flatMap(isoDate) ?? (finished ? row[6].flatMap(isoDate) : nil),
-                              lastOpened: row[6].flatMap(isoDate))
+                              lastOpened: row[6].flatMap(isoDate), secondsRead: row[8].flatMap(Int.init))
         }
     }
 

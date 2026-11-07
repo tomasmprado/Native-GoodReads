@@ -35,9 +35,11 @@ struct PickForMeSheet: View {
                     Button("Another") { next() }
                         .keyboardShortcut(.space, modifiers: [])
                         .disabled(candidates.count < 2)
-                    Button("Details") { model.showBookDetail(pick.asBook) }
+                    Button("Details") { if let current = self.pick { model.showBookDetail(current.asBook) } }
                     Button("Start Reading") {
-                        Task { await model.move(pick, to: .currentlyReading) }
+                        // Read the pick at press time: Return's action can outlive this view.
+                        guard let current = self.pick else { return }
+                        Task { await model.move(current, to: .currentlyReading) }
                         dismiss()
                     }
                     .keyboardShortcut(.defaultAction)
@@ -76,6 +78,7 @@ struct QuickRateSheet: View {
     @ObservedObject var model: LibraryModel
     @State private var queue: [ShelfEntry]
     @State private var rated = 0
+    @State private var failure: String?
 
     init(model: LibraryModel, unrated: [ShelfEntry]) {
         self.model = model
@@ -111,13 +114,19 @@ struct QuickRateSheet: View {
                 HStack(spacing: 8) {
                     ForEach(1...5, id: \.self) { stars in
                         Button {
-                            rate(entry, stars)
+                            // The book on screen now: a keyboard shortcut's action can
+                            // outlive the view it was made with, so don't capture it.
+                            rateCurrent(stars)
                         } label: {
                             Text(String(repeating: "★", count: stars)).appFont(size: 12)
                         }
                         .keyboardShortcut(KeyEquivalent(Character("\(stars)")), modifiers: [])
                         .help(StarPicker.phrase(stars))
                     }
+                }
+                if let failure {
+                    Text(failure).appFont(size: 11).foregroundStyle(.orange)
+                        .multilineTextAlignment(.center).lineLimit(3)
                 }
                 HStack {
                     Button("Skip") { skip() }.keyboardShortcut("s", modifiers: [])
@@ -134,8 +143,17 @@ struct QuickRateSheet: View {
         .frame(width: 400)
     }
 
-    private func rate(_ entry: ShelfEntry, _ stars: Int) {
-        Task { await model.rate(entry, stars: stars) }
+    private func rateCurrent(_ stars: Int) {
+        guard let entry = queue.first else { return }
+        Task {
+            // A book Goodreads wouldn't take goes back in the queue, with why.
+            if let error = await model.rate(entry, stars: stars) {
+                rated -= 1
+                failure = String(localized: "Couldn’t rate “\(entry.title)”: \(error)")
+                withAnimation(.easeInOut(duration: 0.25)) { queue.append(entry) }
+            }
+        }
+        failure = nil
         rated += 1
         withAnimation(.easeInOut(duration: 0.25)) { _ = queue.removeFirst() }
     }

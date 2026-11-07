@@ -57,6 +57,11 @@ struct GoodreadsGUIApp: App {
                     WindowManager.shared.openMain?()
                     LibraryModel.shared.activeSheet = .importHighlights
                 }
+                Button("Scan a Barcode…") {
+                    WindowManager.shared.openMain?()
+                    LibraryModel.shared.activeSheet = .scanBarcode
+                }
+                .keyboardShortcut("b", modifiers: [.command, .shift])
                 Divider()
                 Button("Back Up Notes & Progress…") {
                     Task {

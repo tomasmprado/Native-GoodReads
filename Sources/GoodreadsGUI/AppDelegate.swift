@@ -11,6 +11,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         AutoBackup.start()
         ReadingAppsSync.shared.start()
         PriceWatch.start()
+        // Suggestions and authors' countries get ready in the background,
+        // window open or not.
+        Task {
+            try? await Task.sleep(for: .seconds(30))
+            await LibraryModel.shared.buildRecommendations()
+            await LibraryModel.shared.loadAuthorCountries(lookUp: true)
+            await InfluenceAtlas.shared.load()
+        }
+        LetterBox.shared.startDelivering()
+        // The Soundtrack is gone: forget its Spotify sign-in and settings.
+        Keychain.write("", for: "spotify-refresh-token")
+        for key in ["spotifyClientID", "soundtrackEnergy"] { UserDefaults.standard.removeObject(forKey: key) }
 
         UNUserNotificationCenter.current().delegate = self
         ReadingReminder.registerCategory()
@@ -31,6 +43,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         let content = response.notification.request.content
         if let link = content.userInfo["url"] as? String, let url = URL(string: link) {
             await MainActor.run { _ = NSWorkspace.shared.open(url) }
+            return
+        }
+        if content.categoryIdentifier == LetterBox.category {
+            await MainActor.run {
+                self.showLibrary()
+                LibraryModel.shared.notesTab = .letters
+                LibraryModel.shared.selection = .quotes
+            }
             return
         }
         if content.categoryIdentifier == KoboSync.category {

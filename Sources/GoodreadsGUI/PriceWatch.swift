@@ -47,7 +47,9 @@ enum PriceWatch {
         return new.amount < old.amount - 0.009
     }
 
-    /// Checks every Want to Read book and notifies about drops.
+    /// Checks every Want to Read book and notifies about drops: Apple
+    /// Books for all of them, and Wook (in Portugal) for up to 40 a day,
+    /// taking turns so every book gets looked at.
     @MainActor
     static func check() async {
         guard Preferences.shared.notifyPriceDrops else { return }
@@ -56,20 +58,43 @@ enum PriceWatch {
         for entry in wanted where !Task.isCancelled {
             guard let price = await lookup(title: entry.title, author: entry.author) else { continue }
             if isDrop(from: prices[entry.bookID], to: price) {
-                let content = UNMutableNotificationContent()
-                content.title = price.amount == 0
-                    ? String(localized: "\(entry.title) is free in Apple Books")
-                    : String(localized: "\(entry.title) is cheaper in Apple Books")
-                content.body = String(localized: "Now \(price.formatted) (was \(prices[entry.bookID]?.formatted ?? "")).")
-                content.userInfo = ["url": price.url.absoluteString]
-                content.sound = .default
-                let request = UNNotificationRequest(identifier: "price-\(entry.bookID)-\(price.amount)", content: content, trigger: nil)
-                try? await UNUserNotificationCenter.current().add(request)
+                await notifyDrop(entry, store: "Apple Books", price: price, was: prices[entry.bookID])
             }
             prices[entry.bookID] = price
             try? await Task.sleep(for: .milliseconds(400))   // gentle on Apple's search
         }
         await DataCache.shared.write(prices, namespace, key)
+
+        guard Locale.current.region?.identifier == "PT", !wanted.isEmpty else { return }
+        let page = HeadlessPage()
+        let start = UserDefaults.standard.integer(forKey: wookTurnKey) % wanted.count
+        let turn = (0..<min(40, wanted.count)).map { wanted[(start + $0) % wanted.count] }
+        for entry in turn where !Task.isCancelled {
+            let key = "wook:\(entry.bookID)"
+            if let price = await WookPrices.lookup(entry, page: page) {
+                if isDrop(from: prices[key], to: price) {
+                    await notifyDrop(entry, store: "Wook", price: price, was: prices[key])
+                }
+                prices[key] = price
+            }
+            try? await Task.sleep(for: .seconds(2))   // one page at a time, like a person
+        }
+        UserDefaults.standard.set(start + turn.count, forKey: wookTurnKey)
+        await DataCache.shared.write(prices, namespace, key)
+    }
+
+    private static let wookTurnKey = "wookPriceTurn"
+
+    private static func notifyDrop(_ entry: ShelfEntry, store: String, price: Price, was old: Price?) async {
+        let content = UNMutableNotificationContent()
+        content.title = price.amount == 0
+            ? String(localized: "\(entry.title) is free at \(store)")
+            : String(localized: "\(entry.title) is cheaper at \(store)")
+        content.body = String(localized: "Now \(price.formatted) (was \(old?.formatted ?? "")).")
+        content.userInfo = ["url": price.url.absoluteString]
+        content.sound = .default
+        let request = UNNotificationRequest(identifier: "price-\(store)-\(entry.bookID)-\(price.amount)", content: content, trigger: nil)
+        try? await UNUserNotificationCenter.current().add(request)
     }
 
     /// A first check a few minutes after launch, then daily.

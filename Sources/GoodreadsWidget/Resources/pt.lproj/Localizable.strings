@@ -10,3 +10,17 @@
 "done around %@" = "acabas por volta de %@";
 "of %lld" = "de %lld";
 "p. %lld of %lld" = "p. %lld de %lld";
+
+/* 3.1 */
+"Save quotes in a book’s notes and one shows here each day" = "Guarda citações nas notas de um livro e aparece aqui uma por dia";
+"Quote of the Day" = "Citação do dia";
+"One of the quotes you saved, a different one each day." = "Uma das citações que guardaste, uma diferente cada dia.";
+"Open Home in the app to see the race with your friends" = "Abre a Home na app para ver a corrida com os teus amigos";
+"Reading Challenge" = "Desafio de leitura";
+"Friends’ Race" = "Corrida dos amigos";
+"You and your friends in this year’s Reading Challenge." = "Tu e os teus amigos no Desafio de Leitura deste ano.";
+"Reading" = "A ler";
+"Click to stop" = "Clica para parar";
+"Start reading" = "Começar a ler";
+"Reading Session" = "Sessão de leitura";
+"Start timing a reading session for the book you’re on, and see it running." = "Começa a cronometrar uma sessão de leitura do livro que estás a ler e vê-a a decorrer.";

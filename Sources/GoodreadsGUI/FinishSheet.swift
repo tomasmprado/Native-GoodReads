@@ -5,6 +5,8 @@ import SwiftUI
 struct FinishSheet: View {
     let title: String
     let author: String
+    var bookID: String? = nil
+    var cover: URL? = nil
     let commit: (Int?, Date?, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -13,6 +15,7 @@ struct FinishSheet: View {
     @State private var setDate = true
     @State private var dateRead = Date()
     @State private var note = ""
+    @State private var letter = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -40,12 +43,23 @@ struct FinishSheet: View {
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(3...6)
 
+            VStack(alignment: .leading, spacing: 4) {
+                Label("A letter to yourself", systemImage: "envelope")
+                    .appFont(size: 11, weight: .medium)
+                    .foregroundStyle(.secondary)
+                TextField("What do you want to remember? Sealed for a year (optional)", text: $letter, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(2...5)
+            }
+
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button("Mark Read") {
                     commit(rating > 0 ? rating : nil, setDate ? dateRead : nil, note)
+                    LetterBox.shared.add(letter, title: title, author: author, bookID: bookID, cover: cover,
+                                         opens: Calendar.current.date(byAdding: .year, value: 1, to: Date()) ?? Date())
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)

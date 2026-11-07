@@ -196,11 +196,13 @@ struct StatsPane: View {
                         }
                         .glassGroup(spacing: 16)
                         perYearCard(stats)
+                        ReadingTimeCard(model: model)
                         HStack(alignment: .top, spacing: 16) {
                             ratingsCard(stats)
                             authorsCard(stats)
                         }
                         extrasCard(stats)
+                        AuthorsMapCard(model: model)
                         AbandonedCard(model: model)
                     }
                     .padding(16)

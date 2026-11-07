@@ -77,6 +77,7 @@ final class LibraryModel: ObservableObject {
         case detail(Book)
         case friendProfile
         case authorPage
+        case scanBarcode
 
         var id: String {
             switch self {
@@ -93,6 +94,7 @@ final class LibraryModel: ObservableObject {
             case .detail(let book):     return "detail-\(book.id)"
             case .friendProfile:        return "friendProfile"
             case .authorPage:           return "authorPage"
+            case .scanBarcode:          return "scanBarcode"
             }
         }
     }
@@ -105,6 +107,20 @@ final class LibraryModel: ObservableObject {
     @Published var suggestionNote: String?
     /// Recent books by authors you've read more than once.
     @Published var newReleases: [Suggestion] = []
+    /// Series you're reading and what comes next in each.
+    @Published var seriesProgress: [SeriesProgress] = []
+    @Published var isLoadingSeries = false
+    /// "Picked for You" and the Discover deck, best first.
+    @Published var recommendations: [Recommendation] = []
+    @Published var isBuildingRecommendations = false
+    @Published var recommendationNote: String?
+    /// Books friends with your taste loved.
+    @Published var lovedSuggestions: [Suggestion] = []
+    /// Where the authors on Read come from.
+    @Published var countryTally: [AuthorCountries.Tally] = []
+    @Published var authorCountryMap: [String: AuthorCountry] = [:]
+    @Published var authorsWithoutCountry = 0
+    @Published var isLoadingCountries = false
 
     @Published var currentlyReading: [ShelfEntry] = [] {
         didSet { WidgetBridge.scheduleUpdate() }
@@ -114,8 +130,12 @@ final class LibraryModel: ObservableObject {
         didSet { WidgetBridge.scheduleUpdate() }
     }
     @Published var isLoadingCurrentlyReading = false
+    /// Reading-app time, for the calendar in Stats.
+    @Published var readingLog: [ReadingRecord] = []
     /// Friends' reading-challenge progress, for the race on Home.
-    @Published var friendRace: [RaceEntry] = []
+    @Published var friendRace: [RaceEntry] = [] {
+        didSet { WidgetBridge.scheduleUpdate() }
+    }
     /// Books you stopped reading, by book id — kept on this Mac.
     @Published var abandoned: [String: AbandonedBook] = [:]
 
@@ -186,12 +206,40 @@ final class LibraryModel: ObservableObject {
     enum Pane: Hashable {
         case home
         case search
-        case suggestions
+        case suggestions        // with Discover and Bingo
         case friends
         case stats
-        case quotes
+        case quotes             // notes, quotes and letters
         case shelf(String)      // shelf slug
     }
+
+    /// The parts of the Suggestions pane.
+    enum SuggestionsTab: String, CaseIterable, Identifiable {
+        case picks, discover, bingo
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .picks:    String(localized: "Suggestions")
+            case .discover: String(localized: "Discover")
+            case .bingo:    String(localized: "Bingo")
+            }
+        }
+    }
+
+    /// The parts of the Notes pane.
+    enum NotesTab: String, CaseIterable, Identifiable {
+        case notes, letters
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .notes:   String(localized: "Notes")
+            case .letters: String(localized: "Letters")
+            }
+        }
+    }
+
+    @Published var suggestionsTab: SuggestionsTab = .picks
+    @Published var notesTab: NotesTab = .notes
 
     struct Status: Identifiable {
         let id = UUID()
@@ -546,8 +594,9 @@ final class LibraryModel: ObservableObject {
             await buildSuggestions()
             await loadCurrentlyReading()
         case .suggestions:
-            await buildSuggestions()
             await loadNewReleases()
+            await loadSeries()
+            await buildRecommendations()
         case .friends:
             await loadFriends()
         case .stats:
@@ -632,33 +681,13 @@ final class LibraryModel: ObservableObject {
 
         let prefs = Preferences.shared
 
-        do {
-            suggestionNote = String(localized: "Finding books…")
-            let result = try await Suggestions.build(
-                from: readEntries,
-                excludingTitles: shelvedTitles,
-                windowDays: prefs.suggestionWindowDays,
-                language: prefs.bookLanguage,
-                includeUnknown: prefs.includeUnknownLanguage
-            )
-
-            suggestions = result.items
-            suggestionBasis = result.basis
-            await DataCache.shared.write(SavedSuggestions(items: result.items, basis: result.basis),
-                                         "suggestions", "home")
-
-            if result.basis.isEmpty {
-                suggestionNote = String(localized: "Nothing finished in the last \(prefs.suggestionWindowDays) days — mark a book read and this fills in.")
-            } else if result.items.isEmpty {
-                suggestionNote = prefs.bookLanguage == .any
-                    ? String(localized: "No new books found from those authors.")
-                    : String(localized: "Nothing found in \(prefs.bookLanguage.label.lowercased()). Try widening the language in Settings.")
-            } else {
-                suggestionNote = nil
-            }
-        } catch {
-            suggestionNote = error.localizedDescription
-        }
+        suggestionNote = String(localized: "Finding books…")
+        await buildRecommendations(force: force)
+        let recent = Suggestions.recentlyRead(readEntries, withinDays: prefs.suggestionWindowDays)
+        suggestions = recommendations.prefix(15).map { Suggestion(book: $0.book, reason: $0.reason) }
+        suggestionBasis = recent
+        await DataCache.shared.write(SavedSuggestions(items: suggestions, basis: recent), "suggestions", "home")
+        suggestionNote = suggestions.isEmpty ? (recommendationNote ?? String(localized: "Nothing to suggest yet.")) : nil
     }
 
     /// Same cache-then-refresh shape as `performLoad`, kept separate from
@@ -667,6 +696,7 @@ final class LibraryModel: ObservableObject {
     func loadCurrentlyReading(force: Bool = false) async {
         guard !isLoadingCurrentlyReading else { return }
         if progressHistory.isEmpty { progressHistory = await ReadingPace.all() }
+        if readingLog.isEmpty { readingLog = await ReadingLog.all() }
         let cached = ShelfCache.read(.currentlyReading)
         if let cached { currentlyReading = cached.entries }
         if bookExtras.isEmpty { bookExtras = await BookExtras.all() }
@@ -1392,7 +1422,8 @@ final class LibraryModel: ObservableObject {
     }
 
     /// Stars only — doesn't touch shelf membership. See `ShelfService.rate`.
-    func rate(_ entry: ShelfEntry, stars: Int) async {
+    @discardableResult
+    func rate(_ entry: ShelfEntry, stars: Int) async -> String? {
         busyBookID = entry.bookID
         status = nil
         defer { busyBookID = nil }
@@ -1404,9 +1435,11 @@ final class LibraryModel: ObservableObject {
             }
             if let shelf = currentShelf { ShelfCache.write(shelfEntries, for: shelf) }
             status = Status(text: String(localized: "Rated “\(entry.title)” \(stars)★."), isError: false)
+            return nil
         } catch {
             status = Status(text: String(localized: "Couldn’t rate “\(entry.title)”: \(error.localizedDescription)"),
                             isError: true)
+            return error.localizedDescription
         }
     }
 

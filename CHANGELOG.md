@@ -7,6 +7,80 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
+## [Unreleased]
+
+### Added
+
+- **Bookcase view** for shelves (not Currently Reading): spines with the
+  title and author, thicker for longer books, on wooden planks. Click one
+  to pull it out and see a little about it underneath; + opens its details.
+- **Volumes together:** the volumes of one work on a shelf ("Os Irmãos
+  Karamázov I" and "II", "Guerra e Paz – Volume I"…) show as one book with
+  the first one's cover and "1/2" on the right — volumes read, of those on
+  your shelves. Each volume's actions are in its own submenu.
+- **Bingo**: a 4×4 card for the year built from what you rarely read —
+  countries and continents you've never visited, books older than your
+  grandparents, genres you skip or keep passing in Discover, books waiting
+  on your shelves for years. Squares fill themselves as you finish books;
+  each suggests books from your Want to Read. In Suggestions, next to
+  Discover.
+- **Letters to yourself**: a few lines when you finish a book (or any time),
+  sealed until a month, six months, a year or five years later, with a
+  notification when one opens. Letters, in Notes, also show what you
+  finished, or were reading, on this day in past years.
+- **Reading time and a calendar of the days you read** in Stats, from the
+  Kobo's own reading time, the days a book was open in Apple Books, and
+  progress updates.
+- **Your Series** in Suggestions, from Google Books: how far you are in
+  each series you've read from, the next book (one click to Want to Read),
+  and a notification when a new book joins one of them.
+- **Smarter suggestions ("Picked for You").** A taste profile from your Read
+  shelf — authors and genres weighed by your stars against your own average
+  and by how recently you read them, minus books you gave up on — scores
+  books from several places at once: Goodreads' "Readers also enjoyed" for
+  your favourites, friends' five-star books (friends who loved what you
+  loved), next in your series, new and older books by authors you love,
+  writers who shaped your authors (from Wikidata) whom you've never read,
+  and well-rated books in your genres. Books several favourites point to rise
+  to the top; each suggestion says why; two per author at most.
+- **Discover**: suggestions one card at a time — swipe right (→) for Want to
+  Read, left (←) to pass, up (↑) if you've read it (then rate it), ⌘Z to
+  undo. Every swipe teaches the suggestions. The cover grows with the card,
+  and the buttons are Liquid Glass.
+- **A simpler sidebar:** Suggestions, Discover and Bingo share one pane,
+  and so do Notes and Letters, with a switch at the top. Search is the
+  magnifying glass in the toolbar (⌘K). The foot of the sidebar no longer
+  says "Signed in" or confirms what worked; it speaks up only when
+  something fails.
+- **Scan a barcode** (File → Scan a Barcode…, ⇧⌘B, or the button in Search):
+  hold a book's barcode up to the Mac's camera or an iPhone's through
+  Continuity Camera (used when there is one); the barcode is outlined when
+  it's read, and the book can go straight onto a shelf, or say which shelf
+  it's on already.
+- **Price alerts at Wook** (in Portugal), as well as Apple Books, for books
+  on Want to Read.
+- **Widgets:** Quote of the Day (one of your saved quotes, a new one daily)
+  and Friends' Race.
+- **Authors' Countries**: a world map in Stats of where the authors you've
+  read are from, looked up on Wikidata by itself, and how many countries
+  in Year in Books.
+
+### Fixed
+
+- Titles and author names are tidied everywhere: the "*" Goodreads puts
+  inside some names ("Stephen * King"), double spaces, stray symbols and
+  invisible characters go; names and titles typed all in capitals or all
+  in small letters get proper capitals, keeping words like "de" small
+  ("JOSÉ SARAMAGO" → "José Saramago", "sophia De mello" → "Sophia de
+  Mello"); "Retorno, O" becomes "O Retorno".
+- Rating a book could fail with "Goodreads rejected the rating (HTTP 404)";
+  the app now rates through the same endpoint as the stars on the shelf
+  page when the first one refuses, with a fresh token.
+- Rate Unrated: the keyboard shortcuts rated the first book shown over and
+  over instead of the one on screen. Books Goodreads won't take go back in
+  the queue with the reason. Pick for Me had the same shortcut problem.
+- The diagnostics log is also kept in a file.
+
 ## [3.0.0] — 2026-11-03
 
 ### Added

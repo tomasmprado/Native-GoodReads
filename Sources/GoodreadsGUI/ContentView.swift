@@ -12,14 +12,23 @@ struct ContentView: View {
                 switch model.selection {
                 case .home:        HomePane(model: model)
                 case .search:      SearchPane(model: model)
-                case .suggestions: SuggestionsPane(model: model)
+                case .suggestions: SuggestionsHub(model: model)
                 case .friends:     FriendsPane(model: model)
                 case .stats:       StatsPane(model: model)
-                case .quotes:      QuotesPane(model: model)
+                case .quotes:      NotesHub(model: model)
                 case .shelf:       ShelfPane(model: model)
                 }
             }
             .frame(minWidth: 480, minHeight: 420)
+            .toolbar {
+                ToolbarItem(placement: .navigation) {
+                    Button { model.selection = .search } label: {
+                        Label("Search", systemImage: "magnifyingglass")
+                    }
+                    .keyboardShortcut("k", modifiers: .command)
+                    .help("Search Goodreads (⌘K)")
+                }
+            }
         }
         .task {
             model.refreshUpNext()
@@ -67,14 +76,14 @@ struct ContentView: View {
                     Task { await model.updateProgress(entry, percent: percent, page: page, note: note) }
                 }
             case .finish(let entry):
-                FinishSheet(title: entry.title, author: entry.author) { rating, date, note in
+                FinishSheet(title: entry.title, author: entry.author, bookID: entry.bookID, cover: entry.coverURL) { rating, date, note in
                     Task {
                         await model.finish(bookID: entry.bookID, title: entry.title,
                                            rating: rating, dateRead: date, note: note)
                     }
                 }
             case .finishBook(let book):
-                FinishSheet(title: book.title, author: book.author) { rating, date, note in
+                FinishSheet(title: book.title, author: book.author, bookID: book.goodreadsID, cover: book.coverURL) { rating, date, note in
                     Task {
                         await model.finishBook(book, rating: rating, dateRead: date, note: note)
                     }
@@ -97,6 +106,8 @@ struct ContentView: View {
                 FriendProfileSheet(model: model)
             case .authorPage:
                 AuthorPageSheet(model: model)
+            case .scanBarcode:
+                BarcodeScanSheet(model: model)
             }
         }
     }
@@ -105,9 +116,6 @@ struct ContentView: View {
         List(selection: $model.selection) {
             Label("Home", systemImage: "house")
                 .tag(LibraryModel.Pane.home)
-
-            Label("Search", systemImage: "magnifyingglass")
-                .tag(LibraryModel.Pane.search)
 
             Label("Suggestions", systemImage: "sparkles")
                 .tag(LibraryModel.Pane.suggestions)
@@ -118,7 +126,7 @@ struct ContentView: View {
             Label("Stats", systemImage: "chart.bar")
                 .tag(LibraryModel.Pane.stats)
 
-            Label("Notes", systemImage: "note.text")
+            NotesSidebarRow()
                 .tag(LibraryModel.Pane.quotes)
 
             Section("Shelves") {
@@ -183,15 +191,73 @@ private struct HomePane: View {
 
 // MARK: - Suggestions
 
+/// Suggestions, Discover and Bingo, one pane with a switch at the top.
+private struct SuggestionsHub: View {
+    @ObservedObject var model: LibraryModel
+
+    var body: some View {
+        Group {
+            switch model.suggestionsTab {
+            case .picks:    SuggestionsPane(model: model)
+            case .discover: DiscoverPane(model: model)
+            case .bingo:    BingoPane(model: model)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                PaneTabs(selection: $model.suggestionsTab)
+            }
+        }
+    }
+}
+
+/// Notes and quotes, and letters to yourself.
+private struct NotesHub: View {
+    @ObservedObject var model: LibraryModel
+
+    var body: some View {
+        Group {
+            switch model.notesTab {
+            case .notes:   QuotesPane(model: model)
+            case .letters: LettersPane(model: model)
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                PaneTabs(selection: $model.notesTab)
+            }
+        }
+    }
+}
+
+/// The parts of a pane, as a switch at the top.
+protocol PaneTab: Hashable, Identifiable, CaseIterable where AllCases: RandomAccessCollection {
+    var title: String { get }
+}
+
+extension LibraryModel.SuggestionsTab: PaneTab {}
+extension LibraryModel.NotesTab: PaneTab {}
+
+private struct PaneTabs<Tab: PaneTab>: View {
+    @Binding var selection: Tab
+
+    var body: some View {
+        Picker("", selection: $selection) {
+            ForEach(Tab.allCases) { tab in Text(tab.title).tag(tab) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .fixedSize()
+    }
+}
+
 private struct SuggestionsPane: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject private var prefs = Preferences.shared
+    @State private var showAllSeries = false
 
     private var subtitle: String {
-        var bits: [String] = []
-        if !model.suggestionBasis.isEmpty {
-            bits.append(String(localized: "from \(model.suggestionBasis.count) finished in \(prefs.suggestionWindowDays) days"))
-        }
+        var bits: [String] = [String(localized: "from your ratings, favourites, friends and swipes")]
         if prefs.bookLanguage != .any { bits.append(prefs.bookLanguage.label) }
         return bits.joined(separator: " · ")
     }
@@ -221,11 +287,44 @@ private struct SuggestionsPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if model.suggestions.isEmpty && model.newReleases.isEmpty {
-                EmptyPane(symbol: model.isBuildingSuggestions ? "hourglass" : "sparkles",
-                          text: model.suggestionNote ?? String(localized: "Nothing to suggest yet."))
+            if model.recommendations.isEmpty && model.newReleases.isEmpty && model.seriesProgress.isEmpty {
+                EmptyPane(symbol: model.isBuildingRecommendations ? "hourglass" : "sparkles",
+                          text: model.recommendationNote ?? String(localized: "Nothing to suggest yet."))
             } else {
                 List {
+                    if !model.seriesProgress.isEmpty {
+                        Section {
+                            ForEach(showAllSeries ? model.seriesProgress : model.seriesProgress.filter { !$0.isComplete }) { series in
+                                SeriesRow(series: series, model: model)
+                            }
+                            let complete = model.seriesProgress.filter(\.isComplete).count
+                            if complete > 0 {
+                                Button(showAllSeries ? String(localized: "Hide finished series")
+                                                     : String(localized: "Show \(complete) finished series")) { showAllSeries.toggle() }
+                                    .buttonStyle(.link)
+                                    .appFont(size: 11)
+                            }
+                        } header: {
+                            HStack {
+                                Text("Your Series")
+                                if model.isLoadingSeries { ProgressView().controlSize(.mini) }
+                            }
+                        }
+                    }
+                    if !model.recommendations.isEmpty {
+                        Section {
+                            ForEach(model.recommendations.prefix(25)) { item in
+                                suggestionRow(Suggestion(book: item.book, reason: item.reason),
+                                              detail: [item.reason, item.communityRating.map { String(format: "%.2f ★", $0) }]
+                                                .compactMap { $0 }.joined(separator: " · "))
+                            }
+                        } header: {
+                            HStack {
+                                Text("Picked for You")
+                                if model.isBuildingRecommendations { ProgressView().controlSize(.mini) }
+                            }
+                        }
+                    }
                     if !model.newReleases.isEmpty {
                         Section("New from Your Authors") {
                             ForEach(model.newReleases) { suggestion in
@@ -234,19 +333,11 @@ private struct SuggestionsPane: View {
                             }
                         }
                     }
-                    if !model.suggestions.isEmpty {
-                        Section("More by Authors You’ve Read") {
-                            ForEach(model.suggestions) { suggestion in
-                                suggestionRow(suggestion,
-                                              detail: detailLine(suggestion.reason, publisher: suggestion.book.publisher))
-                            }
-                        }
-                    }
                 }
                 .listStyle(.inset)
             }
 
-            if let note = model.suggestionNote, !model.suggestions.isEmpty {
+            if let note = model.recommendationNote, !model.recommendations.isEmpty {
                 Divider()
                 Text(note)
                     .appFont(size: 11)
@@ -259,13 +350,14 @@ private struct SuggestionsPane: View {
         .navigationSubtitle(subtitle)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                if model.isBuildingSuggestions {
+                if model.isBuildingRecommendations {
                     ProgressView().controlSize(.small)
                 } else {
                     Button {
                         Task {
-                            await model.buildSuggestions(force: true)
                             await model.loadNewReleases(force: true)
+                            await model.loadSeries(force: true)
+                            await model.buildRecommendations(force: true)
                         }
                     } label: {
                         Label("Rebuild suggestions", systemImage: "arrow.clockwise")
@@ -948,6 +1040,12 @@ private struct SearchPane: View {
                     .onChange(of: model.query) { _ in model.queryChanged() }
                     .onSubmit { model.searchNow() }
 
+                Button { model.activeSheet = .scanBarcode } label: {
+                    Image(systemName: "barcode.viewfinder")
+                }
+                .buttonStyle(.borderless)
+                .help("Scan a book’s barcode with the camera")
+
                 if model.isSearching {
                     ProgressView().controlSize(.small)
                 } else if !model.query.isEmpty {
@@ -1038,6 +1136,51 @@ private struct ShelfPane: View {
     @State private var picking = false
     @State private var quickRating = false
 
+    private var isReadingNow: Bool { model.currentShelf?.name == Shelf.currentlyReading.name }
+
+    /// The bookcase isn't offered for what you're reading now.
+    private var shownLayout: String { layout == "spines" && isReadingNow ? "list" : layout }
+
+    /// How many of each work's volumes you've read, of those on your shelves.
+    @State private var volumeCounts: [String: Volumes.Count] = [:]
+
+    /// The shelf with volumes of one work joined ("Os Maias I" and "II").
+    /// Not in your own order, where each book is dragged on its own.
+    private var items: [ShelfItem] {
+        model.sortOrder == .myOrder
+            ? model.visibleEntries.map { ShelfItem(entry: $0, volumes: [$0], key: nil) }
+            : Volumes.group(model.visibleEntries)
+    }
+
+    /// "1/2": volumes read, of the volumes you have.
+    private func badge(_ item: ShelfItem) -> String? {
+        guard item.isSet else { return nil }
+        if let key = item.key, let count = volumeCounts[key] { return count.label }
+        let onRead = model.currentShelf?.name == Shelf.read.name
+        return Volumes.Count(read: onRead ? item.volumes.count : 0, total: item.volumes.count).label
+    }
+
+    private func countVolumes() {
+        var read = ShelfCache.read(.read)?.entries ?? []
+        var all = model.shelves.filter { $0.name != model.currentShelf?.name }
+            .flatMap { ShelfCache.read($0)?.entries ?? [] } + model.shelfEntries
+        if model.currentShelf?.name == Shelf.read.name { read = model.shelfEntries }
+        all += read
+        volumeCounts = Volumes.counts(read: read, all: all)
+    }
+
+    /// A work in volumes gets each volume's actions in its own submenu.
+    @ViewBuilder
+    private func itemActions(_ item: ShelfItem) -> some View {
+        if item.isSet {
+            ForEach(item.volumes) { volume in
+                Menu(volume.title) { rowActions(volume) }
+            }
+        } else {
+            rowActions(item.entry)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if model.visibleEntries.isEmpty {
@@ -1045,17 +1188,22 @@ private struct ShelfPane: View {
                     symbol: model.isLoadingShelf ? "hourglass" : "tray",
                     text: emptyText
                 )
-            } else if layout == "grid" {
+            } else if shownLayout == "spines" {
+                BookshelfView(model: model, items: items, badge: badge) { item in
+                    itemActions(item)
+                }
+            } else if shownLayout == "grid" {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 112), spacing: 16, alignment: .top)],
                               spacing: 18) {
-                        ForEach(model.visibleEntries) { entry in
-                            CoverTile(entry: entry, isBusy: model.busyBookID == entry.bookID) {
-                                model.showBookDetail(entry.asBook)
+                        ForEach(items) { item in
+                            CoverTile(entry: item.entry, isBusy: item.volumes.contains { model.busyBookID == $0.bookID },
+                                      badge: badge(item)) {
+                                model.showBookDetail(item.volumes[0].asBook)
                             }
-                            .contextMenu { rowActions(entry) }
-                            .draggable(LibraryModel.dragPrefix + entry.id) {
-                                Label(entry.title, systemImage: "book.closed").padding(6)
+                            .contextMenu { itemActions(item) }
+                            .draggable(LibraryModel.dragPrefix + item.entry.id) {
+                                Label(item.entry.title, systemImage: "book.closed").padding(6)
                             }
                         }
                     }
@@ -1063,20 +1211,21 @@ private struct ShelfPane: View {
                 }
             } else {
                 List {
-                    ForEach(model.visibleEntries) { entry in
+                    ForEach(items) { item in
                         BookRow(
-                            title: entry.title,
-                            author: entry.author,
-                            cover: entry.coverURL,
-                            detail: detailLine(entry),
-                            stars: entry.rating,
-                            isBusy: model.busyBookID == entry.bookID,
-                            onOpen: { model.showBookDetail(entry.asBook) }
+                            title: item.entry.title,
+                            author: item.entry.author,
+                            cover: item.entry.coverURL,
+                            detail: detailLine(item.entry),
+                            stars: item.entry.rating,
+                            isBusy: item.volumes.contains { model.busyBookID == $0.bookID },
+                            onOpen: { model.showBookDetail(item.volumes[0].asBook) },
+                            badge: badge(item)
                         ) {
-                            rowActions(entry)
+                            itemActions(item)
                         }
-                        .draggable(LibraryModel.dragPrefix + entry.id) {
-                            Label(entry.title, systemImage: "book.closed")
+                        .draggable(LibraryModel.dragPrefix + item.entry.id) {
+                            Label(item.entry.title, systemImage: "book.closed")
                                 .padding(6)
                         }
                     }
@@ -1098,6 +1247,7 @@ private struct ShelfPane: View {
         .task(id: model.shelfEntries.count) {
             ImageMemoryCache.shared.prefetch(model.visibleEntries.prefix(40).compactMap(\.coverURL))
         }
+        .task(id: model.shelfEntries) { countVolumes() }
         .toolbar { toolbarContent }
         .sheet(isPresented: $picking) { PickForMeSheet(model: model, candidates: model.visibleEntries) }
         .sheet(isPresented: $quickRating) {
@@ -1118,12 +1268,15 @@ private struct ShelfPane: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            Picker("Layout", selection: $layout) {
+            Picker("Layout", selection: Binding(get: { shownLayout }, set: { layout = $0 })) {
                 Label("List", systemImage: "list.bullet").tag("list")
                 Label("Covers", systemImage: "square.grid.2x2").tag("grid")
+                if !isReadingNow {
+                    Label("Bookcase", systemImage: "books.vertical").tag("spines")
+                }
             }
             .pickerStyle(.segmented)
-            .help("Show as a list or as covers")
+            .help("Show as a list, as covers or as spines on a bookcase")
 
             filterMenu
 
@@ -1309,6 +1462,7 @@ private func detailLine(_ existing: String?, publisher: String?) -> String? {
 private struct CoverTile: View {
     let entry: ShelfEntry
     let isBusy: Bool
+    var badge: String? = nil
     let open: () -> Void
 
     var body: some View {
@@ -1331,6 +1485,17 @@ private struct CoverTile: View {
                 }
                 .frame(width: 112, height: 166)
                 .clipShape(RoundedRectangle(cornerRadius: 5))
+                .overlay(alignment: .topTrailing) {
+                    if let badge {
+                        Text(badge)
+                            .appFont(size: 10, weight: .bold)
+                            .monospacedDigit()
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .glassCapsule()
+                            .padding(5)
+                            .help("Volumes read, of the volumes on your shelves")
+                    }
+                }
                 .shadow(color: .black.opacity(0.15), radius: 3, y: 2)
             }
             .buttonStyle(.plain)
@@ -1531,7 +1696,7 @@ private struct CurrentlyReadingCard: View {
 
 // MARK: - Shared pieces
 
-private struct EmptyPane: View {
+struct EmptyPane: View {
     let symbol: String
     let text: String
 
@@ -1557,6 +1722,8 @@ private struct BookRow<Actions: View>: View {
     let isBusy: Bool
     /// Clicking the row opens the book's details.
     var onOpen: (() -> Void)? = nil
+    /// Shown on the right, e.g. "1/2" for a work's volumes.
+    var badge: String? = nil
     @ViewBuilder let actions: () -> Actions
 
     var body: some View {
@@ -1589,6 +1756,15 @@ private struct BookRow<Actions: View>: View {
             .accessibilityElement(children: .combine)
 
             Spacer(minLength: 8)
+
+            if let badge {
+                Text(badge)
+                    .appFont(size: 12, weight: .semibold)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .help("Volumes read, of the volumes on your shelves")
+                    .accessibilityLabel(Text("\(badge) volumes read"))
+            }
 
             if isBusy {
                 ProgressView().controlSize(.small)
@@ -1636,8 +1812,9 @@ private struct BookRow<Actions: View>: View {
     }
 }
 
-/// What's happening, at the foot of the sidebar: the latest result (with
-/// Undo), being offline, an update, and signing in when signed out.
+/// At the foot of the sidebar, only when there's something to say: an
+/// action that failed, Undo, being offline, an update, and signing in when
+/// signed out.
 private struct SidebarStatus: View {
     @ObservedObject var model: LibraryModel
     @ObservedObject var session: WebSession
@@ -1670,25 +1847,16 @@ private struct SidebarStatus: View {
                     .glassCapsule()
                     .help("No internet connection. What you see is from the cache, and refreshes once you're back online.")
             }
-            if let status = model.status {
+            // Only what went wrong; things that worked don't need saying.
+            if let status = model.status, status.isError {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Image(systemName: status.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                        .foregroundStyle(status.isError ? .orange : .green)
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
                     Text(status.text)
                         .lineLimit(4)
                         .appFont(size: 11)
                         .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
-                }
-            } else {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(model.loggedIn ? Color.green : Color.secondary)
-                        .frame(width: 7, height: 7)
-                    Text(model.loggedIn ? String(localized: "Signed in") : String(localized: "Not signed in"))
-                        .appFont(size: 11)
-                        .foregroundStyle(.secondary)
-                    if session.isBusy { ProgressView().controlSize(.mini) }
                 }
             }
 
@@ -1762,5 +1930,24 @@ private struct UpdateButton: View {
             return String(localized: "The last attempt failed: \(message). Click to try again.")
         }
         return String(localized: "See what's new in \(update.version)")
+    }
+}
+
+/// Notes in the sidebar, with how many opened letters you haven't read.
+private struct NotesSidebarRow: View {
+    @ObservedObject private var box = LetterBox.shared
+
+    var body: some View {
+        HStack {
+            Label("Notes", systemImage: "note.text")
+            Spacer()
+            if box.unread > 0 {
+                Text("\(box.unread)")
+                    .appFont(size: 10, weight: .bold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6).padding(.vertical, 1)
+                    .background(Capsule().fill(Color.accentColor))
+            }
+        }
     }
 }

@@ -20,6 +20,8 @@ enum GoodreadsBookPage {
         var series: GoodreadsSeries.Ref? = nil
         // Absent from book pages cached before 2.6.
         var about: About? = nil
+        /// The work all editions share — for "Readers also enjoyed". Absent before 3.1.
+        var workID: String? = nil
     }
 
     /// What Book Details shows about the book itself.
@@ -101,6 +103,8 @@ enum GoodreadsBookPage {
             detail = try? parse(html: html, bookID: bookID)
         }
         guard let detail else { throw firstError ?? AppError("Couldn't read the book page.") }
+        // Kept, so the bingo, the soundtrack and the suggestions can read it later.
+        await DataCache.shared.write(detail, "book-page", bookID)
         await BookExtras.save(BookExtras(pages: detail.pageCount, genres: detail.genres ?? [],
                                            rating: detail.about?.averageRating,
                                            ratingsCount: detail.about?.ratingsCount), for: bookID)
@@ -141,7 +145,8 @@ enum GoodreadsBookPage {
             pageCount: (details?["numPages"] as? Int).flatMap { $0 > 0 ? $0 : nil },
             genres: genres(of: book),
             series: series(of: book, in: apollo),
-            about: about(of: book, in: apollo, html: html)
+            about: about(of: book, in: apollo, html: html),
+            workID: workID(of: book, in: apollo)
         )
     }
 
@@ -281,6 +286,12 @@ enum GoodreadsBookPage {
     }
 
     /// Goodreads' genre list for the book, most-voted first.
+    private static func workID(of book: [String: Any]?, in apollo: [String: Any]) -> String? {
+        guard let ref = (book?["work"] as? [String: Any])?["__ref"] as? String,
+              let work = apollo[ref] as? [String: Any], let legacy = work["legacyId"] else { return nil }
+        return String(describing: legacy)
+    }
+
     private static func genres(of book: [String: Any]?) -> [String] {
         let list = book?["bookGenres"] as? [[String: Any]] ?? []
         return list.compactMap { ($0["genre"] as? [String: Any])?["name"] as? String }

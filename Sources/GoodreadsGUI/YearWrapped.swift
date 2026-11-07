@@ -108,7 +108,9 @@ struct YearWrappedSheet: View {
     @State private var showCard = false
 
     private var wrap: YearWrap { YearWrap.compute(read: read, extras: extras, year: year) }
-    private var slides: [Slide] { Slide.all(for: wrap) }
+    private var slides: [Slide] {
+        Slide.all(for: wrap, countries: AuthorCountries.tally(wrap.books.map { ($0.author, model.authorCountryMap[$0.author]) }))
+    }
 
     var body: some View {
         let slides = self.slides
@@ -199,6 +201,8 @@ struct YearWrappedSheet: View {
 
     private func load() async {
         read = ShelfCache.read(.read)?.entries ?? []
+        if model.authorCountryMap.isEmpty { await model.loadAuthorCountries(lookUp: false) }
+        Task { await model.loadAuthorCountries(lookUp: true) }
         extras = await BookExtras.all()
         if let latest = YearSummary.years(in: read).first, latest < year,
            YearWrap.compute(read: read, extras: extras, year: year).books.isEmpty { year = latest }
@@ -232,7 +236,7 @@ private struct Slide {
     ].map { LinearGradient(colors: $0, startPoint: .topLeading, endPoint: .bottomTrailing) }
 
     @MainActor
-    static func all(for wrap: YearWrap) -> [Slide] {
+    static func all(for wrap: YearWrap, countries: [AuthorCountries.Tally] = []) -> [Slide] {
         guard !wrap.books.isEmpty else { return [] }
         var slides: [Slide] = []
         func add(@ViewBuilder _ view: @escaping @MainActor (LibraryModel) -> some View) {
@@ -289,6 +293,17 @@ private struct Slide {
                     Text("You couldn't get enough of").font(.system(size: 18)).opacity(0.85)
                     Text(author.name).font(.system(size: 40, weight: .heavy, design: .rounded)).multilineTextAlignment(.center)
                     Text("\(author.count) books").font(.system(size: 18)).opacity(0.85)
+                }
+            }
+        }
+        if countries.count > 1 {
+            add { _ in
+                VStack(spacing: 14) {
+                    Text("Your authors came from").font(.system(size: 18)).opacity(0.85)
+                    Text("\(countries.count) countries").font(.system(size: 48, weight: .heavy, design: .rounded))
+                    Text(countries.prefix(8).map(\.country.flag).joined(separator: " ")).font(.system(size: 34))
+                    Text(countries.prefix(3).map { "\($0.country.displayName) (\($0.books))" }.joined(separator: " · "))
+                        .font(.system(size: 15)).opacity(0.8)
                 }
             }
         }

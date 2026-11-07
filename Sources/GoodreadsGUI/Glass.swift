@@ -98,6 +98,24 @@ extension View {
         #endif
     }
 
+    /// A round glass button face, tinted a little with `tint` — Discover's
+    /// pass / read / details / want buttons. Without glass: a plain disc
+    /// with a coloured ring.
+    @ViewBuilder
+    func glassCircle(tint: Color) -> some View {
+        #if compiler(>=6.2)
+        if #available(macOS 26, *) {
+            glassEffect(.regular.tint(tint.opacity(0.12)).interactive(), in: Circle())
+        } else {
+            background(Circle().fill(Color(nsColor: .controlBackgroundColor)))
+                .overlay(Circle().stroke(tint.opacity(0.4), lineWidth: 1.5))
+        }
+        #else
+        background(Circle().fill(Color(nsColor: .controlBackgroundColor)))
+            .overlay(Circle().stroke(tint.opacity(0.4), lineWidth: 1.5))
+        #endif
+    }
+
     /// The ⌥Space panel's whole surface.
     @ViewBuilder
     func glassPanel(cornerRadius: CGFloat = 22) -> some View {

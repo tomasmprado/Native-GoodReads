@@ -320,14 +320,14 @@ struct PreferencesView: View {
                         Task { prefs.notifyFriendActivity = await FriendNotifier.requestPermission() }
                     }
                 ))
-                Toggle("Notify me when a Want to Read ebook gets cheaper in Apple Books", isOn: Binding(
+                Toggle("Notify me when a Want to Read book gets cheaper (Apple Books; Wook in Portugal)", isOn: Binding(
                     get: { prefs.notifyPriceDrops },
                     set: { wanted in
                         guard wanted else { prefs.notifyPriceDrops = false; return }
                         Task { prefs.notifyPriceDrops = await FriendNotifier.requestPermission() }
                     }
                 ))
-                Toggle("Notify me about new books from authors I read", isOn: Binding(
+                Toggle("Notify me about new books from authors I read and series I follow", isOn: Binding(
                     get: { prefs.notifyNewReleases },
                     set: { wanted in
                         guard wanted else { prefs.notifyNewReleases = false; return }

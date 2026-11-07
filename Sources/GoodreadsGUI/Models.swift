@@ -4,8 +4,8 @@ struct Book: Identifiable, Hashable, Codable {
     /// ISBN-13, falling back to ISBN-10, falling back to a "gb:" prefixed
     /// Google volume id for the rare item with neither. Not a Goodreads id.
     let id: String
-    let title: String
-    let author: String
+    @TidyTitle var title: String
+    @TidyName var author: String
     let coverURL: URL?
     let rating: String?
     var publisher: String? = nil
@@ -22,6 +22,9 @@ struct Book: Identifiable, Hashable, Codable {
     var publishedDate: String? = nil
     /// Google Books' subjects, e.g. "Fiction / Science Fiction".
     var categories: [String]? = nil
+    /// The Google Books series it belongs to, and its number in it.
+    var seriesID: String? = nil
+    var seriesNumber: Double? = nil
 
     /// This book with whatever it's missing taken from `other`.
     func filled(from other: Book?) -> Book {
@@ -137,8 +140,8 @@ struct ShelfEntry: Identifiable, Hashable, Codable {
     let id: String          // review id when we have one, else book id
     let bookID: String
     let reviewID: String?
-    let title: String
-    let author: String
+    @TidyTitle var title: String
+    @TidyName var author: String
     let coverURLString: String?
     var rating: Int?        // 0-5
     var dateRead: String?

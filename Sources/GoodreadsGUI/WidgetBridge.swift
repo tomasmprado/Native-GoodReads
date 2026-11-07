@@ -41,7 +41,9 @@ enum WidgetBridge {
                                 ahead: max(model.readThisYear, stats.readThisYear) - ReadingStats.expectedByToday(goal: goalCount))
         }
 
-        let snapshot = WidgetSnapshot(reading: books, goal: goal, updated: Date())
+        var snapshot = WidgetSnapshot(reading: books, goal: goal, updated: Date())
+        snapshot.quotes = await savedQuotes(shelves: reading + (ShelfCache.read(.read)?.entries ?? []))
+        snapshot.race = model.race.prefix(6).map { .init(name: $0.name, read: $0.read, goal: $0.goal, isMe: $0.isMe) }
         if var last = lastWritten {
             last.updated = snapshot.updated
             if last == snapshot { return }
@@ -54,6 +56,15 @@ enum WidgetBridge {
         } catch {
             Diagnostics.shared.log("widget", "couldn’t save: \(error.localizedDescription)", ok: false)
         }
+    }
+
+    /// Your saved quotes, in a steady order, for the Quote of the Day widget.
+    private static func savedQuotes(shelves: [ShelfEntry]) async -> [WidgetSnapshot.Quote] {
+        let books = QuoteLibrary.books(notes: await BookNotes.all(), shelves: shelves)
+        return books.flatMap { book in book.quotes.map { WidgetSnapshot.Quote(text: $0.text, title: book.title, author: book.author) } }
+            .filter { $0.text.count <= 600 }
+            .sorted { $0.text < $1.text }
+            .prefix(100).map { $0 }
     }
 
     /// A small JPEG of the cover next to the snapshot, so the sandboxed
