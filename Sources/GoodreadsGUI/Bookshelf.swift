@@ -5,22 +5,30 @@ import SwiftUI
 /// shows a little about it underneath, with a + for the full details.
 struct BookshelfView<Actions: View>: View {
     @ObservedObject var model: LibraryModel
-    let entries: [ShelfEntry]
-    @ViewBuilder let actions: (ShelfEntry) -> Actions
+    let items: [ShelfItem]
+    /// "1/2" for a work's volumes.
+    var badge: (ShelfItem) -> String? = { _ in nil }
+    @ViewBuilder let actions: (ShelfItem) -> Actions
 
     @State private var selectedID: String?
 
-    private var selected: ShelfEntry? { entries.first { $0.id == selectedID } }
+    private var selected: ShelfItem? { items.first { $0.id == selectedID } }
+
+    /// A work in volumes is as thick as all of them together.
+    private func width(_ item: ShelfItem) -> CGFloat {
+        let pages = item.volumes.compactMap { model.bookExtras[$0.bookID]?.pages }
+        return Bookshelf.spineWidth(pages: pages.isEmpty ? (item.isSet ? 300 * item.volumes.count : nil) : pages.reduce(0, +))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             GeometryReader { geo in
-                let widths = entries.map { Bookshelf.spineWidth(pages: model.bookExtras[$0.bookID]?.pages) }
+                let widths = items.map(width)
                 let rows = Bookshelf.rows(widths: widths, available: geo.size.width - 48, spacing: Bookshelf.gap)
                 ScrollView {
                     VStack(spacing: 26) {
                         ForEach(rows, id: \.lowerBound) { range in
-                            shelfRow(Array(entries[range]), widths: Array(widths[range]))
+                            shelfRow(Array(items[range]), widths: Array(widths[range]))
                         }
                     }
                     .padding(.horizontal, 24)
@@ -28,19 +36,19 @@ struct BookshelfView<Actions: View>: View {
                 }
             }
 
-            if let entry = selected {
-                info(entry)
+            if let item = selected {
+                info(item)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedID)
     }
 
-    private func shelfRow(_ row: [ShelfEntry], widths: [CGFloat]) -> some View {
+    private func shelfRow(_ row: [ShelfItem], widths: [CGFloat]) -> some View {
         VStack(spacing: 0) {
             HStack(alignment: .bottom, spacing: Bookshelf.gap) {
-                ForEach(Array(row.enumerated()), id: \.element.id) { index, entry in
-                    spine(entry, width: widths[index])
+                ForEach(Array(row.enumerated()), id: \.element.id) { index, item in
+                    spine(item, width: widths[index])
                 }
                 Spacer(minLength: 0)
             }
@@ -58,7 +66,8 @@ struct BookshelfView<Actions: View>: View {
             .shadow(color: .black.opacity(0.25), radius: 3, y: 3)
     }
 
-    private func spine(_ entry: ShelfEntry, width: CGFloat) -> some View {
+    private func spine(_ item: ShelfItem, width: CGFloat) -> some View {
+        let entry = item.entry
         let height = Bookshelf.spineHeight(entry.bookID)
         let style = Bookshelf.style(entry.bookID)
         let isSelected = entry.id == selectedID
@@ -99,9 +108,9 @@ struct BookshelfView<Actions: View>: View {
         .shadow(color: .black.opacity(isSelected ? 0.35 : 0.15), radius: isSelected ? 5 : 1, x: 1, y: 1)
         .offset(y: isSelected ? -12 : 0)
         .contentShape(Rectangle())
-        .onTapGesture(count: 2) { model.showBookDetail(entry.asBook) }
+        .onTapGesture(count: 2) { model.showBookDetail(item.volumes[0].asBook) }
         .onTapGesture { selectedID = isSelected ? nil : entry.id }
-        .contextMenu { actions(entry) }
+        .contextMenu { actions(item) }
         .draggable(LibraryModel.dragPrefix + entry.id) {
             Label(entry.title, systemImage: "book.closed").padding(6)
         }
@@ -112,8 +121,9 @@ struct BookshelfView<Actions: View>: View {
     }
 
     /// A small card about the book pulled out, with + for the full details.
-    private func info(_ entry: ShelfEntry) -> some View {
-        HStack(spacing: 12) {
+    private func info(_ item: ShelfItem) -> some View {
+        let entry = item.entry
+        return HStack(spacing: 12) {
             CachedAsyncImage(url: entry.coverURL) { phase in
                 if case .success(let image) = phase { image.resizable().aspectRatio(contentMode: .fill) }
                 else { RoundedRectangle(cornerRadius: 3).fill(Color.secondary.opacity(0.15)) }
@@ -128,13 +138,20 @@ struct BookshelfView<Actions: View>: View {
                     if let rating = entry.rating, rating > 0 {
                         Text(String(repeating: "★", count: rating)).foregroundStyle(.orange)
                     }
-                    ForEach(details(entry), id: \.self) { Text($0) }
+                    ForEach(details(item), id: \.self) { Text($0) }
                 }
                 .appFont(size: 10)
                 .foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            Button { model.showBookDetail(entry.asBook) } label: {
+            if let badge = badge(item) {
+                Text(badge)
+                    .appFont(size: 13, weight: .semibold)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .help("Volumes read, of the volumes on your shelves")
+            }
+            Button { model.showBookDetail(item.volumes[0].asBook) } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Color.accentColor)
@@ -154,9 +171,12 @@ struct BookshelfView<Actions: View>: View {
         .frame(maxWidth: 560)
     }
 
-    private func details(_ entry: ShelfEntry) -> [String] {
+    private func details(_ item: ShelfItem) -> [String] {
+        let entry = item.entry
         var bits: [String] = []
-        if let pages = model.bookExtras[entry.bookID]?.pages { bits.append(String(localized: "\(pages) pages")) }
+        let pages = item.volumes.compactMap { model.bookExtras[$0.bookID]?.pages }
+        if item.isSet { bits.append(String(localized: "\(item.volumes.count) volumes")) }
+        if !pages.isEmpty { bits.append(String(localized: "\(pages.reduce(0, +)) pages")) }
         if let date = entry.dateRead, !date.isEmpty { bits.append(String(localized: "read \(date)")) }
         else if let date = entry.dateAdded, !date.isEmpty { bits.append(String(localized: "added \(date)")) }
         return bits

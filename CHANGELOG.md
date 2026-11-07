@@ -14,6 +14,10 @@ added in that diff, meaning `v1.0.0` predates all of it.
 - **Bookcase view** for shelves (not Currently Reading): spines with the
   title and author, thicker for longer books, on wooden planks. Click one
   to pull it out and see a little about it underneath; + opens its details.
+- **Volumes together:** the volumes of one work on a shelf ("Os Irmãos
+  Karamázov I" and "II", "Guerra e Paz – Volume I"…) show as one book with
+  the first one's cover and "1/2" on the right — volumes read, of those on
+  your shelves. Each volume's actions are in its own submenu.
 - **Bingo**: a 4×4 card for the year built from what you rarely read —
   countries and continents you've never visited, books older than your
   grandparents, genres you skip or keep passing in Discover, books waiting

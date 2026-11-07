@@ -917,3 +917,8 @@
 "Show as a list, as covers or as spines on a bookcase" = "Mostrar em lista, em capas ou em lombadas numa estante";
 "An influence on %@" = "Influenciou %@";
 "An influence on %@ and %lld more of your authors" = "Influenciou %1$@ e mais %2$lld dos teus autores";
+
+/* Volumes of one work */
+"Volumes read, of the volumes on your shelves" = "Volumes lidos, dos volumes que tens nas estantes";
+"%@ volumes read" = "%@ volumes lidos";
+"%lld volumes" = "%lld volumes";

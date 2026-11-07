@@ -1141,6 +1141,46 @@ private struct ShelfPane: View {
     /// The bookcase isn't offered for what you're reading now.
     private var shownLayout: String { layout == "spines" && isReadingNow ? "list" : layout }
 
+    /// How many of each work's volumes you've read, of those on your shelves.
+    @State private var volumeCounts: [String: Volumes.Count] = [:]
+
+    /// The shelf with volumes of one work joined ("Os Maias I" and "II").
+    /// Not in your own order, where each book is dragged on its own.
+    private var items: [ShelfItem] {
+        model.sortOrder == .myOrder
+            ? model.visibleEntries.map { ShelfItem(entry: $0, volumes: [$0], key: nil) }
+            : Volumes.group(model.visibleEntries)
+    }
+
+    /// "1/2": volumes read, of the volumes you have.
+    private func badge(_ item: ShelfItem) -> String? {
+        guard item.isSet else { return nil }
+        if let key = item.key, let count = volumeCounts[key] { return count.label }
+        let onRead = model.currentShelf?.name == Shelf.read.name
+        return Volumes.Count(read: onRead ? item.volumes.count : 0, total: item.volumes.count).label
+    }
+
+    private func countVolumes() {
+        var read = ShelfCache.read(.read)?.entries ?? []
+        var all = model.shelves.filter { $0.name != model.currentShelf?.name }
+            .flatMap { ShelfCache.read($0)?.entries ?? [] } + model.shelfEntries
+        if model.currentShelf?.name == Shelf.read.name { read = model.shelfEntries }
+        all += read
+        volumeCounts = Volumes.counts(read: read, all: all)
+    }
+
+    /// A work in volumes gets each volume's actions in its own submenu.
+    @ViewBuilder
+    private func itemActions(_ item: ShelfItem) -> some View {
+        if item.isSet {
+            ForEach(item.volumes) { volume in
+                Menu(volume.title) { rowActions(volume) }
+            }
+        } else {
+            rowActions(item.entry)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if model.visibleEntries.isEmpty {
@@ -1149,20 +1189,21 @@ private struct ShelfPane: View {
                     text: emptyText
                 )
             } else if shownLayout == "spines" {
-                BookshelfView(model: model, entries: model.visibleEntries) { entry in
-                    rowActions(entry)
+                BookshelfView(model: model, items: items, badge: badge) { item in
+                    itemActions(item)
                 }
             } else if shownLayout == "grid" {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 112), spacing: 16, alignment: .top)],
                               spacing: 18) {
-                        ForEach(model.visibleEntries) { entry in
-                            CoverTile(entry: entry, isBusy: model.busyBookID == entry.bookID) {
-                                model.showBookDetail(entry.asBook)
+                        ForEach(items) { item in
+                            CoverTile(entry: item.entry, isBusy: item.volumes.contains { model.busyBookID == $0.bookID },
+                                      badge: badge(item)) {
+                                model.showBookDetail(item.volumes[0].asBook)
                             }
-                            .contextMenu { rowActions(entry) }
-                            .draggable(LibraryModel.dragPrefix + entry.id) {
-                                Label(entry.title, systemImage: "book.closed").padding(6)
+                            .contextMenu { itemActions(item) }
+                            .draggable(LibraryModel.dragPrefix + item.entry.id) {
+                                Label(item.entry.title, systemImage: "book.closed").padding(6)
                             }
                         }
                     }
@@ -1170,20 +1211,21 @@ private struct ShelfPane: View {
                 }
             } else {
                 List {
-                    ForEach(model.visibleEntries) { entry in
+                    ForEach(items) { item in
                         BookRow(
-                            title: entry.title,
-                            author: entry.author,
-                            cover: entry.coverURL,
-                            detail: detailLine(entry),
-                            stars: entry.rating,
-                            isBusy: model.busyBookID == entry.bookID,
-                            onOpen: { model.showBookDetail(entry.asBook) }
+                            title: item.entry.title,
+                            author: item.entry.author,
+                            cover: item.entry.coverURL,
+                            detail: detailLine(item.entry),
+                            stars: item.entry.rating,
+                            isBusy: item.volumes.contains { model.busyBookID == $0.bookID },
+                            onOpen: { model.showBookDetail(item.volumes[0].asBook) },
+                            badge: badge(item)
                         ) {
-                            rowActions(entry)
+                            itemActions(item)
                         }
-                        .draggable(LibraryModel.dragPrefix + entry.id) {
-                            Label(entry.title, systemImage: "book.closed")
+                        .draggable(LibraryModel.dragPrefix + item.entry.id) {
+                            Label(item.entry.title, systemImage: "book.closed")
                                 .padding(6)
                         }
                     }
@@ -1205,6 +1247,7 @@ private struct ShelfPane: View {
         .task(id: model.shelfEntries.count) {
             ImageMemoryCache.shared.prefetch(model.visibleEntries.prefix(40).compactMap(\.coverURL))
         }
+        .task(id: model.shelfEntries) { countVolumes() }
         .toolbar { toolbarContent }
         .sheet(isPresented: $picking) { PickForMeSheet(model: model, candidates: model.visibleEntries) }
         .sheet(isPresented: $quickRating) {
@@ -1419,6 +1462,7 @@ private func detailLine(_ existing: String?, publisher: String?) -> String? {
 private struct CoverTile: View {
     let entry: ShelfEntry
     let isBusy: Bool
+    var badge: String? = nil
     let open: () -> Void
 
     var body: some View {
@@ -1441,6 +1485,17 @@ private struct CoverTile: View {
                 }
                 .frame(width: 112, height: 166)
                 .clipShape(RoundedRectangle(cornerRadius: 5))
+                .overlay(alignment: .topTrailing) {
+                    if let badge {
+                        Text(badge)
+                            .appFont(size: 10, weight: .bold)
+                            .monospacedDigit()
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .glassCapsule()
+                            .padding(5)
+                            .help("Volumes read, of the volumes on your shelves")
+                    }
+                }
                 .shadow(color: .black.opacity(0.15), radius: 3, y: 2)
             }
             .buttonStyle(.plain)
@@ -1667,6 +1722,8 @@ private struct BookRow<Actions: View>: View {
     let isBusy: Bool
     /// Clicking the row opens the book's details.
     var onOpen: (() -> Void)? = nil
+    /// Shown on the right, e.g. "1/2" for a work's volumes.
+    var badge: String? = nil
     @ViewBuilder let actions: () -> Actions
 
     var body: some View {
@@ -1699,6 +1756,15 @@ private struct BookRow<Actions: View>: View {
             .accessibilityElement(children: .combine)
 
             Spacer(minLength: 8)
+
+            if let badge {
+                Text(badge)
+                    .appFont(size: 12, weight: .semibold)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .help("Volumes read, of the volumes on your shelves")
+                    .accessibilityLabel(Text("\(badge) volumes read"))
+            }
 
             if isBusy {
                 ProgressView().controlSize(.small)
