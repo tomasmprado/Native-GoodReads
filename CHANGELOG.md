@@ -32,6 +32,10 @@ added in that diff, meaning `v1.0.0` predates all of it.
   on your shelves is kept on disk, so the library looks the same offline.
 - **Next volume** on Home: after "Os Maias I", "Os Maias II" from your Want
   to Read, with how many volumes you've read.
+- **Homebrew**: `brew install --cask native-goodreads` from the
+  `tomasmprado/tap` tap. `install.sh` can also install somewhere other than
+  /Applications (`GOODREADS_APP`) and leave the app closed
+  (`GOODREADS_NO_OPEN=1`).
 - **Bookcase**: spines take their colour from the book's cover; the arrow
   keys move along the shelf (↑ ↓ between rows), Return opens the book and
   Escape puts it back.

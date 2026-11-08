@@ -27,6 +27,17 @@ Requires macOS 13 or later.
 
 3. Open the app and click **Log In**.
 
+Or with [Homebrew](https://brew.sh):
+
+```sh
+brew tap tomasmprado/tap
+brew trust tomasmprado/tap
+brew install --cask native-goodreads
+```
+
+Then, once, so the Keychain stops asking for your password after updates:
+`bash "$(brew --repository tomasmprado/tap)/install.sh" --resign`
+
 ## Privacy
 
 You sign in on Goodreads' own page; the app never sees your password. Your

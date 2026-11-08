@@ -10,6 +10,9 @@
 #   bash install.sh --resign            # only re-sign /Applications/Goodreads.app
 #   bash install.sh --remove-certificate
 #
+#   GOODREADS_APP=/path/to/Goodreads.app   another place than /Applications
+#   GOODREADS_NO_OPEN=1                    don't open it at the end (Homebrew)
+#
 # What it does, step by step:
 #   1. Copies Goodreads.app into /Applications (quitting it first if it's open).
 #   2. Removes the "downloaded from the internet" flag, so Gatekeeper doesn't
@@ -23,7 +26,7 @@
 set -euo pipefail
 
 APP_NAME="Goodreads"
-TARGET="/Applications/$APP_NAME.app"
+TARGET="${GOODREADS_APP:-/Applications/$APP_NAME.app}"
 CERT_NAME="Goodreads Local Signing"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
 
@@ -52,7 +55,7 @@ case "${1:-}" in
         fi
         exit 0 ;;
     --resign) RESIGN_ONLY=1 ;;
-    -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     "") ;;
     *) SOURCE="$1" ;;
 esac
@@ -173,6 +176,10 @@ codesign --force --sign "$IDENTITY" "$TARGET" 2>/dev/null || die "couldn't sign 
 codesign --verify --deep "$TARGET" || die "the signature doesn't check out"
 info "signed with $(codesign -dvv "$TARGET" 2>&1 | awk -F= '/^Authority/ {print $2; exit}')"
 
-bold "==> Done. Opening $APP_NAME"
+if [ -n "${GOODREADS_NO_OPEN:-}" ]; then
+    bold "==> Done"
+else
+    bold "==> Done. Opening $APP_NAME"
+    open "$TARGET"
+fi
 info "The first time, macOS may ask for your login password to let it use the Keychain: choose Always Allow."
-open "$TARGET"
