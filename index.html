@@ -326,6 +326,8 @@ footer a { color: var(--ink-2); }
   .faq details { padding: 14px 16px; }
   footer .wrap { flex-direction: column; }
 }
+/* The smallest phones: the icon alone, so the menu fits. */
+@media (max-width: 400px) { .brand { font-size: 0; gap: 0; } .top nav { gap: 14px; } }
 </style>
 </head>
 <body>
@@ -340,6 +342,7 @@ footer a { color: var(--ink-2); }
       <a href="#features">Features</a>
       <a href="#install">Install</a>
       <a class="keep" href="docs.html">Guide</a>
+      <a href="changelog.html">What's New</a>
       <a href="#faq">FAQ</a>
       <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a>
       <a class="cta-small" href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">Download</a>
@@ -620,7 +623,21 @@ footer a { color: var(--ink-2); }
     </div>
   </section>
 
-  <section id="faq">
+  <section id="whats-new">
+    <div class="wrap">
+      <p class="kicker">What's new in 3.2</p>
+      <h2>A feed that learns, streaks, and offline.</h2>
+      <ul class="checks">
+        <li><span><strong>Discover learns from every swipe</strong> — and from the books you open or linger on — re-ranking as you go, with something different now and then.</span></li>
+        <li><span><strong>Reading streaks</strong> and a gentle weekly goal on Home, with a new widget that nudges you on days you haven't read.</span></li>
+        <li><span><strong>Works offline</strong>: your changes wait and go to Goodreads when you're back online.</span></li>
+        <li><span><strong>The next volume</strong> of what you've started, a <strong>bookcase</strong> in your books' own colours, and <strong>Homebrew</strong>.</span></li>
+      </ul>
+      <p style="margin-top:22px"><a class="btn ghost" href="changelog.html">Every version →</a></p>
+    </div>
+  </section>
+
+  <section id="faq" class="alt">
     <div class="wrap">
       <p class="kicker">Questions</p>
       <h2>Good to know</h2>
@@ -658,7 +675,7 @@ footer a { color: var(--ink-2); }
 <footer>
   <div class="wrap">
     <span>Native GoodReads is an independent, unofficial app. It isn't made by or affiliated with Goodreads or Amazon. Goodreads is a trademark of Goodreads, LLC.</span>
-    <span><a href="docs.html">Guide</a> · <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/releases">Releases</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Report a problem</a></span>
+    <span><a href="docs.html">Guide</a> · <a href="changelog.html">What's New</a> · <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/releases">Releases</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Report a problem</a></span>
   </div>
 </footer>
 

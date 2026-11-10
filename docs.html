@@ -106,7 +106,7 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: 
 footer a { color: var(--ink-2); }
 
 @media (max-width: 900px) {
-  .layout { grid-template-columns: 1fr; gap: 0; padding-top: 24px; }
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 0; padding-top: 24px; }
   .toc { display: none; }
   .toc-mobile { display: block; margin: 0 0 28px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
   .toc-mobile summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
@@ -132,6 +132,9 @@ footer a { color: var(--ink-2); }
   .table-wrap td:first-child { white-space: normal; font-weight: 600; margin-bottom: 2px; }
   footer .wrap { flex-direction: column; }
 }
+article p code, article li code, article td code, article .tip code { overflow-wrap: anywhere; }
+/* The smallest phones: the icon alone, so the menu fits. */
+@media (max-width: 400px) { .brand { font-size: 0; gap: 0; } .top nav { gap: 14px; } }
 </style>
 </head>
 <body>
@@ -145,6 +148,7 @@ footer a { color: var(--ink-2); }
     <nav>
       <a href="./#features">Features</a>
       <a class="here keep" href="docs.html">Guide</a>
+      <a href="changelog.html">What's New</a>
       <a href="./#faq">FAQ</a>
       <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a>
       <a class="cta-small" href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">Download</a>
@@ -723,7 +727,7 @@ footer a { color: var(--ink-2); }
 <footer>
   <div class="wrap">
     <span>Native GoodReads is an independent, unofficial app. It isn't made by or affiliated with Goodreads or Amazon. Goodreads is a trademark of Goodreads, LLC.</span>
-    <span><a href="./">Home</a> · <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Report a problem</a></span>
+    <span><a href="./">Home</a> · <a href="changelog.html">What's New</a> · <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Report a problem</a></span>
   </div>
 </footer>
 
