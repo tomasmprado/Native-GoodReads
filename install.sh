@@ -110,7 +110,10 @@ then
   fi
 
   bold "==> Copying to /Applications"
-  if [[ "$(cd "$(dirname "${SOURCE}")" && pwd)/$(basename "${SOURCE}")" != "${TARGET}" ]]
+  SOURCE_PARENT="$(dirname "${SOURCE}")"
+  SOURCE_DIR="$(cd "${SOURCE_PARENT}" && pwd)"
+  SOURCE_NAME="$(basename "${SOURCE}")"
+  if [[ "${SOURCE_DIR}/${SOURCE_NAME}" != "${TARGET}" ]]
   then
     rm -rf "${TARGET}"
     ditto "${SOURCE}" "${TARGET}"
@@ -197,7 +200,8 @@ then
 fi
 codesign --force --sign "${IDENTITY}" "${TARGET}" 2>/dev/null || die "couldn't sign the app"
 codesign --verify --deep "${TARGET}" || die "the signature doesn't check out"
-info "signed with $(codesign -dvv "${TARGET}" 2>&1 | awk -F= '/^Authority/ {print $2; exit}')"
+SIGNED_BY="$(codesign -dvv "${TARGET}" 2>&1 | awk -F= '/^Authority/ {print $2; exit}')" || true
+info "signed with ${SIGNED_BY:-an ad hoc signature}"
 
 if [[ -n "${GOODREADS_NO_OPEN:-}" ]]
 then
