@@ -6,12 +6,24 @@ A free, native Mac app for your Goodreads library.
 
 ## Features
 
-- See what you're reading and update your progress
-- Browse your shelves as a list or as covers
-- Click any book for its synopsis, rating, details and reviews
-- Follow your friends and compare tastes
-- Reading stats, yearly goal and Your Year in Books
-- Widgets, Shortcuts and Siri
+- **Home**: what you're reading, your goal, a race with your friends, your
+  reading streak and what to read next
+- **Your shelves** as a list, a wall of covers or a bookcase of spines; a
+  work's volumes show as one book
+- **Suggestions that know your taste**, each saying why, and **Discover**:
+  swipe through them one card at a time, ranked like a feed that learns from
+  every swipe
+- **A Bingo for the year** from what you rarely read, and **letters to
+  yourself** that come back in a year
+- **Book details**: synopsis, rating, series, reviews and the friends who
+  read it
+- **Friends**: what they're reading, their shelves, and how your tastes compare
+- **Stats**: yearly goal, reading time, streaks, where your authors come from,
+  and Your Year in Books
+- **Notes, quotes and highlights** from Apple Books, Kobo, Calibre or Kindle
+- **Works offline**: changes wait and go to Goodreads when you're back online
+- **Widgets, Shortcuts and Siri**, Spotlight, Safari's Share menu and a
+  barcode scanner
 
 ## Install
 
