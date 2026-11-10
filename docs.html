@@ -135,7 +135,7 @@ footer a { color: var(--ink-2); }
 article p code, article li code, article td code, article .tip code { overflow-wrap: anywhere; }
 /* The smallest phones: the icon alone, so the menu fits. */
 @media (max-width: 400px) { .brand { font-size: 0; gap: 0; } .top nav { gap: 14px; } }
-#cmd-brew { font-size: 12.5px; }
+#cmd-brew { font-size: 12.5px; white-space: normal; overflow-wrap: anywhere; line-height: 1.55; }
 </style>
 </head>
 <body>
@@ -256,10 +256,9 @@ article p code, article li code, article td code, article .tip code { overflow-w
       <h3>Without Terminal</h3>
       <p>Open the .dmg and drag Goodreads to Applications. The first time, right-click the app and choose <strong>Open</strong> (or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>). The Keychain prompt may come back after each update.</p>
       <h3>With Homebrew</h3>
-      <p>The app is in the <a href="https://github.com/tomasmprado/homebrew-tap">tomasmprado/tap</a> tap. Homebrew asks you to trust a tap before installing from it:</p>
-      <div class="code"><code id="cmd-brew">brew tap tomasmprado/tap &amp;&amp; brew trust tomasmprado/tap &amp;&amp; brew install goodreads</code><button type="button" data-copy="cmd-brew">Copy</button></div>
-      <p>The app isn't notarised by Apple, so the cask takes off the "downloaded from the internet" flag, as the installer does. To get the signature that stays the same between versions — so the Keychain stops asking after updates — run once:</p>
-      <div class="code"><code id="cmd-brew2">bash "$(brew --repository tomasmprado/tap)/install.sh" --resign</code><button type="button" data-copy="cmd-brew2">Copy</button></div>
+      <p>The app is in the <a href="https://github.com/tomasmprado/homebrew-tap">tomasmprado/tap</a> tap. One line taps it, trusts it (Homebrew asks you to before installing from a tap), installs the app and signs it on your Mac:</p>
+      <div class="code"><code id="cmd-brew">brew tap tomasmprado/tap &amp;&amp; brew trust tomasmprado/tap &amp;&amp; brew install goodreads &amp;&amp; bash "$(brew --repo tomasmprado/tap)/install.sh" --resign</code><button type="button" data-copy="cmd-brew">Copy</button></div>
+      <p>The app isn't notarised by Apple, so the cask takes off the "downloaded from the internet" flag, as the installer does; the last part gives it a signature that stays the same between versions, so the Keychain stops asking after updates.</p>
       <p>The app updates itself; <code>brew upgrade --greedy</code> works too. <code>brew uninstall --zap goodreads</code> removes it with its data and settings.</p>
       <h3>Other installer options</h3>
       <div class="table-wrap"><table>
