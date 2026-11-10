@@ -48,9 +48,7 @@ Requires macOS 13 or later.
 Or with [Homebrew](https://brew.sh):
 
 ```sh
-brew tap tomasmprado/tap
-brew trust tomasmprado/tap
-brew install --cask native-goodreads
+brew tap tomasmprado/tap && brew trust tomasmprado/tap && brew install goodreads
 ```
 
 Then, once, so the Keychain stops asking for your password after updates:
