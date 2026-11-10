@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Native GoodReads — a Mac app for your reading</title>
-<meta name="description" content="A free, native Mac app for your Goodreads library: track what you're reading, see rich book details, widgets, Shortcuts, stats and your year in books.">
+<meta name="description" content="A free, native Mac app for your Goodreads library: track what you're reading, suggestions that know your taste, a swipe deck to discover books, a bookcase view, widgets, Shortcuts, stats and your year in books.">
 <meta property="og:title" content="Native GoodReads — a Mac app for your reading">
-<meta property="og:description" content="Track what you're reading, see rich book details, widgets, Shortcuts, stats and your year in books. Free, for macOS 13 and later.">
+<meta property="og:description" content="Track what you're reading, get suggestions that know your taste, swipe through books to discover, see your shelves as a bookcase, and more. Free, for macOS 13 and later.">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238a5a33'/%3E%3Cpath d='M18 16h12a6 6 0 0 1 6 6v28a5 5 0 0 0-5-5H18z M46 16H34a6 6 0 0 0-6 6v28a5 5 0 0 1 5-5h13z' fill='%23fbf6ee'/%3E%3C/svg%3E">
 <style>
@@ -367,10 +367,10 @@ footer a { color: var(--ink-2); }
       <div class="side">
         <div class="lights"><i></i><i></i><i></i></div>
         <div class="item on"><span class="dot"></span>Home</div>
-        <div class="item"><span class="dot"></span>Search</div>
         <div class="item"><span class="dot"></span>Suggestions</div>
         <div class="item"><span class="dot"></span>Friends</div>
         <div class="item"><span class="dot"></span>Stats</div>
+        <div class="item"><span class="dot"></span>Notes</div>
         <div class="label">Shelves</div>
         <div class="item"><span class="dot"></span>Want to Read<b>42</b></div>
         <div class="item"><span class="dot"></span>Currently Reading<b>3</b></div>
@@ -429,12 +429,17 @@ footer a { color: var(--ink-2); }
         <div class="feature">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16.5 4.5l3.8 1-4 15-3.8-1z"/></svg></div>
           <h3>All your shelves</h3>
-          <p>Lists or a wall of covers, with sorting and filters by rating, year and genre. Drag books between shelves; undo if you slip.</p>
+          <p>A list, a wall of covers or a bookcase of spines, with sorting and filters by rating, year and genre. A work's volumes show as one book. Drag books between shelves; undo if you slip.</p>
         </div>
         <div class="feature">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h11a1 1 0 0 1 1 1v17l-6-4-6 4V4a1 1 0 0 1 1-1z"/></svg></div>
           <h3>Rich book pages</h3>
           <p>Click any book for its synopsis, rating, genres, publisher, awards, series, reviews and the friends who read it.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></div>
+          <h3>Suggestions that know you</h3>
+          <p>A taste profile from your stars scores books from readers of your favourites, friends who loved what you loved, your series and authors. Each one says why — or swipe through them one card at a time in Discover.</p>
         </div>
         <div class="feature">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg></div>
@@ -452,6 +457,16 @@ footer a { color: var(--ink-2); }
           <p>Your year told like a story, one big fact at a time — then a card with it all, ready to save and share.</p>
         </div>
         <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg></div>
+          <h3>A Bingo for the year</h3>
+          <p>A 4×4 card built from what you rarely read — new countries, old books, genres you skip. Squares fill themselves as you finish books.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>
+          <h3>Letters to yourself</h3>
+          <p>Write a few lines when you finish a book; they come back in a year. And what you were reading on this day, years ago.</p>
+        </div>
+        <div class="feature">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 10h10M4 15h16M4 20h7"/></svg></div>
           <h3>Notes &amp; highlights</h3>
           <p>Private notes and quotes for every book. Bring in your highlights from Apple Books, Kobo, Calibre or a Kindle in one go.</p>
@@ -464,7 +479,7 @@ footer a { color: var(--ink-2); }
         <div class="feature">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></div>
           <h3>Fits into your Mac</h3>
-          <p>Your library and notes in Spotlight, Add to Goodreads from Safari's Share menu, offline reading of what's saved, and a CSV export.</p>
+          <p>Scan a book's barcode with the camera, your library and notes in Spotlight, Add to Goodreads from Safari's Share menu, offline reading of what's saved, and a CSV export.</p>
         </div>
         <div class="feature">
           <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2M18.5 2v4h-4M5.5 22v-4h4"/></svg></div>
@@ -533,7 +548,7 @@ footer a { color: var(--ink-2); }
     <div class="wrap">
       <p class="kicker">Widgets, Shortcuts &amp; Siri</p>
       <h2>Your books, even with the app closed.</h2>
-      <p class="sub">Put your current books and your reading goal on the desktop. Update your progress from Shortcuts, or just ask Siri what you're reading.</p>
+      <p class="sub">Put your current books, your reading goal, a quote of the day and the race with your friends on the desktop. Update your progress from Shortcuts, or just ask Siri what you're reading.</p>
       <div class="widgets" aria-hidden="true">
         <div class="widget medium">
           <div class="s" style="font-weight:600">Currently Reading</div>
@@ -592,7 +607,7 @@ footer a { color: var(--ink-2); }
       <ul class="checks">
         <li><span>You sign in on <strong>Goodreads' own page</strong>. The app never sees or stores your password.</span></li>
         <li><span>Your notes and progress history live <strong>only on your Mac</strong> — with a one-click backup.</span></li>
-        <li><span><strong>No tracking</strong>, no ads and no account of its own. It talks only to Goodreads, Google Books and GitHub for updates.</span></li>
+        <li><span><strong>No tracking</strong>, no ads and no account of its own. It talks only to Goodreads, Google Books, Wikidata (where authors are from), Apple Books and Wook (for prices) and GitHub (for updates).</span></li>
         <li><span><strong>Open source</strong> — every line is <a href="https://github.com/tomasmprado/Native-GoodReads">on GitHub</a>.</span></li>
       </ul>
     </div>

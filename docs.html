@@ -173,8 +173,8 @@ footer a { color: var(--ink-2); }
     </ol>
     <p>Discover</p>
     <ol>
-      <li><a href="#search">Search</a></li>
-      <li><a href="#suggestions">Suggestions</a></li>
+      <li><a href="#search">Search</a></li><li><a href="#barcode">Scan a barcode</a></li>
+      <li><a href="#suggestions">Suggestions</a></li><li><a href="#discover">Discover</a></li><li><a href="#bingo">Bingo</a></li>
       <li><a href="#friends">Friends</a></li>
       <li><a href="#profiles">Profiles &amp; authors</a></li>
       <li><a href="#stores">Where to get it</a></li>
@@ -183,7 +183,7 @@ footer a { color: var(--ink-2); }
     <ol>
       <li><a href="#stats">Stats &amp; goal</a></li>
       <li><a href="#year">Year in Books</a></li>
-      <li><a href="#notes">Notes</a></li>
+      <li><a href="#notes">Notes</a></li><li><a href="#letters">Letters &amp; On this day</a></li>
       <li><a href="#highlights">Importing highlights</a></li>
     </ol>
     <p>Reading apps</p>
@@ -226,9 +226,9 @@ footer a { color: var(--ink-2); }
         <li><a href="#install">Install</a></li><li><a href="#sign-in">Sign in</a></li><li><a href="#window">The window</a></li>
         <li><a href="#home">Home</a></li><li><a href="#shelves">Shelves</a></li><li><a href="#smart-lists">Smart lists</a></li>
         <li><a href="#book-actions">Book actions</a></li><li><a href="#progress">Reading progress</a></li><li><a href="#stop-reading">Stopping a book</a></li>
-        <li><a href="#book-details">Book details</a></li><li><a href="#shelf-helpers">Pick for Me &amp; Rate Unrated</a></li><li><a href="#search">Search</a></li><li><a href="#suggestions">Suggestions</a></li>
+        <li><a href="#book-details">Book details</a></li><li><a href="#shelf-helpers">Pick for Me &amp; Rate Unrated</a></li><li><a href="#search">Search</a></li><li><a href="#barcode">Scan a barcode</a></li><li><a href="#suggestions">Suggestions</a></li><li><a href="#discover">Discover</a></li><li><a href="#bingo">Bingo</a></li>
         <li><a href="#friends">Friends</a></li><li><a href="#profiles">Profiles &amp; authors</a></li><li><a href="#stores">Where to get it</a></li><li><a href="#stats">Stats &amp; goal</a></li><li><a href="#year">Year in Books</a></li>
-        <li><a href="#notes">Notes</a></li><li><a href="#highlights">Importing highlights</a></li><li><a href="#copies">Your copy of a book</a></li><li><a href="#reading-apps">Apple Books, Kobo &amp; Calibre</a></li><li><a href="#kobo">Syncing a Kobo</a></li><li><a href="#calibre">Calibre</a></li><li><a href="#widgets">Widgets</a></li>
+        <li><a href="#notes">Notes</a></li><li><a href="#letters">Letters &amp; On this day</a></li><li><a href="#highlights">Importing highlights</a></li><li><a href="#copies">Your copy of a book</a></li><li><a href="#reading-apps">Apple Books, Kobo &amp; Calibre</a></li><li><a href="#kobo">Syncing a Kobo</a></li><li><a href="#calibre">Calibre</a></li><li><a href="#widgets">Widgets</a></li>
         <li><a href="#shortcuts">Shortcuts &amp; Siri</a></li><li><a href="#share">Safari &amp; Share</a></li><li><a href="#notifications">Notifications</a></li>
         <li><a href="#spotlight">Spotlight</a></li><li><a href="#backup">Export &amp; backup</a></li><li><a href="#settings">Settings</a></li>
         <li><a href="#text-size">Text size</a></li><li><a href="#keyboard">Keyboard shortcuts</a></li><li><a href="#updates">Updates</a></li>
@@ -274,9 +274,9 @@ footer a { color: var(--ink-2); }
     <section id="window">
       <h2>The window</h2>
       <div class="grid2">
-        <div class="mini"><h4>Sidebar</h4><p>Home, Search, Suggestions, Friends, Stats and Notes, then every shelf you have with how many books it holds.</p></div>
-        <div class="mini"><h4>Toolbar</h4><p>Actions for the pane on screen — layout, sort, filter, export and reload on shelves.</p></div>
-        <div class="mini"><h4>Foot of the sidebar</h4><p>What just happened (with Undo when you can), what the app is busy with, whether you're offline, updates and your sign-in.</p></div>
+        <div class="mini"><h4>Sidebar</h4><p>Home, Suggestions (with Discover and Bingo), Friends, Stats and Notes (with Letters), then every shelf you have with how many books it holds.</p></div>
+        <div class="mini"><h4>Toolbar</h4><p>The magnifying glass on the left opens <a href="#search">Search</a> (<kbd>⌘</kbd> <kbd>K</kbd>). Panes with parts have a switch in the middle; on the right, actions for the pane on screen — layout, sort, filter, export and reload on shelves.</p></div>
+        <div class="mini"><h4>Foot of the sidebar</h4><p>Quiet unless there's something to say: an action that failed, Undo when you can, being offline, an update, and Log In when you're signed out.</p></div>
         <div class="mini"><h4>Settings</h4><p>In tabs — General, Notifications, Reading Apps, Library and Troubleshooting. See <a href="#settings">Settings</a>.</p></div>
       </div>
       <p>Closing the window doesn't quit the app: it keeps running (click its Dock icon to bring the window back) so notifications, syncing and widgets stay up to date. On macOS 26 the app uses the Liquid Glass look.</p>
@@ -299,8 +299,12 @@ footer a { color: var(--ink-2); }
     <section id="shelves">
       <h2>Shelves</h2>
       <p>Click a shelf in the sidebar. Saved shelves appear instantly and refresh in the background; the reload button in the toolbar fetches it again now.</p>
-      <h3>List or covers</h3>
-      <p>The first toolbar control switches between a <strong>list</strong> (with title, author, your stars and dates) and a <strong>wall of covers</strong>.</p>
+      <h3>List, covers or bookcase</h3>
+      <p>The first toolbar control switches between a <strong>list</strong> (with title, author, your stars and dates), a <strong>wall of covers</strong> and a <strong>bookcase</strong> (every shelf but Currently Reading): spines with the title and author, thicker for longer books, on wooden planks. Click a spine to pull it out and see a little about the book underneath; <strong>+</strong> opens its details. Double-click opens them straight away, and right-click has the usual actions.</p>
+      <h3>Volumes together</h3>
+      <p>The volumes of one work — "Os Irmãos Karamázov I" and "II", or "Guerra e Paz – Volume I" — show as one book with the first one's cover and, on the right, how many you've read of those on your shelves (<strong>1/2</strong>). Each volume's actions are in its own submenu. In your own order on Want to Read they stay apart, so you can drag them one by one.</p>
+      <h3>Tidy titles and names</h3>
+      <p>Titles and authors are tidied wherever they show: the stray <code>*</code> Goodreads puts in some names, double spaces and odd symbols go; names and titles typed all in capitals get proper capitals, with words like "de" kept small; "Retorno, O" becomes "O Retorno".</p>
       <h3>Sorting</h3>
       <p>The sort button orders the shelf by <strong>As Shelved</strong> (Goodreads' order), <strong>Title</strong>, <strong>Author</strong>, <strong>Rating</strong>, <strong>Date Read</strong> or <strong>Date Added</strong>.</p>
       <h3>Your own order for Want to Read</h3>
@@ -394,7 +398,7 @@ footer a { color: var(--ink-2); }
     <!-- ============ Discover ============ -->
     <section id="search">
       <h2>Search</h2>
-      <p>Type a title, author or ISBN. Results appear as you pause typing; Return searches straight away.</p>
+      <p>Click the <strong>magnifying glass</strong> at the top of the window, or press <kbd>⌘</kbd> <kbd>K</kbd>. Type a title, author or ISBN. Results appear as you pause typing; Return searches straight away.</p>
       <ul>
         <li><strong>On Your Shelves</strong> comes first: books you already have, with the shelves they're on.</li>
         <li>Then other books — add one to a shelf or mark it read from its <strong>•••</strong> menu.</li>
@@ -402,13 +406,39 @@ footer a { color: var(--ink-2); }
       </ul>
     </section>
 
+    <section id="barcode">
+      <h2>Scan a barcode</h2>
+      <p><span class="path">File → Scan a Barcode…</span> (<kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>B</kbd>), or the barcode button in Search. Hold the book's barcode up to your Mac's camera — or an iPhone's, through Continuity Camera, which is used when there is one. The barcode is outlined once it's read; then put the book straight onto a shelf, or see which shelf it's on already.</p>
+    </section>
+
     <section id="suggestions">
       <h2>Suggestions</h2>
+      <p><strong>Suggestions</strong> in the sidebar has three parts, switched at the top: <strong>Suggestions</strong>, <a href="#discover">Discover</a> and <a href="#bingo">Bingo</a>.</p>
       <ul>
-        <li><strong>More by Authors You've Read</strong> — books by writers you've finished recently that aren't on any of your shelves.</li>
+        <li><strong>Picked for You</strong> — a taste profile from your Read shelf (authors and genres weighed by your stars against your own average, and by how recently you read them, minus books you gave up on) scores books from several places at once: Goodreads' "Readers also enjoyed" for your favourites, friends' five-star books, the next book in your series, more by authors you love, and well-rated books in your genres. Books several favourites point to rise to the top, each says why, and there are two per author at most. Books in languages you don't read, and books you already have under another title, are left out.</li>
+        <li><strong>Your Series</strong> — how far you are in each series you've read from, with the next book (one click to Want to Read). A notification tells you when a new book joins one of them.</li>
         <li><strong>New from Your Authors</strong> — books out in the last year or coming in the next, by authors you've read more than once. Checked once a day.</li>
       </ul>
-      <p>Settings controls which language suggested books should be in, and how far back "recently" goes. The reload button rebuilds the list.</p>
+      <p>Settings controls which language suggested books should be in. The reload button rebuilds the list.</p>
+    </section>
+
+    <section id="discover">
+      <h2>Discover</h2>
+      <p>Suggestions one card at a time, with the cover, rating, why it was picked and a description. Swipe or use the keys:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Swipe</th><th>Key</th><th>Does</th></tr>
+        <tr><td>Right</td><td><kbd>→</kbd></td><td>Want to Read</td></tr>
+        <tr><td>Left</td><td><kbd>←</kbd></td><td>Pass</td></tr>
+        <tr><td>Up</td><td><kbd>↑</kbd></td><td>I've read it — then rate it</td></tr>
+        <tr><td>—</td><td><kbd>Space</kbd></td><td>The book's details (double-click works too)</td></tr>
+        <tr><td>—</td><td><kbd>⌘</kbd> <kbd>Z</kbd></td><td>Bring back the last book</td></tr>
+      </table></div>
+      <p>Every swipe is remembered and teaches the suggestions what you like: books you said yes to lead to more like them. When the deck runs low, more are found in the background.</p>
+    </section>
+
+    <section id="bingo">
+      <h2>Bingo</h2>
+      <p>A 4×4 card for the year, built from what you rarely read: countries and continents you've never visited, books older than your grandparents, genres you skip or keep passing in Discover, books waiting on your shelves for years, authors new to you. Squares fill themselves as you finish books this year. Click one for ideas from your Want to Read, or to tick it yourself; a full row, column or diagonal is a bingo. <strong>New Card</strong> deals another.</p>
     </section>
 
     <section id="friends">
@@ -432,7 +462,7 @@ footer a { color: var(--ink-2); }
       <h2>Where to get it</h2>
       <p>A book's details have a <strong>Where to Get It</strong> menu: Apple Books (with its price, when it has the ebook), Kindle, Kobo and the usual stores.</p>
       <p>Add your own in <span class="path">Settings → Reading Apps → Stores</span>: a name and a search address with <code>{bookname}</code>, <code>{author}</code> or <code>{isbn}</code> where the book goes — for example <code>https://www.wook.pt/pesquisa?keyword={bookname}</code>.</p>
-      <p>Turn on <strong>Apple Books price drops</strong> in Settings → Notifications to hear when an ebook on Want to Read gets cheaper.</p>
+      <p>Turn on <strong>price alerts</strong> in Settings → Notifications to hear when a book on Want to Read gets cheaper — the ebook on Apple Books, and at Wook in Portugal.</p>
     </section>
 
     <!-- ============ Your reading ============ -->
@@ -444,6 +474,8 @@ footer a { color: var(--ink-2); }
         <li>Books per year, how you rate, and your most-read authors.</li>
         <li><strong>Pages and genres</strong>: pages per year and your top genres. <strong>Fill In</strong> looks up the books the app doesn't know yet.</li>
         <li><strong>Stopped Reading</strong>: books you set aside, with how far you got.</li>
+        <li><strong>Authors' Countries</strong>: a world map of where the authors you've read come from, looked up on Wikidata by itself.</li>
+        <li><strong>Reading Time</strong>: time spent reading this year and a calendar of the days you read, from your Kobo's reading time, the days a book was open in Apple Books, and progress updates.</li>
       </ul>
     </section>
 
@@ -457,12 +489,18 @@ footer a { color: var(--ink-2); }
       <h2>Notes</h2>
       <p>Every book has a private <strong>My Notes</strong> box in its details: write your thoughts, and add favourite passages as <strong>quotes</strong>. Notes save as you type and stay only on your Mac (they're included in <a href="#backup">backups</a> and CSV exports).</p>
       <h3>The Notes pane</h3>
-      <p><strong>Notes</strong> in the sidebar gathers your notes, quotes and highlights, grouped by book, newest first. They also show up in Spotlight.</p>
+      <p><strong>Notes</strong> in the sidebar has two parts, switched at the top: Notes and <a href="#letters">Letters</a>. Notes gathers your notes, quotes and highlights, grouped by book, newest first. They also show up in Spotlight.</p>
       <ul>
         <li>Search by words in the quote, the title or the author.</li>
         <li>Click a book's name for its details.</li>
         <li>Each quote's <strong>•••</strong> menu: <strong>Copy</strong> (with the title and author), or <strong>Share as Image…</strong> for a card you can save or send.</li>
       </ul>
+    </section>
+
+    <section id="letters">
+      <h2>Letters &amp; On this day</h2>
+      <p>When you finish a book, the Mark Read sheet has room for a few lines to yourself. They're sealed and come back a year later, with a notification. In <strong>Notes → Letters</strong>, <strong>Write a Letter</strong> lets you write about any book at any time and choose when it opens: in a month, six months, a year or five years. Letters stay on your Mac; the number of unread ones shows next to Notes in the sidebar.</p>
+      <p>The same pane shows <strong>On this day</strong>: the books you finished, or were reading, around today's date in past years.</p>
     </section>
 
     <section id="highlights">
@@ -533,6 +571,8 @@ footer a { color: var(--ink-2); }
       <div class="grid2">
         <div class="mini"><h4>Currently Reading</h4><p>Small, medium or large: your books with covers, progress, pages and finish dates.</p></div>
         <div class="mini"><h4>Reading Goal</h4><p>A ring with books read this year against your goal, and whether you're ahead.</p></div>
+        <div class="mini"><h4>Quote of the Day</h4><p>One of the quotes you saved, a different one each day.</p></div>
+        <div class="mini"><h4>Friends' Race</h4><p>You and your friends in this year's Reading Challenge.</p></div>
       </div>
       <p>Widgets show what the app last saw, and refresh whenever something changes in the app.</p>
     </section>
@@ -560,9 +600,10 @@ footer a { color: var(--ink-2); }
       <p>All optional, in <a href="#settings">Settings</a>. They're checked while the app is running, even with its window closed.</p>
       <ul>
         <li><strong>Friends</strong> — when a friend starts or finishes a book. Checked every hour.</li>
-        <li><strong>New books</strong> — when an author you read has a new book. Checked once a day.</li>
+        <li><strong>New books</strong> — when an author you read has a new book, or a new book joins a series you follow. Checked once a day.</li>
         <li><strong>Kobo connected</strong> — offers to <a href="#kobo">sync</a> when you plug a Kobo in. On unless you turn it off.</li>
-        <li><strong>Apple Books price drops</strong> — when an ebook on Want to Read gets cheaper.</li>
+        <li><strong>Price drops</strong> — when a book on Want to Read gets cheaper on Apple Books, or at Wook in Portugal.</li>
+        <li><strong>Letters</strong> — when a <a href="#letters">letter to yourself</a> opens.</li>
         <li><strong>Reading reminder</strong> — a daily nudge at the time you choose, about the book you're reading. Type a percentage straight into the notification to update your progress.</li>
       </ul>
     </section>
@@ -609,6 +650,9 @@ footer a { color: var(--ink-2); }
       <div class="table-wrap"><table>
         <tr><th>Keys</th><th>Does</th></tr>
         <tr><td><kbd>⌘</kbd> <kbd>,</kbd></td><td>Settings</td></tr>
+        <tr><td><kbd>⌘</kbd> <kbd>K</kbd></td><td>Search</td></tr>
+        <tr><td><kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>B</kbd></td><td>Scan a barcode</td></tr>
+        <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>Space</kbd> <kbd>⌘</kbd> <kbd>Z</kbd></td><td>In <a href="#discover">Discover</a>: pass, want to read, read it, details, undo</td></tr>
         <tr><td><kbd>⌘</kbd> <kbd>+</kbd> / <kbd>⌘</kbd> <kbd>−</kbd> / <kbd>⌘</kbd> <kbd>0</kbd></td><td>Bigger, smaller, actual text size</td></tr>
         <tr><td><kbd>Return</kbd></td><td>In Search: search now. In a sheet: its main button.</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Close a sheet or cancel</td></tr>
@@ -626,9 +670,9 @@ footer a { color: var(--ink-2); }
       <ul>
         <li>You sign in on Goodreads' own page; the app never sees or stores your password.</li>
         <li>Shelves, ratings and reviews live on Goodreads. The app keeps a copy on your Mac so it opens instantly.</li>
-        <li>Notes, progress history and stopped books are only on your Mac (and in backups you make).</li>
+        <li>Notes, letters, progress history, stopped books and your swipes in Discover are only on your Mac (notes, progress and stopped books are in backups you make).</li>
         <li>Your Google Books key is kept in the Keychain.</li>
-        <li>The app only talks to Goodreads, Google Books and GitHub (for updates). No tracking, no ads, no account of its own.</li>
+        <li>The app only talks to Goodreads, Google Books, Wikidata (where authors are from), Apple Books and Wook (for prices) and GitHub (for updates). No tracking, no ads, no account of its own.</li>
       </ul>
     </section>
 
