@@ -329,14 +329,12 @@ footer a { color: var(--ink-2); }
 /* The smallest phones: the icon alone, so the menu fits. */
 @media (max-width: 400px) { .brand { font-size: 0; gap: 0; } .top nav { gap: 14px; } }
 /* Homebrew command at the top, above Download. */
-.hero-brew { max-width: 440px; margin: 30px auto 0; text-align: left; }
-.hero-brew .code { align-items: flex-start; }
-.hero-brew code { white-space: pre; line-height: 1.6; }
+.hero-brew { max-width: 800px; margin: 30px auto 0; text-align: left; }
+.hero-brew .code { font-size: 13.5px; }
 .hero-brew .label { margin: 0 0 2px; text-align: center; font-size: 14px; color: var(--ink-3); }
 .hero-brew .code { margin-top: 8px; }
 .hero-brew + .actions { margin-top: 18px; }
-@media (max-width: 600px) { .hero-brew .code { font-size: 12.5px; flex-direction: column; align-items: stretch; } .hero-brew .code button { align-self: flex-end; } }
-@media (max-width: 360px) { .hero-brew .code { font-size: 11px; padding-left: 12px; } }
+@media (max-width: 600px) { .hero-brew .code { font-size: 12.5px; } }
 </style>
 </head>
 <body>
@@ -366,9 +364,7 @@ footer a { color: var(--ink-2); }
     <p class="lede">A fast, native app for your Goodreads library. See what you're reading, update your progress, discover your next book and keep up with friends — without opening the website.</p>
     <div class="hero-brew">
       <p class="label">Install with <a href="https://brew.sh">Homebrew</a></p>
-      <div class="code"><code id="hero-brew">brew tap tomasmprado/tap
-brew trust tomasmprado/tap
-brew install --cask native-goodreads</code><button type="button" data-copy="hero-brew">Copy</button></div>
+      <div class="code"><code id="hero-brew">brew tap tomasmprado/tap &amp;&amp; brew trust tomasmprado/tap &amp;&amp; brew install goodreads</code><button type="button" data-copy="hero-brew">Copy</button></div>
     </div>
     <div class="actions">
       <a class="btn primary" href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">
@@ -612,7 +608,7 @@ brew install --cask native-goodreads</code><button type="button" data-copy="hero
       <details class="more">
         <summary>Use Homebrew?</summary>
         <p>Install it from the <a href="https://github.com/tomasmprado/homebrew-tap">tomasmprado/tap</a> tap:</p>
-        <div class="code"><code id="brew">brew tap tomasmprado/tap &amp;&amp; brew trust tomasmprado/tap &amp;&amp; brew install --cask native-goodreads</code><button type="button" data-copy="brew">Copy</button></div>
+        <div class="code"><code id="brew">brew tap tomasmprado/tap &amp;&amp; brew trust tomasmprado/tap &amp;&amp; brew install goodreads</code><button type="button" data-copy="brew">Copy</button></div>
         <p>Then, once, so your Mac stops asking for the Keychain password after updates:</p>
         <div class="code"><code id="brew2">bash "$(brew --repository tomasmprado/tap)/install.sh" --resign</code><button type="button" data-copy="brew2">Copy</button></div>
       </details>
