@@ -48,7 +48,7 @@ Requires macOS 13 or later.
 Or with [Homebrew](https://brew.sh):
 
 ```sh
-brew tap tomasmprado/tap && brew trust tomasmprado/tap && brew install goodreads && bash "$(brew --repo tomasmprado/tap)/install.sh" --resign
+b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal goodreads;bash $(b --repo)/install.sh --resign
 ```
 
 The last part signs the app on your Mac, so the Keychain stops asking for your
