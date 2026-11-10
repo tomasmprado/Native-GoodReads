@@ -3,8 +3,11 @@ import SwiftUI
 /// A shelf drawn as a bookcase: spines with the title and author, thicker
 /// for longer books, on wooden planks. Clicking a spine pulls it out and
 /// shows a little about it underneath, with a + for the full details.
+/// The arrow keys move along the shelf, Return opens the book, Escape puts
+/// it back. Spines take their colour from the cover.
 struct BookshelfView<Actions: View>: View {
     @ObservedObject var model: LibraryModel
+    @ObservedObject private var spineColours = SpineColours.shared
     let items: [ShelfItem]
     /// "1/2" for a work's volumes.
     var badge: (ShelfItem) -> String? = { _ in nil }
@@ -25,16 +28,39 @@ struct BookshelfView<Actions: View>: View {
             GeometryReader { geo in
                 let widths = items.map(width)
                 let rows = Bookshelf.rows(widths: widths, available: geo.size.width - 48, spacing: Bookshelf.gap)
-                ScrollView {
-                    VStack(spacing: 26) {
-                        ForEach(rows, id: \.lowerBound) { range in
-                            shelfRow(Array(items[range]), widths: Array(widths[range]))
+                ScrollViewReader { scroller in
+                    ScrollView {
+                        VStack(spacing: 26) {
+                            ForEach(rows, id: \.lowerBound) { range in
+                                shelfRow(Array(items[range]), widths: Array(widths[range]))
+                            }
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 20)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 20)
+                    .onChange(of: selectedID) { id in
+                        if let id { withAnimation { scroller.scrollTo(id, anchor: .center) } }
+                    }
                 }
+                .focusable()
+                .noFocusRing()
+                .onMoveCommand { direction in
+                    let current = items.firstIndex { $0.id == selectedID }
+                    if let next = Bookshelf.move(from: current, direction, rows: rows) {
+                        selectedID = items[next].id
+                    }
+                }
+                .onExitCommand { selectedID = nil }
             }
+            .background {
+                // Return opens the book pulled out.
+                Button("") { if let item = selected { model.showBookDetail(item.volumes[0].asBook) } }
+                    .keyboardShortcut(.return, modifiers: [])
+                    .disabled(selected == nil)
+                    .opacity(0)
+                    .accessibilityHidden(true)
+            }
+            .task(id: items.count) { await spineColours.load(items.map(\.entry)) }
 
             if let item = selected {
                 info(item)
@@ -69,7 +95,7 @@ struct BookshelfView<Actions: View>: View {
     private func spine(_ item: ShelfItem, width: CGFloat) -> some View {
         let entry = item.entry
         let height = Bookshelf.spineHeight(entry.bookID)
-        let style = Bookshelf.style(entry.bookID)
+        let style = Bookshelf.style(entry.bookID, cover: spineColours.colour(entry.bookID))
         let isSelected = entry.id == selectedID
         return ZStack {
             RoundedRectangle(cornerRadius: 2.5).fill(style.background)
@@ -114,6 +140,7 @@ struct BookshelfView<Actions: View>: View {
         .draggable(LibraryModel.dragPrefix + entry.id) {
             Label(entry.title, systemImage: "book.closed").padding(6)
         }
+        .id(item.id)
         .help("\(entry.title) — \(entry.author)")
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(entry.title), \(entry.author)"))
@@ -236,6 +263,32 @@ enum Bookshelf {
         let foreground: Color
     }
 
+    /// The cover's own colour when it's known, with lettering that reads on it.
+    static func style(_ bookID: String, cover: RGB?) -> Style {
+        guard let cover else { return style(bookID) }
+        return Style(background: cover.color,
+                     foreground: cover.luminance > 0.55 ? Color(white: 0.12) : Color(white: 0.96))
+    }
+
+    /// Where the arrow keys go: along the shelf for ← →, to the row above
+    /// or below (nearest place in it) for ↑ ↓. Nothing chosen yet starts
+    /// at the first book.
+    static func move(from index: Int?, _ direction: MoveCommandDirection, rows: [Range<Int>]) -> Int? {
+        guard let total = rows.last?.upperBound, total > 0 else { return nil }
+        guard let index else { return 0 }
+        switch direction {
+        case .left:  return max(0, index - 1)
+        case .right: return min(total - 1, index + 1)
+        case .up, .down:
+            guard let row = rows.firstIndex(where: { $0.contains(index) }) else { return index }
+            let target = direction == .up ? row - 1 : row + 1
+            guard rows.indices.contains(target) else { return index }
+            let place = index - rows[row].lowerBound
+            return min(rows[target].upperBound - 1, rows[target].lowerBound + place)
+        @unknown default: return index
+        }
+    }
+
     /// Cloth and leather colours, one per book, the same every time.
     static func style(_ bookID: String) -> Style {
         let palette: [(Double, Double, Double, Bool)] = [   // r, g, b, light text
@@ -258,5 +311,13 @@ enum Bookshelf {
             value = value &* 0x100000001b3
         }
         return value
+    }
+}
+
+private extension View {
+    /// No blue ring around the whole bookcase when it has the keyboard.
+    @ViewBuilder
+    func noFocusRing() -> some View {
+        if #available(macOS 14, *) { focusEffectDisabled() } else { self }
     }
 }

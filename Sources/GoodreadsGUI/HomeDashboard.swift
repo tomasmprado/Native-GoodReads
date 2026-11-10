@@ -18,7 +18,6 @@ struct RaceEntry: Identifiable, Equatable, Sendable {
 /// This week's reading, worked out from the progress history.
 struct WeekSummary: Equatable {
     var pages = 0
-    var streak = 0
     var finishedThisMonth = 0
 
     static func compute(history: [String: [ProgressPoint]], pages: [String: Int], read: [ShelfEntry],
@@ -34,15 +33,6 @@ struct WeekSummary: Equatable {
             let before = sorted.last { $0.date < weekStart }?.percent ?? inWeek.first?.percent ?? 0
             let gained = max(0, latest.percent - before)
             summary.pages += Int((Double(total) * Double(gained) / 100).rounded())
-        }
-
-        // Days in a row with a progress update, ending today or yesterday.
-        let days = Set(history.values.flatMap { $0 }.map { calendar.startOfDay(for: $0.date) })
-        var day = calendar.startOfDay(for: now)
-        if !days.contains(day) { day = calendar.date(byAdding: .day, value: -1, to: day) ?? day }
-        while days.contains(day) {
-            summary.streak += 1
-            day = calendar.date(byAdding: .day, value: -1, to: day) ?? day
         }
 
         let month = calendar.dateComponents([.year, .month], from: now)
@@ -86,6 +76,22 @@ extension LibraryModel {
         return ([me] + friendRace).sorted { $0.fraction > $1.fraction }
     }
 
+    /// Days in a row read, from every reading day the app knows: Kobo time,
+    /// Apple Books, progress updates and "I read today".
+    var readingStreak: ReadingStreak? {
+        ReadingStreak.compute(days: ReadingLog.readingDays(readingLog, progress: progressHistory),
+                              weekGoal: Preferences.shared.weeklyReadingDays)
+    }
+
+    /// Counts today as a reading day, for reading the app didn't see.
+    func markReadToday() async {
+        let book = currentlyReading.first
+        await ReadingLog.add([ReadingRecord(bookID: book?.bookID, title: book?.title ?? "", start: Date(),
+                                            seconds: 0, source: .timer)])
+        readingLog = await ReadingLog.all()
+        WidgetBridge.scheduleUpdate()
+    }
+
     var weekSummary: WeekSummary {
         WeekSummary.compute(history: progressHistory, pages: bookExtras.compactMapValues(\.pages),
                             read: ShelfCache.read(.read)?.entries ?? [])
@@ -122,7 +128,7 @@ struct HomeDashboard: View {
                     RaceCard(model: model, height: bottom)
                         .frame(maxWidth: .infinity)
                     VStack(spacing: 12) {
-                        WeekCard(summary: model.weekSummary)
+                        WeekCard(model: model, summary: model.weekSummary)
                             .frame(height: min(110, (bottom - 12) / 2))
                         NextCard(model: model)
                             .frame(maxHeight: .infinity)
@@ -299,26 +305,74 @@ private struct RaceCard: View {
 }
 
 private struct WeekCard: View {
+    @ObservedObject var model: LibraryModel
+    @ObservedObject private var prefs = Preferences.shared
     let summary: WeekSummary
 
     var body: some View {
+        let streak = model.readingStreak
+        let current = streak?.current() ?? 0
+        let atRisk = streak?.atRisk() ?? false
         VStack(alignment: .leading, spacing: 8) {
-            Text("Your Week").appFont(size: 13, weight: .semibold)
+            HStack {
+                Text("Your Week").appFont(size: 13, weight: .semibold)
+                Spacer()
+                if !(streak?.readToday() ?? false) {
+                    Button { Task { await model.markReadToday() } } label: {
+                        Label("I read today", systemImage: "checkmark")
+                            .appFont(size: 10, weight: .medium)
+                    }
+                    .controlSize(.mini)
+                    .glassButton()
+                    .help("Count today as a reading day, for reading the app didn’t see")
+                }
+            }
             HStack(spacing: 10) {
-                stat("\(summary.pages)", String(localized: "pages"), "book.pages")
-                stat("\(summary.streak)", summary.streak == 1 ? String(localized: "day in a row") : String(localized: "days in a row"), "flame")
-                stat("\(summary.finishedThisMonth)", String(localized: "finished this month"), "checkmark.seal")
+                stat("\(current)", current == 1 ? String(localized: "day in a row") : String(localized: "days in a row"),
+                     atRisk ? "flame" : "flame.fill", tint: current > 0 ? .orange : .secondary)
+                    .help(atRisk ? String(localized: "Read today to keep it going")
+                                 : String(localized: "Longest: \(streak?.longest ?? 0) days"))
+                weekGoal(streak?.daysThisWeek() ?? 0)
+                stat("\(summary.pages)", String(localized: "pages"), "book.pages", tint: .orange)
             }
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .clipped()
         .glassCard(cornerRadius: 14)
+        .contextMenu {
+            Picker("Weekly goal", selection: $prefs.weeklyReadingDays) {
+                ForEach(1...7, id: \.self) { days in
+                    Text(days == 7 ? String(localized: "Every day") : String(localized: "\(days) days a week")).tag(days)
+                }
+            }
+        }
+        .task { if model.readingLog.isEmpty { model.readingLog = await ReadingLog.all() } }
     }
 
-    private func stat(_ value: String, _ label: String, _ symbol: String) -> some View {
+    /// "3/5" days read this week, as a small ring.
+    private func weekGoal(_ days: Int) -> some View {
+        let goal = prefs.weeklyReadingDays
+        return VStack(alignment: .leading, spacing: 2) {
+            ZStack {
+                Circle().stroke(Color.orange.opacity(0.2), lineWidth: 2.5)
+                Circle().trim(from: 0, to: min(1, CGFloat(days) / CGFloat(max(goal, 1))))
+                    .stroke(Color.orange, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+            .frame(width: 11, height: 11)
+            Text("\(days)/\(goal)").appFont(size: 18, weight: .bold, design: .rounded)
+            Text(days >= goal ? String(localized: "week’s goal met") : String(localized: "days this week"))
+                .appFont(size: 9).foregroundStyle(.secondary).lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .help("Right-click to change the weekly goal")
+    }
+
+    private func stat(_ value: String, _ label: String, _ symbol: String, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Image(systemName: symbol).appFont(size: 11).foregroundStyle(.orange)
+            Image(systemName: symbol).appFont(size: 11).foregroundStyle(tint)
             Text(value).appFont(size: 18, weight: .bold, design: .rounded)
             Text(label).appFont(size: 9).foregroundStyle(.secondary).lineLimit(2)
         }
@@ -333,15 +387,22 @@ private struct NextCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Next").appFont(size: 13, weight: .semibold)
+            if let volume = model.nextVolume, volume.entry.id != model.upNext?.id {
+                row(title: volume.entry.title, author: volume.entry.author, cover: volume.entry.coverURL,
+                    label: String(localized: "Next volume · \(volume.read)/\(volume.total) read")) {
+                    model.showBookDetail(volume.entry.asBook)
+                }
+            }
             if let next = model.upNext {
                 row(title: next.title, author: next.author, cover: next.coverURL,
                     label: String(localized: "Up next on Want to Read")) { model.showBookDetail(next.asBook) }
             }
-            if let suggestion = model.suggestions.first {
+            // Two at most, so Home still fits the window.
+            if let suggestion = model.suggestions.first, model.nextVolume == nil || model.upNext == nil {
                 row(title: suggestion.book.title, author: suggestion.book.author, cover: suggestion.book.coverURL,
                     label: String(localized: "Suggested for you")) { model.showBookDetail(suggestion.book) }
             }
-            if model.upNext == nil && model.suggestions.isEmpty {
+            if model.upNext == nil && model.nextVolume == nil && model.suggestions.isEmpty {
                 Text("Put Want to Read in your order, or open Suggestions.").appFont(size: 11).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)

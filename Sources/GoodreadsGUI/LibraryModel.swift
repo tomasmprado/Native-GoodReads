@@ -27,6 +27,8 @@ final class LibraryModel: ObservableObject {
     @Published var libraryMatches: [LibraryMatch] = []
     /// The top of your own Want to Read order, for Home.
     @Published var upNext: ShelfEntry?
+    /// The next volume of a work you've started ("Os Maias II" after "I").
+    @Published var nextVolume: NextVolume?
     private var libraryCache: (loaded: Date, shelves: [(shelf: Shelf, entries: [ShelfEntry])])?
     @Published var isLoadingShelf = false
     @Published var loadProgress: String?
@@ -318,7 +320,9 @@ final class LibraryModel: ObservableObject {
     }
 
     func refreshUpNext() {
-        upNext = QueueOrder.upNext(in: ShelfCache.read(.wantToRead)?.entries ?? [])
+        let waiting = ShelfCache.read(.wantToRead)?.entries ?? []
+        upNext = QueueOrder.upNext(in: waiting)
+        nextVolume = Volumes.nextToRead(read: ShelfCache.read(.read)?.entries ?? [], waiting: waiting).first
     }
 
     /// Every cached shelf, re-read from disk at most once a minute.
@@ -444,6 +448,7 @@ final class LibraryModel: ObservableObject {
     func warmUp() async {
         guard loggedIn, !didWarmUp else { return }
         didWarmUp = true
+        await sendOutbox()
 
         ImageMemoryCache.shared.prefetch(
             (currentlyReading.map(\.coverURL) + suggestions.prefix(10).map(\.book.coverURL)).compactMap { $0 }
@@ -464,6 +469,9 @@ final class LibraryModel: ObservableObject {
         await loadNewReleases()
         Task { await fetchCleanTitles() }
         Task { await SpotlightIndex.refreshNotes() }
+        // Every cover on your shelves kept on disk, for when you're offline.
+        let covers = shelves.flatMap { ShelfCache.read($0)?.entries ?? [] }.compactMap(\.coverURL)
+        Task.detached(priority: .background) { await CoverStore.keep(covers) }
         await loadChallenge()
         friendsBooks = await FriendsBooks.index()
         if FriendsBooks.isStale(friendsBooks) { await syncFriendsBooks() }
@@ -529,6 +537,7 @@ final class LibraryModel: ObservableObject {
         ShelfCache.clear()
         await DataCache.shared.clear()
         ImageMemoryCache.shared.removeAll()
+        SpineColours.shared.clear()
         suggestions = []
         suggestionBasis = []
         friends = []
@@ -610,6 +619,7 @@ final class LibraryModel: ObservableObject {
     /// rows already shown (each loader shows its cache first anyway).
     func refreshAfterReconnect() async {
         guard loggedIn else { await checkSession(); return }
+        await sendOutbox()
         switch selection {
         case .shelf:       await loadShelf(force: true)
         case .home:        await loadCurrentlyReading(force: true)
@@ -1170,6 +1180,29 @@ final class LibraryModel: ObservableObject {
     /// own read-back verification was inconclusive — see
     /// `ShelfService.WriteVerification`. Silent on `.confirmed`, since that's
     /// the ordinary case and doesn't need calling out.
+    /// Sends a change to Goodreads — or, with no connection, keeps it in the
+    /// outbox to send once you're back online, and carries on as if it went
+    /// through (the caches and the screen change straight away).
+    private func sendOrQueue<T>(_ change: PendingChange, queued: T, _ send: () async throws -> T) async throws -> T {
+        if !Connectivity.shared.isOnline {
+            Outbox.shared.add(change)
+            return queued
+        }
+        do {
+            return try await send()
+        } catch where Outbox.isOffline(error) {
+            Outbox.shared.add(change)
+            return queued
+        }
+    }
+
+    /// Sends the changes made offline, then the screen can be refreshed.
+    func sendOutbox() async {
+        await Outbox.shared.send(using: shelves) { message in
+            status = Status(text: message, isError: true)
+        }
+    }
+
     private func caveat(_ verification: ShelfService.WriteVerification) -> String {
         verification == .unknown ? String(localized: " (couldn't confirm — check the shelf)") : ""
     }
@@ -1202,7 +1235,10 @@ final class LibraryModel: ObservableObject {
         defer { busyBookID = nil }
 
         do {
-            let verification = try await ShelfService.remove(bookID: entry.bookID, from: shelf)
+            let verification = try await sendOrQueue(.remove(bookID: entry.bookID, title: entry.title, shelf: shelf.name),
+                                                     queued: .confirmed) {
+                try await ShelfService.remove(bookID: entry.bookID, from: shelf)
+            }
             shelfEntries.removeAll { $0.id == entry.id }
             ShelfCache.write(shelfEntries, for: shelf)
             setCount(shelfEntries.count, for: shelf)
@@ -1222,7 +1258,9 @@ final class LibraryModel: ObservableObject {
     /// by hand would do.
     private func restoreRemoved(_ entry: ShelfEntry, to shelf: Shelf) async {
         do {
-            try await ShelfService.add(bookID: entry.bookID, to: shelf)
+            try await sendOrQueue(.add(bookID: entry.bookID, title: entry.title, shelf: shelf.name), queued: .confirmed) {
+                try await ShelfService.add(bookID: entry.bookID, to: shelf)
+            }
             bumpCountIfNew(bookID: entry.bookID, shelf: shelf)
             if currentShelf?.name == shelf.name, !shelfEntries.contains(where: { $0.id == entry.id }) {
                 shelfEntries.append(entry)
@@ -1241,7 +1279,9 @@ final class LibraryModel: ObservableObject {
     /// Suggestions just as easily as from a shelf pane.
     private func removeFromShelf(_ entry: ShelfEntry, shelf: Shelf, successText: String) async {
         do {
-            try await ShelfService.remove(bookID: entry.bookID, from: shelf)
+            try await sendOrQueue(.remove(bookID: entry.bookID, title: entry.title, shelf: shelf.name), queued: .confirmed) {
+                try await ShelfService.remove(bookID: entry.bookID, from: shelf)
+            }
             bumpCount(-1, for: shelf)
             if currentShelf?.name == shelf.name {
                 shelfEntries.removeAll { $0.id == entry.id }
@@ -1263,7 +1303,10 @@ final class LibraryModel: ObservableObject {
 
         let previousShelf = currentShelf
         do {
-            let verification = try await ShelfService.add(bookID: entry.bookID, to: shelf)
+            let verification = try await sendOrQueue(.add(bookID: entry.bookID, title: entry.title, shelf: shelf.name),
+                                                     queued: .confirmed) {
+                try await ShelfService.add(bookID: entry.bookID, to: shelf)
+            }
             bumpCountIfNew(bookID: entry.bookID, shelf: shelf)
 
             var movedAwayFrom: Shelf?
@@ -1298,9 +1341,11 @@ final class LibraryModel: ObservableObject {
         defer { busyBookID = nil }
 
         do {
-            let result = try await ShelfService.updateProgress(
-                bookID: entry.bookID, percent: percent, page: page, note: note
-            )
+            let result = try await sendOrQueue(.progress(bookID: entry.bookID, title: entry.title,
+                                                         percent: percent, page: page, note: note),
+                                               queued: ShelfService.ProgressResult(percent: percent, page: page)) {
+                try await ShelfService.updateProgress(bookID: entry.bookID, percent: percent, page: page, note: note)
+            }
             // Prefer what Goodreads actually recorded — a page-mode entry
             // has no percent from the caller otherwise.
             let resolvedPercent = result.percent ?? percent
@@ -1332,7 +1377,10 @@ final class LibraryModel: ObservableObject {
         defer { busyBookID = nil }
 
         do {
-            try await ShelfService.finish(bookID: bookID, rating: rating, dateRead: dateRead, note: note)
+            try await sendOrQueue(.finish(bookID: bookID, title: title, rating: rating, dateRead: dateRead, note: note),
+                                  queued: ()) {
+                try await ShelfService.finish(bookID: bookID, rating: rating, dateRead: dateRead, note: note)
+            }
 
             bumpCountIfNew(bookID: bookID, shelf: .read)
             if let current = currentShelf, current.isExclusive, current.name != "read" {
@@ -1429,7 +1477,9 @@ final class LibraryModel: ObservableObject {
         defer { busyBookID = nil }
 
         do {
-            try await ShelfService.rate(bookID: entry.bookID, stars: stars)
+            try await sendOrQueue(.rate(bookID: entry.bookID, title: entry.title, stars: stars), queued: ()) {
+                try await ShelfService.rate(bookID: entry.bookID, stars: stars)
+            }
             if let index = shelfEntries.firstIndex(where: { $0.id == entry.id }) {
                 shelfEntries[index].rating = stars
             }

@@ -7,6 +7,39 @@ landed on GitHub as one squashed "Initial commit" — 32 files changed,
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
 
+## [Unreleased]
+
+### Added
+
+- **Discover is a feed now**, ranked like a social app's. It learns from
+  everything you do as you do it: hearts, "read it", passes (a quick pass
+  counts more than one you thought about), opening a book's details and
+  lingering on a card. Each card's genres, author, length, age, reach,
+  rating and where the suggestion came from get a weight. The deck
+  re-ranks after every swipe and keeps variety (no author twice in a row,
+  no run of one genre). Now and then it shows something different, marked
+  as such, to see if you like it. What it learns also moves the
+  Suggestions list. It starts from your past swipes.
+- **Reading streaks**: days in a row you've read, counted from Kobo time,
+  Apple Books, progress updates and a new **I read today** button. Your
+  Week on Home shows the streak, the longest one, and a gentle weekly
+  goal ("3/5 days"; right-click to change it). A new **Reading Streak**
+  widget nudges you on days you haven't read yet.
+- **Works offline.** Rating, moving, removing, progress and finishing
+  books all work with no connection: the change shows straight away, waits
+  in an outbox (kept if you quit), and goes to Goodreads when you're back
+  online, oldest first. The sidebar says how many are waiting. Every cover
+  on your shelves is kept on disk, so the library looks the same offline.
+- **Next volume** on Home: after "Os Maias I", "Os Maias II" from your Want
+  to Read, with how many volumes you've read.
+- **Homebrew**: `brew install --cask native-goodreads` from the
+  `tomasmprado/tap` tap. `install.sh` can also install somewhere other than
+  /Applications (`GOODREADS_APP`) and leave the app closed
+  (`GOODREADS_NO_OPEN=1`).
+- **Bookcase**: spines take their colour from the book's cover; the arrow
+  keys move along the shelf (↑ ↓ between rows), Return opens the book and
+  Escape puts it back.
+
 ## [3.1.0] — 2026-11-07
 
 ### Added

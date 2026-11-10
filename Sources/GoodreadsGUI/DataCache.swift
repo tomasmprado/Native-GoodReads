@@ -76,6 +76,7 @@ actor DataCache {
         ShelfCache.clear()
         URLCache.shared.removeAllCachedResponses()
         ImageMemoryCache.shared.removeAll()
+        await SpineColours.shared.clear()
     }
 
     /// Things you wrote or that can't be fetched again — your notes, and
@@ -251,7 +252,11 @@ final class ImageMemoryCache {
             task = running
         } else {
             task = Task.detached(priority: .utility) {
-                try? await URLSession.shared.data(from: url).0
+                // Kept on disk too, so covers are there with no connection.
+                if let saved = CoverStore.read(url) { return saved }
+                guard let data = try? await URLSession.shared.data(from: url).0 else { return nil }
+                CoverStore.write(data, for: url)
+                return data
             }
             inFlight[url] = task
         }
@@ -261,6 +266,52 @@ final class ImageMemoryCache {
         guard let data, let image = NSImage(data: data) else { return nil }
         images.setObject(image, forKey: url as NSURL)
         return image
+    }
+}
+
+/// Every cover the app has shown, saved on disk so the library looks the
+/// same offline. Cleared with the rest of the cache.
+enum CoverStore {
+    private static let folder: URL = {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("GoodreadsGUI/cache/covers", isDirectory: true)
+    }()
+
+    private static func file(for url: URL) -> URL {
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in url.absoluteString.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x100000001b3
+        }
+        return folder.appendingPathComponent(String(format: "%016llx", hash))
+    }
+
+    static func read(_ url: URL) -> Data? { try? Data(contentsOf: file(for: url)) }
+
+    static func has(_ url: URL) -> Bool { FileManager.default.fileExists(atPath: file(for: url).path) }
+
+    static func write(_ data: Data, for url: URL) {
+        guard !data.isEmpty, data.count < 2_000_000 else { return }
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try? data.write(to: file(for: url), options: .atomic)
+    }
+
+    /// Saves the covers not on disk yet, a few at a time, without keeping
+    /// them in memory — so a whole library is there for when you're offline.
+    static func keep(_ urls: [URL]) async {
+        let todo = Array(Set(urls.filter { !has($0) }))
+        var index = 0
+        while index < todo.count, !Task.isCancelled {
+            let batch = todo[index..<min(index + 4, todo.count)]
+            index += 4
+            await withTaskGroup(of: Void.self) { group in
+                for url in batch {
+                    group.addTask {
+                        if let data = try? await URLSession.shared.data(from: url).0 { write(data, for: url) }
+                    }
+                }
+            }
+        }
     }
 }
 

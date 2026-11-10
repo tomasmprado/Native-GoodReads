@@ -84,6 +84,14 @@ final class Preferences: ObservableObject {
         }
     }
 
+    /// Days a week you'd like to read — Home's gentle weekly goal.
+    @Published var weeklyReadingDays: Int {
+        didSet {
+            defaults.set(weeklyReadingDays, forKey: Keys.weekDays)
+            WidgetBridge.scheduleUpdate()
+        }
+    }
+
     /// Take the Stats goal from your Goodreads Reading Challenge when you've joined it.
     @Published var useGoodreadsChallenge: Bool {
         didSet { defaults.set(useGoodreadsChallenge, forKey: Keys.useChallenge) }
@@ -190,6 +198,7 @@ final class Preferences: ObservableObject {
         static let unknown  = "includeUnknownLanguage"
         static let apiKey   = "googleBooksAPIKey"
         static let goal     = "yearlyGoal"
+        static let weekDays = "weeklyReadingDays"
         static let useChallenge = "useGoodreadsChallenge"
         static let browserButton = "showBrowserButton"
         static let syncReadingApps = "syncReadingApps"
@@ -216,6 +225,8 @@ final class Preferences: ObservableObject {
 
         let goal = defaults.integer(forKey: Keys.goal)
         yearlyGoal = goal > 0 ? goal : 24
+        let weekDays = defaults.integer(forKey: Keys.weekDays)
+        weeklyReadingDays = (1...7).contains(weekDays) ? weekDays : 5
         useGoodreadsChallenge = defaults.object(forKey: Keys.useChallenge) as? Bool ?? true
         showBrowserButton = defaults.bool(forKey: Keys.browserButton)
         syncReadingApps = defaults.bool(forKey: Keys.syncReadingApps)

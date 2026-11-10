@@ -922,3 +922,20 @@
 "Volumes read, of the volumes on your shelves" = "Volumes lidos, dos volumes que tens nas estantes";
 "%@ volumes read" = "%@ volumes lidos";
 "%lld volumes" = "%lld volumes";
+
+/* 3.2: streaks, next volume, offline changes, Discover feed */
+"Next volume · %lld/%lld read" = "Volume seguinte · %lld/%lld lidos";
+"I read today" = "Li hoje";
+"Count today as a reading day, for reading the app didn’t see" = "Contar hoje como dia de leitura, para leituras que a app não viu";
+"Read today to keep it going" = "Lê hoje para não perderes a sequência";
+"Longest: %lld days" = "A mais longa: %lld dias";
+"Weekly goal" = "Meta semanal";
+"%lld days a week" = "%lld dias por semana";
+"week’s goal met" = "meta da semana cumprida";
+"days this week" = "dias esta semana";
+"Right-click to change the weekly goal" = "Clica com o botão direito para mudar a meta semanal";
+"Sending %lld changes to Goodreads…" = "A enviar %lld alterações para o Goodreads…";
+"%lld changes will go to Goodreads when you’re online" = "%lld alterações vão para o Goodreads quando tiveres internet";
+"Couldn’t sync “%@”: %@" = "Não foi possível sincronizar “%1$@”: %2$@";
+"Something different, to see if you like it" = "Algo diferente, para ver se gostas";
+"Every day" = "Todos os dias";
