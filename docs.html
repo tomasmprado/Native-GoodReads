@@ -200,6 +200,7 @@ footer a { color: var(--ink-2); }
       <li><a href="#share">Safari &amp; Share</a></li>
       <li><a href="#notifications">Notifications</a></li>
       <li><a href="#spotlight">Spotlight</a></li>
+      <li><a href="#offline">Working offline</a></li>
     </ol>
     <p>Reference</p>
     <ol>
@@ -230,7 +231,7 @@ footer a { color: var(--ink-2); }
         <li><a href="#friends">Friends</a></li><li><a href="#profiles">Profiles &amp; authors</a></li><li><a href="#stores">Where to get it</a></li><li><a href="#stats">Stats &amp; goal</a></li><li><a href="#year">Year in Books</a></li>
         <li><a href="#notes">Notes</a></li><li><a href="#letters">Letters &amp; On this day</a></li><li><a href="#highlights">Importing highlights</a></li><li><a href="#copies">Your copy of a book</a></li><li><a href="#reading-apps">Apple Books, Kobo &amp; Calibre</a></li><li><a href="#kobo">Syncing a Kobo</a></li><li><a href="#calibre">Calibre</a></li><li><a href="#widgets">Widgets</a></li>
         <li><a href="#shortcuts">Shortcuts &amp; Siri</a></li><li><a href="#share">Safari &amp; Share</a></li><li><a href="#notifications">Notifications</a></li>
-        <li><a href="#spotlight">Spotlight</a></li><li><a href="#backup">Export &amp; backup</a></li><li><a href="#settings">Settings</a></li>
+        <li><a href="#spotlight">Spotlight</a></li><li><a href="#offline">Working offline</a></li><li><a href="#backup">Export &amp; backup</a></li><li><a href="#settings">Settings</a></li>
         <li><a href="#text-size">Text size</a></li><li><a href="#keyboard">Keyboard shortcuts</a></li><li><a href="#updates">Updates</a></li>
         <li><a href="#privacy">Privacy</a></li><li><a href="#troubleshooting">Troubleshooting</a></li>
       </ol>
@@ -296,8 +297,8 @@ footer a { color: var(--ink-2); }
         <li><strong>Currently Reading</strong> — a card for each book you're reading, with its cover, a progress bar and how far you've got. Click a cover for its details; right-click for Update Progress, Mark Read &amp; Rate, Stop Reading and View Details.</li>
         <li><strong>Your goal</strong> — books read this year against your Reading Challenge goal, counted the way Goodreads counts them.</li>
         <li><strong>The race</strong> — you and your friends running towards your own reading-challenge goals, with a finish line and a marker for where an even pace would put you today.</li>
-        <li><strong>Your week</strong> — pages read, days in a row and books finished this month.</li>
-        <li><strong>Next</strong> — what to read next: the top of your Want to Read order, or a pick from authors you've read lately.</li>
+        <li><strong>Your week</strong> — your reading streak (days in a row, and the longest one), the days you've read this week against a gentle goal, and pages read. Days count from your Kobo's reading time, Apple Books, progress updates and the <strong>I read today</strong> button. Right-click the card to change the weekly goal (one to seven days).</li>
+        <li><strong>Next</strong> — what to read next: the next volume of a work you've started (with how many you've read), the top of your Want to Read order, or a suggestion.</li>
       </ul>
       <div class="tip"><strong>Finish by a date:</strong> in a book's Update Progress, set a date you want to finish by and Home (and the reading reminder) tell you how many pages a day that takes.</div>
     </section>
@@ -306,7 +307,7 @@ footer a { color: var(--ink-2); }
       <h2>Shelves</h2>
       <p>Click a shelf in the sidebar. Saved shelves appear instantly and refresh in the background; the reload button in the toolbar fetches it again now.</p>
       <h3>List, covers or bookcase</h3>
-      <p>The first toolbar control switches between a <strong>list</strong> (with title, author, your stars and dates), a <strong>wall of covers</strong> and a <strong>bookcase</strong> (every shelf but Currently Reading): spines with the title and author, thicker for longer books, on wooden planks. Click a spine to pull it out and see a little about the book underneath; <strong>+</strong> opens its details. Double-click opens them straight away, and right-click has the usual actions.</p>
+      <p>The first toolbar control switches between a <strong>list</strong> (with title, author, your stars and dates), a <strong>wall of covers</strong> and a <strong>bookcase</strong> (every shelf but Currently Reading): spines with the title and author, thicker for longer books, on wooden planks. Click a spine to pull it out and see a little about the book underneath; <strong>+</strong> opens its details. Double-click opens them straight away, and right-click has the usual actions. Each spine takes its colour from the book's cover. The arrow keys move along the shelf (<kbd>↑</kbd> <kbd>↓</kbd> between rows), <kbd>Return</kbd> opens the book and <kbd>Esc</kbd> puts it back.</p>
       <h3>Volumes together</h3>
       <p>The volumes of one work — "Os Irmãos Karamázov I" and "II", or "Guerra e Paz – Volume I" — show as one book with the first one's cover and, on the right, how many you've read of those on your shelves (<strong>1/2</strong>). Each volume's actions are in its own submenu. In your own order on Want to Read they stay apart, so you can drag them one by one.</p>
       <h3>Tidy titles and names</h3>
@@ -439,7 +440,15 @@ footer a { color: var(--ink-2); }
         <tr><td>—</td><td><kbd>Space</kbd></td><td>The book's details (double-click works too)</td></tr>
         <tr><td>—</td><td><kbd>⌘</kbd> <kbd>Z</kbd></td><td>Bring back the last book</td></tr>
       </table></div>
-      <p>Every swipe is remembered and teaches the suggestions what you like: books you said yes to lead to more like them. When the deck runs low, more are found in the background.</p>
+      <h3>A feed that learns</h3>
+      <p>The deck is ranked the way a social app ranks its feed, and it learns as you go — from every heart, "read it" and pass (a quick pass counts more than one you thought about), and, more gently, from opening a book's details or lingering on a card. It looks at each book's genres, author, length, age, how many have read it, its rating and where the suggestion came from.</p>
+      <ul>
+        <li>The cards re-rank after every swipe, so the next ones already reflect the last.</li>
+        <li>It keeps variety: never the same author twice in a row, and no long run of one genre.</li>
+        <li>Now and then it shows <strong>something different, to see if you like it</strong> — so the deck doesn't shrink to one kind of book.</li>
+        <li>What it learns also moves the Suggestions list, and books you said yes to lead to more like them.</li>
+      </ul>
+      <p>When the deck runs low, more are found in the background.</p>
     </section>
 
     <section id="bingo">
@@ -579,6 +588,7 @@ footer a { color: var(--ink-2); }
         <div class="mini"><h4>Reading Goal</h4><p>A ring with books read this year against your goal, and whether you're ahead.</p></div>
         <div class="mini"><h4>Quote of the Day</h4><p>One of the quotes you saved, a different one each day.</p></div>
         <div class="mini"><h4>Friends' Race</h4><p>You and your friends in this year's Reading Challenge.</p></div>
+        <div class="mini"><h4>Reading Streak</h4><p>Days in a row you've read and this week's days, with a nudge on days you haven't read yet.</p></div>
       </div>
       <p>Widgets show what the app last saw, and refresh whenever something changes in the app.</p>
     </section>
@@ -619,6 +629,12 @@ footer a { color: var(--ink-2); }
       <p>The books on your shelves, and your notes and quotes, show up when you search with <kbd>⌘</kbd> <kbd>Space</kbd>. Choosing one opens it in the app. Turn it off in Settings to remove them.</p>
     </section>
 
+    <section id="offline">
+      <h2>Working offline</h2>
+      <p>With no connection, the app shows what it saved: your shelves, book details you've opened, notes and every cover on your shelves (kept on your Mac).</p>
+      <p>Rating, moving or removing books, updating progress and marking books read still work. The change shows straight away and waits in an outbox, kept even if you quit; the foot of the sidebar says how many are waiting. When you're back online — or the next time the app opens — they go to Goodreads in the order you made them. A newer change to the same book replaces an older one.</p>
+    </section>
+
     <!-- ============ Reference ============ -->
     <section id="backup">
       <h2>Export &amp; backup</h2>
@@ -657,6 +673,7 @@ footer a { color: var(--ink-2); }
         <tr><th>Keys</th><th>Does</th></tr>
         <tr><td><kbd>⌘</kbd> <kbd>,</kbd></td><td>Settings</td></tr>
         <tr><td><kbd>⌘</kbd> <kbd>K</kbd></td><td>Search</td></tr>
+        <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>Return</kbd> <kbd>Esc</kbd></td><td>In the <a href="#shelves">bookcase</a>: move along the shelf, open the book, put it back</td></tr>
         <tr><td><kbd>⇧</kbd> <kbd>⌘</kbd> <kbd>B</kbd></td><td>Scan a barcode</td></tr>
         <tr><td><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>Space</kbd> <kbd>⌘</kbd> <kbd>Z</kbd></td><td>In <a href="#discover">Discover</a>: pass, want to read, read it, details, undo</td></tr>
         <tr><td><kbd>⌘</kbd> <kbd>+</kbd> / <kbd>⌘</kbd> <kbd>−</kbd> / <kbd>⌘</kbd> <kbd>0</kbd></td><td>Bigger, smaller, actual text size</td></tr>
