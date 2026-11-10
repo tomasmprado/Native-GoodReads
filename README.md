@@ -2,7 +2,13 @@
 
 A free, native Mac app for your Goodreads library.
 
-**Website:** [tomasmprado.github.io/Native-GoodReads](https://tomasmprado.github.io/Native-GoodReads/)
+**Website:** [tomasmprado.github.io/Native-GoodReads](https://tomasmprado.github.io/Native-GoodReads/) ·
+[Guide](https://tomasmprado.github.io/Native-GoodReads/docs.html) ·
+[What's new](https://tomasmprado.github.io/Native-GoodReads/changelog.html)
+
+**Latest:** 3.2 — Discover learns from every swipe, reading streaks and a
+streak widget, works offline, the next volume of what you've started, and a
+bookcase in your books' own colours. [Every version](https://tomasmprado.github.io/Native-GoodReads/changelog.html)
 
 ## Features
 
@@ -57,4 +63,5 @@ notes stay on your Mac.
 
 ---
 
-Not affiliated with Goodreads or Amazon. For developers: [DEVELOPMENT.md](DEVELOPMENT.md).
+Not affiliated with Goodreads or Amazon. For developers: [DEVELOPMENT.md](DEVELOPMENT.md)
+and the full [CHANGELOG.md](CHANGELOG.md).
