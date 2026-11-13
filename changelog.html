@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Native GoodReads — What's New</title>
-<meta name="description" content="What changed in each version of Native GoodReads, the Mac app for your Goodreads library.">
+<title>OpenShelf — What's New</title>
+<meta name="description" content="What changed in each version of OpenShelf, the Mac app for your Goodreads library.">
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238a5a33'/%3E%3Cpath d='M18 16h12a6 6 0 0 1 6 6v28a5 5 0 0 0-5-5H18z M46 16H34a6 6 0 0 0-6 6v28a5 5 0 0 1 5-5h13z' fill='%23fbf6ee'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root {
   --bg: #fbf7f1; --bg-2: #f3ebdf; --card: #ffffff; --ink: #2b211a; --ink-2: #6b5a4c; --ink-3: #9a8878;
@@ -42,7 +43,7 @@ a { color: var(--accent); text-underline-offset: 3px; }
 }
 .top .wrap { display: flex; align-items: center; gap: 20px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--ink); text-decoration: none; white-space: nowrap; flex: none; }
-.mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; }
+.mark { width: 28px; height: 28px; border-radius: 7px; display: block; }
 .mark svg { width: 18px; height: 18px; }
 .top nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; align-items: center; }
 .top nav a { color: var(--ink-2); text-decoration: none; }
@@ -145,16 +146,16 @@ article p code, article li code, article td code, article .tip code { overflow-w
 <header class="top">
   <div class="wrap">
     <a class="brand" href="./">
-      <span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h5a3 3 0 0 1 3 3v12a2.5 2.5 0 0 0-2.5-2.5H4z M20 5h-5a3 3 0 0 0-3 3v12a2.5 2.5 0 0 1 2.5-2.5H20z" fill="#fbf6ee"/></svg></span>
-      Native GoodReads
+      <img class="mark" src="mark.png" alt="" width="28" height="28">
+      OpenShelf
     </a>
     <nav>
       <a href="./#features">Features</a>
       <a class="keep" href="docs.html">Guide</a>
       <a class="here" href="changelog.html">What's New</a>
       <a href="./#faq">FAQ</a>
-      <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a>
-      <a class="cta-small" href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">Download</a>
+      <a href="https://github.com/tomasmprado/OpenShelf">GitHub</a>
+      <a class="cta-small" href="https://github.com/tomasmprado/OpenShelf/releases/latest">Download</a>
     </nav>
   </div>
 </header>
@@ -163,7 +164,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
   <aside class="toc" aria-label="Versions">
     <p>Versions</p>
     <ol>
-      <li><a href="#v3-2">3.2</a></li>
+      <li><a href="#v3-3">3.3</a></li><li><a href="#v3-2">3.2</a></li>
       <li><a href="#v3-1">3.1</a></li>
       <li><a href="#v3-0">3.0</a></li>
       <li><a href="#v2-7">2.7</a></li>
@@ -182,19 +183,31 @@ article p code, article li code, article td code, article .tip code { overflow-w
     <div class="intro">
       <p class="kicker">What's new</p>
       <h1>Every version, in plain words</h1>
-      <p>What changed in each release. The app updates itself: when a new version is out, an <strong>Update</strong> button appears at the foot of the sidebar. The full technical list is in the <a href="https://github.com/tomasmprado/Native-GoodReads/blob/main/CHANGELOG.md">changelog on GitHub</a>.</p>
-      <p><a href="https://github.com/tomasmprado/Native-GoodReads/releases/latest"><strong>Download the latest version →</strong></a></p>
+      <p>What changed in each release. The app updates itself: when a new version is out, an <strong>Update</strong> button appears at the foot of the sidebar. The full technical list is in the <a href="https://github.com/tomasmprado/OpenShelf/blob/main/CHANGELOG.md">changelog on GitHub</a>.</p>
+      <p><a href="https://github.com/tomasmprado/OpenShelf/releases/latest"><strong>Download the latest version →</strong></a></p>
     </div>
 
     <details class="toc-mobile">
       <summary>Versions</summary>
       <ol>
-        <li><a href="#v3-2">3.2</a></li><li><a href="#v3-1">3.1</a></li><li><a href="#v3-0">3.0</a></li><li><a href="#v2-7">2.7</a></li><li><a href="#v2-6">2.6</a></li><li><a href="#v2-5">2.5</a></li><li><a href="#v2-4">2.4</a></li><li><a href="#v2-3">2.3</a></li><li><a href="#v2-2">2.2</a></li><li><a href="#v2-1">2.1</a></li><li><a href="#v2-0">2.0</a></li><li><a href="#v1-0">1.0</a></li>
+        <li><a href="#v3-3">3.3</a></li><li><a href="#v3-2">3.2</a></li><li><a href="#v3-1">3.1</a></li><li><a href="#v3-0">3.0</a></li><li><a href="#v2-7">2.7</a></li><li><a href="#v2-6">2.6</a></li><li><a href="#v2-5">2.5</a></li><li><a href="#v2-4">2.4</a></li><li><a href="#v2-3">2.3</a></li><li><a href="#v2-2">2.2</a></li><li><a href="#v2-1">2.1</a></li><li><a href="#v2-0">2.0</a></li><li><a href="#v1-0">1.0</a></li>
       </ol>
     </details>
 
+    <section id="v3-3">
+      <h2>3.3 <span class="latest">Latest</span></h2>
+      <p class="version-date">13 November 2026</p>
+      <h3>Changed</h3>
+      <ul>
+        <li><strong>The app is now called OpenShelf</strong>, with a new icon: an open shelf of books. It’s the same app — your settings, sign-in, notes, progress and widgets all carry over.</li>
+        <li>The website is now <a href="https://tomasmprado.github.io/OpenShelf/">tomasmprado.github.io/OpenShelf</a> and the code is on <a href="https://github.com/tomasmprado/OpenShelf">github.com/tomasmprado/OpenShelf</a> (old GitHub links still work).</li>
+        <li><strong>Homebrew</strong>: <code>brew instal openshelf</code>. The old <code>goodreads</code> name still works.</li>
+        <li>Updating from inside the app keeps the old <code>Goodreads.app</code> file name this once, and switches to <code>OpenShelf.app</code> from the next update. <code>install.sh</code> switches it straight away.</li>
+      </ul>
+    </section>
+
     <section id="v3-2">
-      <h2>3.2 <span class="latest">Latest</span></h2>
+      <h2>3.2</h2>
       <p class="version-date">10 November 2026</p>
       <h3>New</h3>
       <ul>
@@ -204,7 +217,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
         <li><strong>Works offline.</strong> Rating, moving and removing books, progress and marking books read all work without a connection; the changes go to Goodreads when you’re back. Every cover on your shelves is kept on your Mac.</li>
         <li><strong>Next volume</strong> on Home: after “Os Maias I”, “Os Maias II” from your Want to Read.</li>
         <li><strong>Bookcase</strong>: spines take their colour from the cover; arrow keys move along the shelf, Return opens the book, Escape puts it back.</li>
-        <li><strong>Homebrew</strong>: <code>b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal goodreads;bash $(b --repo)/install.sh --resign</code></li>
+        <li><strong>Homebrew</strong>: <code>b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal openshelf;bash $(b --repo)/install.sh --resign</code></li>
       </ul>
     </section>
 
@@ -369,8 +382,8 @@ article p code, article li code, article td code, article .tip code { overflow-w
 
 <footer>
   <div class="wrap">
-    <span>Native GoodReads is an independent, unofficial app. It isn't made by or affiliated with Goodreads or Amazon. Goodreads is a trademark of Goodreads, LLC.</span>
-    <span><a href="./">Home</a> · <a href="docs.html">Guide</a> · <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Report a problem</a></span>
+    <span>OpenShelf is an independent, unofficial app. It isn't made by or affiliated with Goodreads or Amazon. Goodreads is a trademark of Goodreads, LLC.</span>
+    <span><a href="./">Home</a> · <a href="docs.html">Guide</a> · <a href="https://github.com/tomasmprado/OpenShelf">GitHub</a> · <a href="https://github.com/tomasmprado/OpenShelf/issues">Report a problem</a></span>
   </div>
 </footer>
 

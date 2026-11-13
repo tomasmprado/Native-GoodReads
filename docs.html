@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Native GoodReads Guide</title>
-<meta name="description" content="How to use every feature of Native GoodReads, the Mac app for your Goodreads library.">
+<title>OpenShelf Guide</title>
+<meta name="description" content="How to use every feature of OpenShelf, the Mac app for your Goodreads library.">
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238a5a33'/%3E%3Cpath d='M18 16h12a6 6 0 0 1 6 6v28a5 5 0 0 0-5-5H18z M46 16H34a6 6 0 0 0-6 6v28a5 5 0 0 1 5-5h13z' fill='%23fbf6ee'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root {
   --bg: #fbf7f1; --bg-2: #f3ebdf; --card: #ffffff; --ink: #2b211a; --ink-2: #6b5a4c; --ink-3: #9a8878;
@@ -42,7 +43,7 @@ a { color: var(--accent); text-underline-offset: 3px; }
 }
 .top .wrap { display: flex; align-items: center; gap: 20px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--ink); text-decoration: none; white-space: nowrap; flex: none; }
-.mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; }
+.mark { width: 28px; height: 28px; border-radius: 7px; display: block; }
 .mark svg { width: 18px; height: 18px; }
 .top nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; align-items: center; }
 .top nav a { color: var(--ink-2); text-decoration: none; }
@@ -143,16 +144,16 @@ article p code, article li code, article td code, article .tip code { overflow-w
 <header class="top">
   <div class="wrap">
     <a class="brand" href="./">
-      <span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h5a3 3 0 0 1 3 3v12a2.5 2.5 0 0 0-2.5-2.5H4z M20 5h-5a3 3 0 0 0-3 3v12a2.5 2.5 0 0 1 2.5-2.5H20z" fill="#fbf6ee"/></svg></span>
-      Native GoodReads
+      <img class="mark" src="mark.png" alt="" width="28" height="28">
+      OpenShelf
     </a>
     <nav>
       <a href="./#features">Features</a>
       <a class="here keep" href="docs.html">Guide</a>
       <a href="changelog.html">What's New</a>
       <a href="./#faq">FAQ</a>
-      <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a>
-      <a class="cta-small" href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">Download</a>
+      <a href="https://github.com/tomasmprado/OpenShelf">GitHub</a>
+      <a class="cta-small" href="https://github.com/tomasmprado/OpenShelf/releases/latest">Download</a>
     </nav>
   </div>
 </header>
@@ -222,7 +223,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
   <article>
     <div class="intro">
       <p class="kicker">Guide</p>
-      <h1>Everything Native GoodReads can do</h1>
+      <h1>Everything OpenShelf can do</h1>
       <p>A tour of every feature, in the order you'll probably meet them. Your shelves, ratings and friends stay on Goodreads — anything you change here shows up there too.</p>
     </div>
 
@@ -247,7 +248,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
       <h2>Install</h2>
       <p>You need a Mac with macOS 13 Ventura or later — Apple silicon or Intel.</p>
       <ol class="steps">
-        <li>From the <a href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">latest release</a>, download <strong>Goodreads.dmg</strong> and <strong>install.sh</strong> into your Downloads folder.</li>
+        <li>From the <a href="https://github.com/tomasmprado/OpenShelf/releases/latest">latest release</a>, download <strong>OpenShelf.dmg</strong> and <strong>install.sh</strong> into your Downloads folder.</li>
         <li>Open <strong>Terminal</strong> (Applications → Utilities), paste this and press Return:</li>
       </ol>
       <div class="code"><code id="cmd1">bash ~/Downloads/install.sh</code><button type="button" data-copy="cmd1">Copy</button></div>
@@ -257,13 +258,13 @@ article p code, article li code, article td code, article .tip code { overflow-w
       <p>Open the .dmg and drag Goodreads to Applications. The first time, right-click the app and choose <strong>Open</strong> (or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>). The Keychain prompt may come back after each update.</p>
       <h3>With Homebrew</h3>
       <p>The app is in the <a href="https://github.com/tomasmprado/homebrew-tap">tomasmprado/tap</a> tap. One line taps it, trusts it (Homebrew asks you to before installing from a tap), installs the app and signs it on your Mac:</p>
-      <div class="code"><code id="cmd-brew">b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal goodreads;bash $(b --repo)/install.sh --resign</code><button type="button" data-copy="cmd-brew">Copy</button></div>
+      <div class="code"><code id="cmd-brew">b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal openshelf;bash $(b --repo)/install.sh --resign</code><button type="button" data-copy="cmd-brew">Copy</button></div>
       <p>The app isn't notarised by Apple, so the cask takes off the "downloaded from the internet" flag, as the installer does; the last part gives it a signature that stays the same between versions, so the Keychain stops asking after updates.</p>
       <p>The app updates itself; <code>brew upgrade --greedy</code> works too. <code>brew uninstall --zap goodreads</code> removes it with its data and settings.</p>
       <h3>Other installer options</h3>
       <div class="table-wrap"><table>
         <tr><th>Command</th><th>What it does</th></tr>
-        <tr><td><code>bash install.sh path/to/Goodreads.dmg</code></td><td>Installs from a .dmg (or .app) somewhere else.</td></tr>
+        <tr><td><code>bash install.sh path/to/OpenShelf.dmg</code></td><td>Installs from a .dmg (or .app) somewhere else.</td></tr>
         <tr><td><code>bash install.sh --resign</code></td><td>Re-signs the app already in Applications — useful after updating from 2.5.0.</td></tr>
         <tr><td><code>bash install.sh --remove-certificate</code></td><td>Removes the signing certificate the installer made.</td></tr>
       </table></div>
@@ -586,7 +587,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
     <!-- ============ Around your Mac ============ -->
     <section id="widgets">
       <h2>Widgets</h2>
-      <p>Right-click the desktop → <strong>Edit Widgets</strong> → search for <strong>Goodreads</strong>. They also work in Notification Center.</p>
+      <p>Right-click the desktop → <strong>Edit Widgets</strong> → search for <strong>OpenShelf</strong>. They also work in Notification Center.</p>
       <div class="grid2">
         <div class="mini"><h4>Currently Reading</h4><p>Small, medium or large: your books with covers, progress, pages and finish dates.</p></div>
         <div class="mini"><h4>Reading Goal</h4><p>A ring with books read this year against your goal, and whether you're ahead.</p></div>
@@ -599,7 +600,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
 
     <section id="shortcuts">
       <h2>Shortcuts &amp; Siri</h2>
-      <p>In the Shortcuts app, search for <strong>Goodreads</strong>:</p>
+      <p>In the Shortcuts app, search for <strong>OpenShelf</strong>:</p>
       <div class="table-wrap"><table>
         <tr><th>Action</th><th>What it does</th></tr>
         <tr><td>What Am I Reading</td><td>Lists your current books with progress and finish dates.</td></tr>
@@ -712,7 +713,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
       <h3>Search finds little, or says the quota is used up</h3>
       <p>Add a Google Books key in <a href="#settings">Settings</a>.</p>
       <h3>A shelf or friends look empty or out of date</h3>
-      <p>Click the reload button in the toolbar. If it's still wrong, Goodreads may have changed its website: open <span class="path">Settings → Troubleshooting → Log</span>, copy it, and <a href="https://github.com/tomasmprado/Native-GoodReads/issues">open an issue</a> with it. Turning on the <strong>Browser</strong> button there shows the Goodreads page the app is using behind the scenes.</p>
+      <p>Click the reload button in the toolbar. If it's still wrong, Goodreads may have changed its website: open <span class="path">Settings → Troubleshooting → Log</span>, copy it, and <a href="https://github.com/tomasmprado/OpenShelf/issues">open an issue</a> with it. Turning on the <strong>Browser</strong> button there shows the Goodreads page the app is using behind the scenes.</p>
       <h3>A book has no synopsis or details</h3>
       <p>Close it and open it again — the app retries Goodreads and fills the gaps from Google Books. A Google Books key helps here too.</p>
       <h3>The widget is empty</h3>
@@ -726,8 +727,8 @@ article p code, article li code, article td code, article .tip code { overflow-w
 
 <footer>
   <div class="wrap">
-    <span>Native GoodReads is an independent, unofficial app. It isn't made by or affiliated with Goodreads or Amazon. Goodreads is a trademark of Goodreads, LLC.</span>
-    <span><a href="./">Home</a> · <a href="changelog.html">What's New</a> · <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Report a problem</a></span>
+    <span>OpenShelf is an independent, unofficial app. It isn't made by or affiliated with Goodreads or Amazon. Goodreads is a trademark of Goodreads, LLC.</span>
+    <span><a href="./">Home</a> · <a href="changelog.html">What's New</a> · <a href="https://github.com/tomasmprado/OpenShelf">GitHub</a> · <a href="https://github.com/tomasmprado/OpenShelf/issues">Report a problem</a></span>
   </div>
 </footer>
 

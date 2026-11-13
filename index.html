@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Native GoodReads — a Mac app for your reading</title>
+<title>OpenShelf — a Mac app for your reading</title>
 <meta name="description" content="A free, native Mac app for your Goodreads library: track what you're reading, suggestions that know your taste, a swipe deck to discover books, a bookcase view, widgets, Shortcuts, stats and your year in books.">
-<meta property="og:title" content="Native GoodReads — a Mac app for your reading">
+<meta property="og:title" content="OpenShelf — a Mac app for your reading">
 <meta property="og:description" content="Track what you're reading, get suggestions that know your taste, swipe through books to discover, see your shelves as a bookcase, and more. Free, for macOS 13 and later.">
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%238a5a33'/%3E%3Cpath d='M18 16h12a6 6 0 0 1 6 6v28a5 5 0 0 0-5-5H18z M46 16H34a6 6 0 0 0-6 6v28a5 5 0 0 1 5-5h13z' fill='%23fbf6ee'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root {
   --bg: #fbf7f1;
@@ -78,7 +79,7 @@ img, svg { display: block; }
 }
 .top .wrap { display: flex; align-items: center; gap: 20px; height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; color: var(--ink); text-decoration: none; white-space: nowrap; flex: none; }
-.mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; }
+.mark { width: 28px; height: 28px; border-radius: 7px; display: block; }
 .mark svg { width: 18px; height: 18px; }
 .top nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; align-items: center; }
 .top nav a { color: var(--ink-2); text-decoration: none; }
@@ -337,6 +338,8 @@ footer a { color: var(--ink-2); }
 .hero-brew + .actions { margin-top: 18px; }
 @media (max-width: 600px) { .hero-brew .code { font-size: 12.5px; } }
 #brew { white-space: normal; overflow-wrap: anywhere; line-height: 1.55; }
+.hero-icon { display: block; margin: 0 auto 14px; width: 128px; height: 128px; }
+@media (max-width: 600px) { .hero-icon { width: 96px; height: 96px; } }
 </style>
 </head>
 <body>
@@ -344,8 +347,8 @@ footer a { color: var(--ink-2); }
 <header class="top">
   <div class="wrap">
     <a class="brand" href="#">
-      <span class="mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h5a3 3 0 0 1 3 3v12a2.5 2.5 0 0 0-2.5-2.5H4z M20 5h-5a3 3 0 0 0-3 3v12a2.5 2.5 0 0 1 2.5-2.5H20z" fill="#fbf6ee"/></svg></span>
-      Native GoodReads
+      <img class="mark" src="mark.png" alt="" width="28" height="28">
+      OpenShelf
     </a>
     <nav>
       <a href="#features">Features</a>
@@ -353,23 +356,24 @@ footer a { color: var(--ink-2); }
       <a class="keep" href="docs.html">Guide</a>
       <a href="changelog.html">What's New</a>
       <a href="#faq">FAQ</a>
-      <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a>
-      <a class="cta-small" href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">Download</a>
+      <a href="https://github.com/tomasmprado/OpenShelf">GitHub</a>
+      <a class="cta-small" href="https://github.com/tomasmprado/OpenShelf/releases/latest">Download</a>
     </nav>
   </div>
 </header>
 
 <main>
   <div class="hero wrap">
+    <img class="hero-icon" src="icon.png" alt="OpenShelf's icon: books on an open shelf" width="128" height="128">
     <span class="eyebrow">Free · for macOS 13 and later</span>
     <h1>Your reading, <em>at home</em> on the Mac.</h1>
     <p class="lede">A fast, native app for your Goodreads library. See what you're reading, update your progress, discover your next book and keep up with friends — without opening the website.</p>
     <div class="hero-brew">
       <p class="label">Install with <a href="https://brew.sh">Homebrew</a></p>
-      <div class="code"><code id="hero-brew">b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal goodreads;bash $(b --repo)/install.sh --resign</code><button type="button" data-copy="hero-brew">Copy</button></div>
+      <div class="code"><code id="hero-brew">b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal openshelf;bash $(b --repo)/install.sh --resign</code><button type="button" data-copy="hero-brew">Copy</button></div>
     </div>
     <div class="actions">
-      <a class="btn primary" href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">
+      <a class="btn primary" href="https://github.com/tomasmprado/OpenShelf/releases/latest">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
         Download for Mac
       </a>
@@ -590,7 +594,7 @@ footer a { color: var(--ink-2); }
         <div class="step">
           <div>
             <h3>Download</h3>
-            <p>From the <a href="https://github.com/tomasmprado/Native-GoodReads/releases/latest">latest release</a>, download <strong>Goodreads.dmg</strong> and <strong>install.sh</strong> into your Downloads folder.</p>
+            <p>From the <a href="https://github.com/tomasmprado/OpenShelf/releases/latest">latest release</a>, download <strong>OpenShelf.dmg</strong> and <strong>install.sh</strong> into your Downloads folder.</p>
           </div>
         </div>
         <div class="step">
@@ -610,7 +614,7 @@ footer a { color: var(--ink-2); }
       <details class="more">
         <summary>Use Homebrew?</summary>
         <p>Install it from the <a href="https://github.com/tomasmprado/homebrew-tap">tomasmprado/tap</a> tap. The last part signs the app on your Mac, so the Keychain stops asking for your password after updates:</p>
-        <div class="code"><code id="brew">b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal goodreads;bash $(b --repo)/install.sh --resign</code><button type="button" data-copy="brew">Copy</button></div>
+        <div class="code"><code id="brew">b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal openshelf;bash $(b --repo)/install.sh --resign</code><button type="button" data-copy="brew">Copy</button></div>
       </details>
       <details class="more">
         <summary>Rather not use Terminal?</summary>
@@ -629,20 +633,19 @@ footer a { color: var(--ink-2); }
         <li><span>You sign in on <strong>Goodreads' own page</strong>. The app never sees or stores your password.</span></li>
         <li><span>Your notes and progress history live <strong>only on your Mac</strong> — with a one-click backup.</span></li>
         <li><span><strong>No tracking</strong>, no ads and no account of its own. It talks only to Goodreads, Google Books, Wikidata (where authors are from), Apple Books and Wook (for prices) and GitHub (for updates).</span></li>
-        <li><span><strong>Open source</strong> — every line is <a href="https://github.com/tomasmprado/Native-GoodReads">on GitHub</a>.</span></li>
+        <li><span><strong>Open source</strong> — every line is <a href="https://github.com/tomasmprado/OpenShelf">on GitHub</a>.</span></li>
       </ul>
     </div>
   </section>
 
   <section id="whats-new">
     <div class="wrap">
-      <p class="kicker">What's new in 3.2</p>
-      <h2>A feed that learns, streaks, and offline.</h2>
+      <p class="kicker">What's new in 3.3</p>
+      <h2>Now called OpenShelf.</h2>
       <ul class="checks">
-        <li><span><strong>Discover learns from every swipe</strong> — and from the books you open or linger on — re-ranking as you go, with something different now and then.</span></li>
-        <li><span><strong>Reading streaks</strong> and a gentle weekly goal on Home, with a new widget that nudges you on days you haven't read.</span></li>
-        <li><span><strong>Works offline</strong>: your changes wait and go to Goodreads when you're back online.</span></li>
-        <li><span><strong>The next volume</strong> of what you've started, a <strong>bookcase</strong> in your books' own colours, and <strong>Homebrew</strong>.</span></li>
+        <li><span><strong>A new name and a new icon</strong>: an open shelf of books. Same app, same data — nothing to set up again.</span></li>
+        <li><span><strong>Homebrew</strong> is now <code>brew instal openshelf</code>; the old name still works.</span></li>
+        <li><span>Still in 3.2: <strong>Discover learns from every swipe</strong>, <strong>reading streaks</strong> with a widget, <strong>works offline</strong>, and a <strong>bookcase</strong> in your books' own colours.</span></li>
       </ul>
       <p style="margin-top:22px"><a class="btn ghost" href="changelog.html">Every version →</a></p>
     </div>
@@ -675,18 +678,18 @@ footer a { color: var(--ink-2); }
         </details>
         <details>
           <summary>Something looks wrong or empty.</summary>
-          <p>Goodreads sometimes changes its website. Open Settings → Troubleshooting → Log, copy it, and <a href="https://github.com/tomasmprado/Native-GoodReads/issues">open an issue</a>.</p>
+          <p>Goodreads sometimes changes its website. Open Settings → Troubleshooting → Log, copy it, and <a href="https://github.com/tomasmprado/OpenShelf/issues">open an issue</a>.</p>
         </details>
       </div>
-      <p style="margin-top:28px;color:var(--ink-2)">Every feature is explained in the <a href="docs.html">guide</a>. Another question? <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Ask on GitHub</a>.</p>
+      <p style="margin-top:28px;color:var(--ink-2)">Every feature is explained in the <a href="docs.html">guide</a>. Another question? <a href="https://github.com/tomasmprado/OpenShelf/issues">Ask on GitHub</a>.</p>
     </div>
   </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <span>Native GoodReads is an independent, unofficial app. It isn't made by or affiliated with Goodreads or Amazon. Goodreads is a trademark of Goodreads, LLC.</span>
-    <span><a href="docs.html">Guide</a> · <a href="changelog.html">What's New</a> · <a href="https://github.com/tomasmprado/Native-GoodReads">GitHub</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/releases">Releases</a> · <a href="https://github.com/tomasmprado/Native-GoodReads/issues">Report a problem</a></span>
+    <span>OpenShelf is an independent, unofficial app. It isn't made by or affiliated with Goodreads or Amazon. Goodreads is a trademark of Goodreads, LLC.</span>
+    <span><a href="docs.html">Guide</a> · <a href="changelog.html">What's New</a> · <a href="https://github.com/tomasmprado/OpenShelf">GitHub</a> · <a href="https://github.com/tomasmprado/OpenShelf/releases">Releases</a> · <a href="https://github.com/tomasmprado/OpenShelf/issues">Report a problem</a></span>
   </div>
 </footer>
 
