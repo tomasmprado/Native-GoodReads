@@ -1,14 +1,15 @@
-# Native GoodReads
+# OpenShelf
 
-A free, native Mac app for your Goodreads library.
+A free, native Mac app for your Goodreads library. (It used to be called
+Goodreads / Native GoodReads.)
 
-**Website:** [tomasmprado.github.io/Native-GoodReads](https://tomasmprado.github.io/Native-GoodReads/) ·
-[Guide](https://tomasmprado.github.io/Native-GoodReads/docs.html) ·
-[What's new](https://tomasmprado.github.io/Native-GoodReads/changelog.html)
+**Website:** [tomasmprado.github.io/OpenShelf](https://tomasmprado.github.io/OpenShelf/) ·
+[Guide](https://tomasmprado.github.io/OpenShelf/docs.html) ·
+[What's new](https://tomasmprado.github.io/OpenShelf/changelog.html)
 
 **Latest:** 3.2 — Discover learns from every swipe, reading streaks and a
 streak widget, works offline, the next volume of what you've started, and a
-bookcase in your books' own colours. [Every version](https://tomasmprado.github.io/Native-GoodReads/changelog.html)
+bookcase in your books' own colours. [Every version](https://tomasmprado.github.io/OpenShelf/changelog.html)
 
 ## Features
 
@@ -35,7 +36,7 @@ bookcase in your books' own colours. [Every version](https://tomasmprado.github.
 
 Requires macOS 13 or later.
 
-1. Download **Goodreads.dmg** and **install.sh** from the
+1. Download **OpenShelf.dmg** and **install.sh** from the
    [latest release](../../releases/latest).
 2. In Terminal, run:
 
@@ -48,7 +49,7 @@ Requires macOS 13 or later.
 Or with [Homebrew](https://brew.sh):
 
 ```sh
-b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal goodreads;bash $(b --repo)/install.sh --resign
+b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal openshelf;bash $(b --repo)/install.sh --resign
 ```
 
 The last part signs the app on your Mac, so the Keychain stops asking for your

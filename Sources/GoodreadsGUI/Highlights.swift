@@ -404,7 +404,7 @@ struct HighlightsImportSheet: View {
                 && [NSFileReadNoPermissionError, NSFileReadUnknownError].contains((error as NSError).code)
             if source == .appleBooks, denied || (error as NSError).code == NSFileReadNoSuchFileError {
                 needsFolder = true
-                message = String(localized: "macOS didn’t let the app read Apple Books. Choose its folder to allow it once, or turn on Full Disk Access for Goodreads in System Settings.")
+                message = String(localized: "macOS didn’t let the app read Apple Books. Choose its folder to allow it once, or turn on Full Disk Access for OpenShelf in System Settings.")
             } else {
                 message = error.localizedDescription
             }

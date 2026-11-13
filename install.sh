@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 #
-# install.sh — installs Goodreads.app from the downloaded .dmg, signed on
+# install.sh — installs OpenShelf.app from the downloaded .dmg, signed on
 # this Mac so macOS opens it without warnings and stops asking for the
 # Keychain password after every update.
 #
-#   bash install.sh                     # finds Goodreads.dmg in Downloads, or the mounted disk
-#   bash install.sh ~/Downloads/Goodreads.dmg
-#   bash install.sh /path/to/Goodreads.app
-#   bash install.sh --resign            # only re-sign /Applications/Goodreads.app
+#   bash install.sh                     # finds OpenShelf.dmg in Downloads, or the mounted disk
+#   bash install.sh ~/Downloads/OpenShelf.dmg
+#   bash install.sh /path/to/OpenShelf.app
+#   bash install.sh --resign            # only re-sign /Applications/OpenShelf.app
 #   bash install.sh --remove-certificate
 #
-#   GOODREADS_APP=/path/to/Goodreads.app   another place than /Applications
-#   GOODREADS_NO_OPEN=1                    don't open it at the end (Homebrew)
+#   OPENSHELF_APP=/path/to/OpenShelf.app   another place than /Applications
+#   OPENSHELF_NO_OPEN=1                    don't open it at the end (Homebrew)
+#
+# The app used to be called Goodreads: an old Goodreads.app (the same app)
+# is replaced, and works with --resign too.
 #
 # What it does, step by step:
-#   1. Copies Goodreads.app into /Applications (quitting it first if it's open).
+#   1. Copies OpenShelf.app into /Applications (quitting it first if it's open).
 #   2. Removes the "downloaded from the internet" flag, so Gatekeeper doesn't
 #      block an app that isn't notarised by Apple.
 #   3. Signs it with a certificate kept in your login keychain, made the first
@@ -25,8 +28,13 @@
 # Nothing is sent anywhere, and nothing needs your administrator password.
 set -euo pipefail
 
-APP_NAME="Goodreads"
-TARGET="${GOODREADS_APP:-/Applications/${APP_NAME}.app}"
+APP_NAME="OpenShelf"
+OLD_NAME="Goodreads"
+BUNDLE_ID="local.goodreads.gui"
+TARGET="${OPENSHELF_APP:-${GOODREADS_APP:-/Applications/${APP_NAME}.app}}"
+OLD_TARGET="$(dirname "${TARGET}")/${OLD_NAME}.app"
+NO_OPEN="${OPENSHELF_NO_OPEN:-${GOODREADS_NO_OPEN:-}}"
+# Kept from before the rename, so Macs that have it don't make a second one.
 CERT_NAME="Goodreads Local Signing"
 KEYCHAIN="${HOME}/Library/Keychains/login.keychain-db"
 
@@ -61,7 +69,7 @@ case "${1:-}" in
     ;;
   --resign) RESIGN_ONLY=1 ;;
   -h | --help)
-    sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
     ;;
   "") ;;
@@ -79,6 +87,9 @@ then
     elif [[ -f "${HOME}/Downloads/${APP_NAME}.dmg" ]]
     then
       SOURCE="${HOME}/Downloads/${APP_NAME}.dmg"
+    elif [[ -f "${HOME}/Downloads/${OLD_NAME}.dmg" ]]
+    then
+      SOURCE="${HOME}/Downloads/${OLD_NAME}.dmg"
     else
       die "couldn't find ${APP_NAME}.dmg in Downloads. Pass its path: bash install.sh /path/to/${APP_NAME}.dmg"
     fi
@@ -93,20 +104,24 @@ then
     hdiutil attach -quiet -nobrowse -readonly -mountpoint "${MOUNTED}" "${SOURCE}" ||
       die "couldn't open ${SOURCE}"
     SOURCE="${MOUNTED}/${APP_NAME}.app"
+    [[ -d "${SOURCE}" ]] || SOURCE="${MOUNTED}/${OLD_NAME}.app"
     [[ -d "${SOURCE}" ]] || die "${APP_NAME}.app isn't inside that disk image"
   fi
   [[ -d "${SOURCE}/Contents/MacOS" ]] || die "${SOURCE} doesn't look like an app"
 
-  if pgrep -xq "${APP_NAME}"
+  if pgrep -xq "${APP_NAME}" || pgrep -xq "${OLD_NAME}"
   then
     bold "==> Quitting ${APP_NAME}"
-    osascript -e "tell application id \"local.goodreads.gui\" to quit" >/dev/null 2>&1 || true
+    osascript -e "tell application id \"${BUNDLE_ID}\" to quit" >/dev/null 2>&1 || true
     for _ in 1 2 3 4 5 6 7 8 9 10
     do
-      pgrep -xq "${APP_NAME}" || break
+      pgrep -xq "${APP_NAME}" || pgrep -xq "${OLD_NAME}" || break
       sleep 0.5
     done
-    pgrep -xq "${APP_NAME}" && die "${APP_NAME} is still open. Quit it (menu bar icon → Quit) and run this again."
+    if pgrep -xq "${APP_NAME}" || pgrep -xq "${OLD_NAME}"
+    then
+      die "${APP_NAME} is still open. Quit it and run this again."
+    fi
   fi
 
   bold "==> Copying to /Applications"
@@ -118,6 +133,17 @@ then
     rm -rf "${TARGET}"
     ditto "${SOURCE}" "${TARGET}"
   fi
+  # The same app under its old name goes, so there's only one.
+  OLD_ID="$(/usr/bin/defaults read "${OLD_TARGET}/Contents/Info" CFBundleIdentifier 2>/dev/null)" || true
+  if [[ "${OLD_ID}" == "${BUNDLE_ID}" ]]
+  then
+    info "removing the old ${OLD_NAME}.app"
+    rm -rf "${OLD_TARGET}"
+  fi
+elif [[ ! -d "${TARGET}" ]] && [[ -d "${OLD_TARGET}" ]]
+then
+  # --resign on a Mac that still has the app under its old name.
+  TARGET="${OLD_TARGET}"
 fi
 [[ -d "${TARGET}" ]] || die "${TARGET} isn't installed"
 
@@ -203,7 +229,7 @@ codesign --verify --deep "${TARGET}" || die "the signature doesn't check out"
 SIGNED_BY="$(codesign -dvv "${TARGET}" 2>&1 | awk -F= '/^Authority/ {print $2; exit}')" || true
 info "signed with ${SIGNED_BY:-an ad hoc signature}"
 
-if [[ -n "${GOODREADS_NO_OPEN:-}" ]]
+if [[ -n "${NO_OPEN}" ]]
 then
   bold "==> Done"
 else

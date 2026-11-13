@@ -222,7 +222,7 @@
 "Subject" = "Assunto";
 "Suggestions" = "Sugestões";
 "The downloaded app is version %@, not %@." = "A app transferida é a versão %@, não a %@.";
-"The downloaded app isn't Goodreads." = "A app transferida não é o Goodreads.";
+"The downloaded app isn't OpenShelf." = "A app transferida não é a OpenShelf.";
 "The last attempt failed: %@. Click to try again." = "A última tentativa falhou: %@. Clica para tentar outra vez.";
 "The page didn't respond as expected." = "A página não respondeu como esperado.";
 "The shelf list couldn't be read." = "Não foi possível ler a lista de estantes.";
@@ -245,7 +245,7 @@
 "Want to Read" = "Quero Ler";
 "Watch what the app is doing in the page — for troubleshooting." = "Ver o que a app está a fazer na página — para resolver problemas.";
 "Website" = "Site";
-"Welcome to Goodreads" = "Bem-vindo ao Goodreads";
+"Welcome to OpenShelf" = "Bem-vindo à OpenShelf";
 "Writing file…" = "A escrever o ficheiro…";
 "Year" = "Ano";
 "Your rating" = "A tua classificação";
@@ -266,7 +266,7 @@
 "Drop books here to move them to this shelf" = "Larga aqui livros para os mudar para esta prateleira";
 "Fetch the Goodreads page of each read book for its page count and genres" = "Vai buscar a página do Goodreads de cada livro lido para saber o número de páginas e os géneros";
 "Fill In" = "Preencher";
-"Goodreads %@" = "Goodreads %@";
+"OpenShelf %@" = "OpenShelf %@";
 "How many books got each rating" = "Quantos livros receberam cada classificação";
 "Install and Relaunch" = "Instalar e reabrir";
 "Move the app to Applications to update it in one click." = "Move a app para a pasta Aplicações para a atualizares com um clique.";
@@ -321,7 +321,7 @@
 "Friends are checked every hour and new books once a day, while the app is open (it keeps running in the menu bar)." = "Os amigos são verificados de hora a hora e os livros novos uma vez por dia, enquanto a app está aberta (continua a correr na barra de menus).";
 "Genre" = "Género";
 "Genres appear once books have been opened, or after Stats → Fill In." = "Os géneros aparecem depois de abrires os livros, ou depois de Estatísticas → Preencher.";
-"Goodreads for Mac" = "Goodreads para Mac";
+"OpenShelf for Mac" = "OpenShelf para Mac";
 "How far are you into %@?" = "Em que parte de %@ vais?";
 "Layout" = "Disposição";
 "List" = "Lista";
@@ -456,7 +456,7 @@
 "Why? (optional)" = "Porquê? (opcional)";
 "Your goal comes from your Reading Challenge. Change it there." = "A meta vem do teu Reading Challenge. Muda-a lá.";
 "Your notes and quotes, your progress history and the books you stopped reading exist only on this Mac. Save them to a file you keep elsewhere, like iCloud Drive." = "As tuas notas e citações, o histórico de progresso e os livros abandonados só existem neste Mac. Guarda-os num ficheiro noutro sítio, como o iCloud Drive.";
-"macOS didn’t let the app read Apple Books. Choose its folder to allow it once, or turn on Full Disk Access for Goodreads in System Settings." = "O macOS não deixou a app ler o Apple Books. Escolhe a pasta para autorizar uma vez, ou ativa o Acesso total ao disco para o Goodreads nas Definições do Sistema.";
+"macOS didn’t let the app read Apple Books. Choose its folder to allow it once, or turn on Full Disk Access for OpenShelf in System Settings." = "O macOS não deixou a app ler o Apple Books. Escolhe a pasta para autorizar uma vez, ou ativa o Acesso total ao disco para a OpenShelf nas Definições do Sistema.";
 "stopped at %lld%%" = "parou nos %lld%%";
 "“%@” is back on Currently Reading." = "“%@” voltou para A Ler.";
 "%@: %lld%%" = "%@: %lld%%";
@@ -595,7 +595,7 @@
 "The log lists every request the app makes — copy it into a report when something breaks. The browser shows the Goodreads page the app works in." = "O registo mostra todos os pedidos que a app faz — copia-o para um relatório quando algo falhar. O browser mostra a página do Goodreads onde a app trabalha.";
 "Troubleshooting" = "Resolução de problemas";
 "Update to %lld%%" = "Atualizar para %lld%%";
-"macOS didn’t let the app read Apple Books. Choose its folder to allow it, or turn on Full Disk Access for Goodreads." = "O macOS não deixou a app ler o Apple Books. Escolhe a pasta para autorizar, ou ativa o Acesso total ao disco para o Goodreads.";
+"macOS didn’t let the app read Apple Books. Choose its folder to allow it, or turn on Full Disk Access for OpenShelf." = "O macOS não deixou a app ler o Apple Books. Escolhe a pasta para autorizar, ou ativa o Acesso total ao disco para a OpenShelf.";
 "Apple Books’ folder is hidden: press ⌘⇧G, paste ~/Library/Containers/com.apple.iBooksX/Data/Documents, then click Open." = "A pasta do Apple Books está escondida: carrega em ⌘⇧G, cola ~/Library/Containers/com.apple.iBooksX/Data/Documents e carrega em Abrir.";
 
 /* 2.9 */

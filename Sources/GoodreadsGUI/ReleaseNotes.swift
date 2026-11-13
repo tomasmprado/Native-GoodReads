@@ -62,7 +62,7 @@ struct UpdateNotesView: View {
                     .appFont(size: 26)
                     .foregroundStyle(Color.accentColor)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Goodreads \(update.version)")
+                    Text("OpenShelf \(update.version)")
                         .appFont(size: 15, weight: .semibold)
                     Text("You have \(Self.currentVersion)")
                         .appFont(size: 11)

@@ -54,7 +54,7 @@ enum AuthorWikipedia {
 
     private static func get(_ url: URL) async throws -> Data {
         var request = URLRequest(url: url)
-        request.setValue("GoodreadsGUI/1.0 (macOS; https://github.com/tomasmprado/Native-GoodReads)", forHTTPHeaderField: "User-Agent")
+        request.setValue("OpenShelf/1.0 (macOS; https://github.com/tomasmprado/OpenShelf)", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 15
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }

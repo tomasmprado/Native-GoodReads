@@ -30,7 +30,7 @@ struct GoodreadsGUIApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Goodreads", id: "main") {
+        WindowGroup("OpenShelf", id: "main") {
             ContentView()
                 .onAppear { WindowManager.shared.openMain = { openWindow(id: "main") } }
                 // goodreads-gui:// links go to the open window rather than a new one.

@@ -8,7 +8,7 @@ import Foundation
 /// limited, no releases yet) is never surfaced as an error; it's a nicety,
 /// not something worth interrupting anyone over.
 enum UpdateChecker {
-    private static let repo = "tomasmprado/Native-GoodReads"
+    private static let repo = "tomasmprado/OpenShelf"
 
     struct Available: Equatable {
         let version: String
@@ -27,7 +27,7 @@ enum UpdateChecker {
 
         var request = URLRequest(url: URL(string: "https://api.github.com/repos/\(repo)/releases/latest")!)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("GoodreadsGUI/\(current) (macOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("OpenShelf/\(current) (macOS)", forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 10
 
         guard let (data, response) = try? await URLSession.shared.data(for: request),
