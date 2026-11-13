@@ -255,12 +255,12 @@ article p code, article li code, article td code, article .tip code { overflow-w
       <p>The installer copies the app to Applications, tells macOS it's safe to open, and gives it a signature that stays the same between versions. The app opens when it's done.</p>
       <div class="tip"><strong>The first time</strong>, your Mac may ask for your login password so the app can use the Keychain. Type it and choose <strong>Always Allow</strong> — it won't ask again.</div>
       <h3>Without Terminal</h3>
-      <p>Open the .dmg and drag Goodreads to Applications. The first time, right-click the app and choose <strong>Open</strong> (or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>). The Keychain prompt may come back after each update.</p>
+      <p>Open the .dmg and drag OpenShelf to Applications. The first time, right-click the app and choose <strong>Open</strong> (or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>). The Keychain prompt may come back after each update.</p>
       <h3>With Homebrew</h3>
       <p>The app is in the <a href="https://github.com/tomasmprado/homebrew-tap">tomasmprado/tap</a> tap. One line taps it, trusts it (Homebrew asks you to before installing from a tap), installs the app and signs it on your Mac:</p>
       <div class="code"><code id="cmd-brew">b()(brew $1 tomasmprado/tap);b tap;b trust;brew instal openshelf;bash $(b --repo)/install.sh --resign</code><button type="button" data-copy="cmd-brew">Copy</button></div>
       <p>The app isn't notarised by Apple, so the cask takes off the "downloaded from the internet" flag, as the installer does; the last part gives it a signature that stays the same between versions, so the Keychain stops asking after updates.</p>
-      <p>The app updates itself; <code>brew upgrade --greedy</code> works too. <code>brew uninstall --zap goodreads</code> removes it with its data and settings.</p>
+      <p>The app updates itself; <code>brew upgrade --greedy</code> works too. <code>brew uninstall --zap openshelf</code> removes it with its data and settings.</p>
       <h3>Other installer options</h3>
       <div class="table-wrap"><table>
         <tr><th>Command</th><th>What it does</th></tr>
@@ -269,7 +269,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
         <tr><td><code>bash install.sh --remove-certificate</code></td><td>Removes the signing certificate the installer made.</td></tr>
       </table></div>
       <h3>Removing the app</h3>
-      <p>Drag Goodreads from Applications to the Bin, then run <code>bash ~/Downloads/install.sh --remove-certificate</code> if you used the installer.</p>
+      <p>Drag OpenShelf from Applications to the Bin, then run <code>bash ~/Downloads/install.sh --remove-certificate</code> if you used the installer.</p>
     </section>
 
     <section id="sign-in">
@@ -608,7 +608,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
         <tr><td>Mark Book as Read</td><td>Moves a book to Read, with optional stars.</td></tr>
         <tr><td>Reading Goal Status</td><td>Books this year against your goal.</td></tr>
       </table></div>
-      <p>You can also ask Siri, in English — for example <em>"What am I reading in Goodreads"</em> or <em>"Update my reading progress in Goodreads"</em>.</p>
+      <p>You can also ask Siri, in English — for example <em>"What am I reading in OpenShelf"</em> or <em>"Update my reading progress in OpenShelf"</em>.</p>
     </section>
 
     <section id="share">
@@ -655,7 +655,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
 
     <section id="settings">
       <h2>Settings</h2>
-      <p>Open with <kbd>⌘</kbd> <kbd>,</kbd> or Goodreads → Settings. It's in tabs:</p>
+      <p>Open with <kbd>⌘</kbd> <kbd>,</kbd> or OpenShelf → Settings. It's in tabs:</p>
       <div class="table-wrap"><table>
         <tr><th>Tab</th><th>What's there</th></tr>
         <tr><td>General</td><td>Book language for suggestions, how far "recently read" reaches, your Google Books API key (a free key for better search and details — get one at <a href="https://console.cloud.google.com/">console.cloud.google.com</a>: enable the <em>Books API</em>, then <em>Credentials → Create Credentials → API key</em>; kept in your Keychain) and the reading goal (your Goodreads Reading Challenge, or your own).</td></tr>
@@ -708,7 +708,7 @@ article p code, article li code, article td code, article .tip code { overflow-w
       <h2>Troubleshooting</h2>
       <h3>The Mac keeps asking for my Keychain password</h3>
       <p>Run <code>bash ~/Downloads/install.sh --resign</code> and choose <strong>Always Allow</strong> once.</p>
-      <h3>"Goodreads" can't be opened</h3>
+      <h3>"OpenShelf" can't be opened</h3>
       <p>Use the installer, or right-click the app → <strong>Open</strong>, or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>.</p>
       <h3>Search finds little, or says the quota is used up</h3>
       <p>Add a Google Books key in <a href="#settings">Settings</a>.</p>
