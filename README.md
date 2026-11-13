@@ -7,9 +7,8 @@ Goodreads / Native GoodReads.)
 [Guide](https://tomasmprado.github.io/OpenShelf/docs.html) ·
 [What's new](https://tomasmprado.github.io/OpenShelf/changelog.html)
 
-**Latest:** 3.2 — Discover learns from every swipe, reading streaks and a
-streak widget, works offline, the next volume of what you've started, and a
-bookcase in your books' own colours. [Every version](https://tomasmprado.github.io/OpenShelf/changelog.html)
+**Latest:** 3.3 — the app is now called OpenShelf, with a new icon. Same app,
+same data; old links and `brew` names still work. [Every version](https://tomasmprado.github.io/OpenShelf/changelog.html)
 
 ## Features
 
