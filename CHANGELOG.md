@@ -1,11 +1,27 @@
 # Changelog
 
 Everything below is relative to `v1.0.0`, current as of `main`. That range
-(https://github.com/tomasmprado/Native-GoodReads/compare/v1.0.0...main)
+(https://github.com/tomasmprado/OpenShelf/compare/v1.0.0...main)
 landed on GitHub as one squashed "Initial commit" — 32 files changed,
 +5226/−470 — so this groups the actual changes by what they do instead of
 repeating that one message. Most of `Sources/GoodreadsGUI/` shows as newly
 added in that diff, meaning `v1.0.0` predates all of it.
+
+## [Unreleased]
+
+### Changed
+
+- **The app is now called OpenShelf**, with a new icon: an open shelf of
+  books. The name, the window, the Dock, widgets, the .dmg, the website, the
+  GitHub repository (github.com/tomasmprado/OpenShelf; old links redirect)
+  and Homebrew (`openshelf`; `goodreads` and `native-goodreads` still work)
+  all follow. It's the same app: settings, sign-in, notes, progress and
+  widgets carry over, and updating from inside the app works as before.
+- Updating from inside the app now installs the new copy under its own
+  name, so a Mac that still has `Goodreads.app` ends up with `OpenShelf.app`
+  (from the update after 3.3). `install.sh` installs `OpenShelf.app` and
+  removes the old `Goodreads.app`; `--resign` also finds it under its old
+  name.
 
 ## [3.2.0] — 2026-11-10
 

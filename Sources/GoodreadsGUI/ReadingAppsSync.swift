@@ -137,7 +137,7 @@ final class ReadingAppsSync: ObservableObject {
         let code = (error as NSError).code
         if (error as NSError).domain == NSCocoaErrorDomain,
            [NSFileReadNoPermissionError, NSFileReadUnknownError, NSFileReadNoSuchFileError].contains(code) {
-            return String(localized: "macOS didn’t let the app read Apple Books. Choose its folder to allow it, or turn on Full Disk Access for Goodreads.")
+            return String(localized: "macOS didn’t let the app read Apple Books. Choose its folder to allow it, or turn on Full Disk Access for OpenShelf.")
         }
         return error.localizedDescription
     }

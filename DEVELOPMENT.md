@@ -1,10 +1,15 @@
-# Goodreads GUI — notes for developers
+# OpenShelf — notes for developers
 
 The user guide is [README.md](README.md). This file covers how the app
 works inside, how to build it, and the parts most likely to break.
 
-The website (https://tomasmprado.github.io/Native-GoodReads/) is a single
-`index.html` on the `gh-pages` branch, served by GitHub Pages.
+OpenShelf was called Goodreads (and Native GoodReads) before 3.3. The
+bundle identifier is still `local.goodreads.gui`, the module and folders are
+still `GoodreadsGUI`, and the Keychain and Application Support names didn't
+change, so settings, sign-in and data carry over.
+
+The website (https://tomasmprado.github.io/OpenShelf/) is `index.html`,
+`docs.html` and `changelog.html` on the `gh-pages` branch, served by GitHub Pages.
 
 A small native macOS front end for [`yareeh/goodreads-cli`](https://github.com/yareeh/goodreads-cli).
 SwiftUI, no dependencies. Search a book, shelve it, see what your friends are
@@ -275,7 +280,7 @@ version is out on [Releases](../../releases) — a quiet, best-effort check
 against the GitHub API on launch, silent on any failure (offline, rate
 limited). Clicking it shows what's new in that release first; *Install and
 Relaunch* then downloads the release's `.dmg` (with a progress bar), checks the
-app inside is Goodreads at that version, swaps it for the running copy and
+app inside is OpenShelf at that version, swaps it for the running copy and
 reopens. The old
 copy is put back if anything goes wrong. When the app can't replace itself —
 run straight from the disk image, or from Downloads before being moved — the

@@ -213,7 +213,7 @@ struct YearCard: View {
                 }
             }
 
-            Text("Goodreads for Mac")
+            Text("OpenShelf for Mac")
                 .font(.system(size: 10))
                 .opacity(0.5)
         }

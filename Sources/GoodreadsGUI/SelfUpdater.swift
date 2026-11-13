@@ -156,7 +156,7 @@ final class SelfUpdater: ObservableObject {
     private func verify(_ staged: URL, expectedVersion: String) throws {
         guard let info = Bundle(url: staged)?.infoDictionary,
               info["CFBundleIdentifier"] as? String == Bundle.main.bundleIdentifier else {
-            throw AppError("The downloaded app isn't Goodreads.")
+            throw AppError("The downloaded app isn't OpenShelf.")
         }
         let version = info["CFBundleShortVersionString"] as? String ?? ""
         guard !UpdateChecker.isNewer(expectedVersion, than: version) else {
@@ -165,32 +165,45 @@ final class SelfUpdater: ObservableObject {
     }
 
     private func relaunch(replacingWith staged: URL, workDir: URL) throws {
-        let target = Bundle.main.bundleURL
+        let current = Bundle.main.bundleURL
+        // The new copy goes in under its own name ("OpenShelf.app" after
+        // "Goodreads.app"), next to where this one is.
+        let target = current.deletingLastPathComponent().appendingPathComponent(staged.lastPathComponent)
         let script = workDir.appendingPathComponent("install.sh")
         try Self.installScript.write(to: script, atomically: true, encoding: .utf8)
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = [script.path, String(ProcessInfo.processInfo.processIdentifier),
-                             staged.path, target.path, workDir.path]
+                             staged.path, current.path, workDir.path, target.path,
+                             Bundle.main.bundleIdentifier ?? ""]
         try process.run()
         NSApp.terminate(nil)
     }
 
-    /// $1 pid to wait for, $2 new app, $3 where it goes, $4 folder to clean up.
+    /// $1 pid to wait for, $2 new app, $3 the copy running now, $4 folder to
+    /// clean up, $5 where the new copy goes (its own name; may differ from
+    /// $3 after a rename), $6 the bundle id both must have.
     /// The old copy is kept until the new one is in place, and put back if
     /// the move fails, so a failed update never leaves no app at all.
     nonisolated static let installScript = """
     #!/bin/sh
-    pid="$1"; new="$2"; target="$3"; work="$4"
+    pid="$1"; new="$2"; old="$3"; work="$4"; target="${5:-$3}"; id="$6"
     for i in $(seq 1 100); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
-    backup="$target.old-$$"
-    mv "$target" "$backup" || { open "$target"; exit 1; }
+    # Something else already where the new name goes: only an older copy of
+    # this same app is moved aside; anything else stops the rename.
+    if [ "$target" != "$old" ] && [ -e "$target" ]; then
+        other=$(/usr/bin/defaults read "$target/Contents/Info" CFBundleIdentifier 2>/dev/null)
+        if [ -n "$id" ] && [ "$other" = "$id" ]; then rm -rf "$target"; else target="$old"; fi
+    fi
+    backup="$old.old-$$"
+    mv "$old" "$backup" || { open "$old"; exit 1; }
     if mv "$new" "$target"; then
         rm -rf "$backup"
         xattr -dr com.apple.quarantine "$target" 2>/dev/null
     else
-        mv "$backup" "$target"
+        mv "$backup" "$old"
+        target="$old"
     fi
     open "$target"
     rm -rf "$work"

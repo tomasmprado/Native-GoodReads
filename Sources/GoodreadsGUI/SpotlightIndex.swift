@@ -50,7 +50,7 @@ enum SpotlightIndex {
                 attributes.contentDescription = text
                 attributes.textContent = text
                 attributes.authorNames = author.isEmpty ? nil : [author]
-                attributes.keywords = [title, author, kind, "Goodreads"].filter { !$0.isEmpty }
+                attributes.keywords = [title, author, kind, "OpenShelf", "Goodreads"].filter { !$0.isEmpty }
                 return CSSearchableItem(uniqueIdentifier: "\(idPrefix)\(bookID)@notes-\(suffix)", domainIdentifier: domain,
                                         attributeSet: attributes)
             }
@@ -91,7 +91,7 @@ enum SpotlightIndex {
         attributes.displayName = entry.title
         attributes.authorNames = [entry.author]
         attributes.contentDescription = "\(entry.author) · \(shelf.title)"
-        attributes.keywords = [entry.author, shelf.title, "Goodreads"]
+        attributes.keywords = [entry.author, shelf.title, "OpenShelf", "Goodreads"]
         if let rating = entry.rating, rating > 0 { attributes.rating = NSNumber(value: rating) }
         return CSSearchableItem(uniqueIdentifier: "\(idPrefix)\(entry.bookID)@\(shelf.name)",
                                 domainIdentifier: domain,

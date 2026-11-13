@@ -1,5 +1,6 @@
 .build/
 Goodreads*.app/
+OpenShelf*.app/
 *.dmg
 .DS_Store
 
